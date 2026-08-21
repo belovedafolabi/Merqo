@@ -1,0 +1,19 @@
+# Supabase CLI local cache/link state — never commit (may cache connection strings/tokens)
+supabase/.temp/
+supabase/.branches/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# OS/editor
+.DS_Store
+Thumbs.db
