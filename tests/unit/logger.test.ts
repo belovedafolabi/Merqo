@@ -16,7 +16,7 @@ describe('logger', () => {
     const record = JSON.parse(String(spy.mock.calls[0]?.[0]))
     expect(record).toMatchObject({
       level: 'info',
-      message: 'this-assertion-is-deliberately-wrong',
+      message: 'health.check',
       context: { route: '/api/health' },
     })
     expect(typeof record.timestamp).toBe('string')
