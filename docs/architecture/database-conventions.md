@@ -17,7 +17,7 @@ Every table's primary key is `uuid primary key default gen_random_uuid()`. `gen_
 
 ## Standard audit columns
 
-Every table includes `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`, and `created_by uuid references public.users(id) on delete set null`. `updated_at` is kept current by the shared `set_updated_at()` trigger function (`supabase/migrations/20260822090000_create_set_updated_at_function.sql`) — reuse it, don't hand-roll a new `BEFORE UPDATE` trigger per table.
+Every table includes `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`, and `created_by uuid references public.users(id) on delete set null`. `updated_at` is kept current by the shared `set_updated_at()` trigger function (`supabase/migrations/20260822090000_create_set_updated_at_function.sql`) — reuse it, don't hand-roll a new `BEFORE UPDATE` trigger per table. That trigger uses `clock_timestamp()`, not `now()`: `now()` is fixed for the whole transaction, so it can't distinguish an UPDATE from an earlier INSERT/UPDATE in the same transaction — `clock_timestamp()` reflects real wall-clock time at the moment the trigger fires.
 
 **Documented exception: `audit_logs`.** An audit row is append-only and never updated, so it has no `updated_at` and no `set_updated_at` trigger. It also has no `created_by` — the table already carries `user_id` as the acting user, and duplicating that as `created_by` would be redundant on a table whose entire purpose is recording who did what.
 
