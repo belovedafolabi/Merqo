@@ -13,6 +13,22 @@ node_modules/
 dist/
 build/
 .next/
+/out/
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Testing
+/coverage/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Local tooling
+.turbo
+.claude/settings.local.json
 
 # OS/editor
 .DS_Store
