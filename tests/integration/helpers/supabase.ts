@@ -11,6 +11,13 @@ import { randomUUID } from 'node:crypto'
  * RLS suite assert denial "via direct Supabase client calls that bypass
  * application code" per this milestone's Testing Requirements.
  */
+// These are the standard, public "demo" JWTs every `supabase start` prints
+// for every local project on every machine (same values in every Supabase
+// quickstart doc) — not a secret specific to this deployment. Used only as
+// a zero-setup fallback so `pnpm test:integration` works against a fresh
+// `pnpm db:start` without extra config; CI always overrides them via real
+// env vars (see .github/workflows/ci.yml). Explicitly allowlisted in
+// .gitleaks.toml so the secret scanner doesn't flag them.
 const DEFAULT_LOCAL_URL = 'http://127.0.0.1:54321'
 const DEFAULT_LOCAL_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
