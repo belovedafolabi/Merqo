@@ -24,3 +24,10 @@ onlyBuiltDependencies:
   - esbuild
   - supabase
   - unrs-resolver
+
+# Security overrides for transitive dependencies flagged by Dependabot.
+# ansi-regex@5.0.0 (pulled in by pretty-format, via @testing-library/dom):
+# GHSA-93q8-gq69-wqmw, ReDoS, fixed in 5.0.1. Dev-only dependency chain
+# (test tooling, never shipped), but trivial to pin correctly.
+overrides:
+  ansi-regex@5.0.0: '5.0.1'

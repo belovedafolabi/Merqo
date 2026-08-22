@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete — merged via [PR #1](https://github.com/belovedafolabi/Merqo/pull/1) (2026-08-22)
 
 ## Objective
 
