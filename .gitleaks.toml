@@ -3,10 +3,13 @@ title = "Merqo gitleaks configuration"
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Documented placeholder values in .env.example"
-paths = ['''^\.env\.example$''']
-
-[[allowlists]]
-description = "Design corpus contains illustrative, non-real key examples"
-paths = ['''^docs/''']
+# Global allowlist, applied across all rules (gitleaks v8 schema: a single
+# top-level [allowlist] table, not an array — an earlier [[allowlists]] array
+# here silently did nothing and let a documented .env.example placeholder
+# trip the default stripe-access-token rule).
+[allowlist]
+description = "Documented placeholder values and the design corpus's illustrative examples"
+paths = [
+  '''^\.env\.example$''',
+  '''^docs/''',
+]
