@@ -1,0 +1,12 @@
+title = "Merqo gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented placeholder values in .env.example"
+paths = ['''^\.env\.example$''']
+
+[[allowlists]]
+description = "Design corpus contains illustrative, non-real key examples"
+paths = ['''^docs/''']

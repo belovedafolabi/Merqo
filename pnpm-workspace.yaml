@@ -1,0 +1,26 @@
+# Single-package workspace. Per Milestone 01 Implementation Notes: do not
+# pre-build a monorepo speculatively. To add a package later, list its path here.
+packages: []
+
+minimumReleaseAgeExclude:
+  - '@next/env@16.3.2'
+  - '@next/eslint-plugin-next@16.3.2'
+  - '@next/swc-darwin-arm64@16.3.2'
+  - '@next/swc-darwin-x64@16.3.2'
+  - '@next/swc-linux-arm64-gnu@16.3.2'
+  - '@next/swc-linux-arm64-musl@16.3.2'
+  - '@next/swc-linux-x64-gnu@16.3.2'
+  - '@next/swc-linux-x64-musl@16.3.2'
+  - '@next/swc-win32-arm64-msvc@16.3.2'
+  - '@next/swc-win32-x64-msvc@16.3.2'
+  - eslint-config-next@16.3.2
+  - eslint@10.9.0
+  - next@16.3.2
+
+# pnpm 10+ blocks dependency build scripts by default. These genuinely need to
+# run — omitting any of them produces a broken install with no error.
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
+  - supabase
+  - unrs-resolver
