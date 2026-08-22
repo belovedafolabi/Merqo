@@ -1,7 +1,8 @@
 import { cache } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 import type { ScopeGrant } from '@/lib/auth/permissions'
 
 interface PermissionGrantRow {
@@ -36,8 +37,20 @@ export async function fetchPermissionGrants(supabaseClient: SupabaseClient): Pro
  * The current request's authenticated user, or null if unauthenticated.
  * cache()-memoized so multiple guard/layout calls within one request share
  * a single round trip instead of each re-fetching the session.
+ *
+ * Treats a missing Supabase config as "no user" rather than letting
+ * createServerSupabaseClient() throw — mirrors proxy.ts's "not configured"
+ * stance (see isSupabaseConfigured()'s doc) so requireUser() redirects to
+ * /sign-in instead of every protected Server Component 500ing when
+ * NEXT_PUBLIC_SUPABASE_URL/_ANON_KEY are unset, e.g. the e2e CI job, which
+ * never starts Supabase (tests/e2e/unauthenticated-redirect.spec.ts).
  */
 export const getCurrentUser = cache(async () => {
+  if (!isSupabaseConfigured()) {
+    logger.warn('auth.supabase_not_configured')
+    return null
+  }
+
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -53,6 +66,11 @@ export const getCurrentUser = cache(async () => {
  * and fetchPermissionGrants() into one cache()-memoized call per request.
  */
 export const getCurrentUserContext = cache(async () => {
+  if (!isSupabaseConfigured()) {
+    logger.warn('auth.supabase_not_configured')
+    return { user: null, grants: [] as ScopeGrant[] }
+  }
+
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
