@@ -109,7 +109,29 @@ jobs:
           pnpm exec supabase db reset
           pnpm exec supabase db reset
 
-      - name: Run schema/constraint/seed integration tests
+      - name: Export local Supabase URL/keys for the integration tests
+        # `-o env` writes dotenv-quoted `KEY="value"` lines, which
+        # $GITHUB_ENV does not unquote on a plain `>>` append — every
+        # exported value would end up with literal quote characters baked
+        # in (e.g. supabase-js rejecting `"http://127.0.0.1:54321"` as an
+        # invalid URL). `-o json` + jq gives us the raw values so we control
+        # the exact unquoted `KEY=value` lines written to $GITHUB_ENV.
+        run: |
+          status=$(pnpm exec supabase status -o json)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(echo "$status" | jq -r '.API_URL')" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(echo "$status" | jq -r '.ANON_KEY')" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status" | jq -r '.SERVICE_ROLE_KEY')" >> "$GITHUB_ENV"
+
+      - name: Check required Supabase Auth secrets are present (values never printed)
+        run: |
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is not set for the integration test run"
+              exit 1
+            fi
+          done
+
+      - name: Run schema/constraint/seed/auth/RLS integration tests
         run: pnpm test:integration
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres

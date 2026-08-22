@@ -8,8 +8,15 @@ import { defineConfig } from 'vitest/config'
  * vitest.config.ts (unit tests): no jsdom/React plugin, node environment, and
  * a single worker so the whole suite shares a stable connection pool instead
  * of racing multiple Postgres connections against transaction-scoped tests.
+ *
+ * `resolve.tsconfigPaths` added in Milestone 03: tests/integration/authorization.test.ts
+ * imports the pure resolvePermission()/fetchPermissionGrants() logic
+ * directly from lib/auth/* via the `@/` alias, the same as the unit config.
  */
 export default defineConfig({
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     environment: 'node',
     include: ['tests/integration/**/*.test.ts'],
