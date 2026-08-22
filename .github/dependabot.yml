@@ -13,6 +13,16 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+    ignore:
+      # eslint-plugin-react@7.37.5 (bundled by eslint-config-next) crashes
+      # against ESLint 10's removed legacy Context API. Revisit once
+      # eslint-config-next ships an ESLint-10-compatible version.
+      - dependency-name: 'eslint'
+        versions: ['>=10.0.0']
+      # typescript-eslint@8.67.0's peer range is '>=4.8.4 <6.1.0'. TS 7 is
+      # also a ground-up rewrite (Go-native compiler), not a routine bump.
+      - dependency-name: 'typescript'
+        versions: ['>=7.0.0']
 
   - package-ecosystem: github-actions
     directory: '/'
