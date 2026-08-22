@@ -73,6 +73,51 @@ jobs:
       - name: Build
         run: pnpm build
 
+  db-migrations:
+    name: Database migrations & schema tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Start local Supabase (applies migrations + seed)
+        run: pnpm exec supabase start
+
+      - name: Verify migrations + seed are idempotent
+        run: |
+          pnpm exec supabase db reset
+          pnpm exec supabase db reset
+
+      - name: Run schema/constraint/seed integration tests
+        run: pnpm test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+      - name: Stop Supabase
+        if: always()
+        run: pnpm exec supabase stop
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
