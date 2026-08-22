@@ -2,6 +2,19 @@ import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 
 /**
+ * Whether the Supabase env vars this module needs are present. Mirrors
+ * proxy.ts's identical check (see its module doc): callers that can degrade
+ * gracefully — currently lib/auth/context.ts, so an unauthenticated-looking
+ * request redirects to /sign-in instead of crashing — should check this
+ * before calling createServerSupabaseClient() rather than catching its
+ * throw. Callers with no sensible fallback (e.g. the sign-in Server Action
+ * itself) are fine letting createServerSupabaseClient() throw as-is.
+ */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
+/**
  * The Supabase client for Server Components, Server Actions, and Route
  * Handlers. Uses the anon key and the caller's own session cookie, so every
  * query respects RLS as that signed-in user — this is the only Supabase
