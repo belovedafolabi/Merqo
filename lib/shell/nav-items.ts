@@ -1,0 +1,66 @@
+import type { LucideIcon } from 'lucide-react'
+import {
+  Boxes,
+  Building2,
+  LayoutDashboard,
+  Package,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShoppingCart,
+  Users,
+  Wallet,
+} from 'lucide-react'
+
+import type { PermissionScope } from '@/lib/auth/permissions'
+
+/**
+ * The Admin Dashboard's navigation structure — docs/UXUI_Design_System_Specification.md
+ * §12's list, rendered dynamically per this milestone's functional
+ * requirement ("a user only sees modules they are authorized to access").
+ *
+ * Feature screens for most of these modules don't exist until their own
+ * milestone (Products: 06, Inventory: 07, Sales/POS: 08, Customers/Layaways:
+ * 09, Reports: 10, Employees: 11) — per this milestone's explicit scope,
+ * building those screens is out of bounds here. What this milestone *does*
+ * own is the nav-generation mechanism itself, so every later milestone adds
+ * a route without touching the shell. `href` already points at each
+ * module's eventual route.
+ *
+ * `permission` gates a visible-but-inert item behind `<Can>`
+ * (components/auth/can.tsx) only where a real permission already exists in
+ * the seeded catalog (supabase/seed.sql) — "Business Structure" is the only
+ * one today (`branches.view`). Items whose domain permission doesn't exist
+ * yet are intentionally left ungated (`permission: null`): gating them on a
+ * *different* module's permission, or hiding them for everyone, would be
+ * more wrong than showing a module every authenticated user can eventually
+ * reach once its own milestone lands and seeds its own permission.
+ */
+export interface NavItem {
+  label: string
+  href: string
+  icon: LucideIcon
+  permission: { key: string; scope: (organizationId: string) => PermissionScope } | null
+  badge?: string
+}
+
+export const primaryNavItems: NavItem[] = [
+  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, permission: null },
+  { label: 'POS', href: '/pos', icon: ShoppingCart, permission: null },
+  { label: 'Sales', href: '/sales', icon: Receipt, permission: null },
+  { label: 'Products', href: '/products', icon: Package, permission: null },
+  { label: 'Inventory', href: '/inventory', icon: Boxes, permission: null },
+  { label: 'Customers', href: '/customers', icon: Users, permission: null },
+  { label: 'Layaways', href: '/layaways', icon: Wallet, permission: null },
+  { label: 'Reports', href: '/reports', icon: ScrollText, permission: null },
+  {
+    label: 'Business Structure',
+    href: '/business-structure',
+    icon: Building2,
+    permission: { key: 'branches.view', scope: (organizationId) => ({ organizationId }) },
+  },
+]
+
+export const secondaryNavItems: NavItem[] = [
+  { label: 'Settings', href: '/settings', icon: Settings, permission: null },
+]

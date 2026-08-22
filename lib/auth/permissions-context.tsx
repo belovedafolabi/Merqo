@@ -34,3 +34,16 @@ export function usePermission(permissionKey: string, scope: PermissionScope): bo
   if (!grants) return false
   return resolvePermission(grants, permissionKey, scope)
 }
+
+/**
+ * The current user's organization id, derived from the same grants
+ * lib/branding/queries.ts derives it from server-side (grants[0]'s
+ * organization_id) — this project's single-tenant-per-deployment model
+ * means a signed-in user has exactly one. Used by client components (e.g.
+ * components/shell/admin-sidebar.tsx) that need an organization id to build
+ * a `<Can>` scope without threading it down as a prop from every layout.
+ */
+export function useCurrentOrganizationId(): string | null {
+  const grants = useContext(PermissionsContext)
+  return grants?.[0]?.organizationId ?? null
+}

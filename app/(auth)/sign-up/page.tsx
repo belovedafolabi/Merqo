@@ -4,75 +4,61 @@ import { useActionState } from 'react'
 import Link from 'next/link'
 
 import { signUp, type AuthActionState } from '@/app/(auth)/actions'
+import { AuthCard } from '@/components/auth/auth-card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 const initialState: AuthActionState = { error: null }
 
-/**
- * Minimal, unstyled-beyond-Milestone-01 sign-up screen — functionally
- * complete now, visual polish arrives with Milestone 04's design system
- * (see docs/milestones/03-authentication-and-rbac-foundation.md Frontend
- * Changes).
- */
 export default function SignUpPage() {
   const [state, formAction, pending] = useActionState(signUp, initialState)
 
   return (
-    <main className="mx-auto flex min-h-full max-w-sm flex-1 flex-col justify-center gap-6 p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Create your organization</h1>
-
+    <AuthCard
+      title="Create your organization"
+      error={state.error}
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link href="/sign-in" className="underline underline-offset-4">
+            Sign in
+          </Link>
+        </>
+      }
+    >
       <form action={formAction} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Organization name
-          <input
-            name="organizationName"
-            type="text"
-            required
-            className="rounded border px-3 py-2"
-          />
-        </label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="organizationName">Organization name</Label>
+          <Input id="organizationName" name="organizationName" type="text" required />
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Your full name
-          <input name="fullName" type="text" required className="rounded border px-3 py-2" />
-        </label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="fullName">Your full name</Label>
+          <Input id="fullName" name="fullName" type="text" autoComplete="name" required />
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input name="email" type="email" required className="rounded border px-3 py-2" />
-        </label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" autoComplete="email" required />
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
             name="password"
             type="password"
+            autoComplete="new-password"
             required
             minLength={6}
-            className="rounded border px-3 py-2"
           />
-        </label>
+        </div>
 
-        {state.error && (
-          <p role="alert" className="text-sm text-red-600">
-            {state.error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={pending} className="mt-2">
           {pending ? 'Creating account…' : 'Create account'}
-        </button>
+        </Button>
       </form>
-
-      <p className="text-sm text-muted-foreground">
-        Already have an account?{' '}
-        <Link href="/sign-in" className="underline underline-offset-4">
-          Sign in
-        </Link>
-      </p>
-    </main>
+    </AuthCard>
   )
 }
