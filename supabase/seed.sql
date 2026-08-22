@@ -109,10 +109,74 @@ cross join public.capabilities c
 on conflict (business_type_id, capability_id) do nothing;
 
 -- =============================================================================
--- roles / permissions / role_permissions / user_roles / audit_logs
--- intentionally have NO seed data in this milestone — default role and
--- permission catalog seeding is Milestone 03's Database Changes
--- (docs/milestones/03-authentication-and-rbac-foundation.md). See
--- tests/integration/seed.test.ts, which asserts these tables stay empty
--- until Milestone 03 populates them.
+-- 4. Default role catalog (Milestone 03), per docs/PRD.md §11 / docs/TAS.md
+--    §24. All `is_system_role = true` — these are platform-defined
+--    templates, not user-created custom roles (custom-role creation is
+--    Milestone 11's role-builder UI; the schema already supports it, it's
+--    simply unreachable from the app until then — see
+--    20260822094500_alter_roles_add_policies.sql).
 -- =============================================================================
+insert into public.roles (name, slug, description, is_system_role) values
+  ('Owner', 'owner', 'Highest-level role inside a client deployment. Full access to everything within its Organization.', true),
+  ('Branch Manager', 'branch_manager', 'Operates within an assigned branch: business units, staff visibility, day-to-day branch administration.', true),
+  ('Cashier', 'cashier', 'Transaction-oriented role. Permissions arrive with the POS Transaction Engine (Milestone 08).', true),
+  ('Salesperson', 'salesperson', 'Sales-floor role. Permissions arrive with the POS Transaction Engine (Milestone 08).', true),
+  ('Pharmacist', 'pharmacist', 'Pharmacy-specialized preset. Permissions arrive with Inventory (Milestone 07) and POS (Milestone 08).', true),
+  ('Waiter', 'waiter', 'Restaurant-capability role. Permissions arrive when restaurant order-taking ships.', true),
+  ('Kitchen Staff', 'kitchen_staff', 'Restaurant-capability role. Permissions arrive when kitchen/order-status features ship.', true)
+on conflict (slug) do nothing;
+
+-- =============================================================================
+-- 5. Permission catalog (Milestone 03), `resource.action` format per
+--    docs/TAS.md §25 / docs/PRD.md §12. Scoped to only what Milestone 03–05
+--    actually need (per this milestone's own Implementation Notes) — each
+--    later milestone seeds its own domain's permissions (e.g. `sales.create`
+--    arrives with Milestone 08) rather than pre-seeding features that don't
+--    exist yet.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('organizations.view', 'organizations', 'view', 'View this Organization''s own settings.'),
+  ('organizations.update', 'organizations', 'update', 'Update this Organization''s own settings.'),
+  ('branches.view', 'branches', 'view', 'View branches within an authorized scope.'),
+  ('branches.create', 'branches', 'create', 'Create a new branch.'),
+  ('branches.update', 'branches', 'update', 'Update a branch.'),
+  ('branches.archive', 'branches', 'archive', 'Archive (soft-delete) a branch.'),
+  ('business_units.view', 'business_units', 'view', 'View business units within an authorized scope.'),
+  ('business_units.create', 'business_units', 'create', 'Create a new business unit.'),
+  ('business_units.update', 'business_units', 'update', 'Update a business unit.'),
+  ('business_units.archive', 'business_units', 'archive', 'Archive (soft-delete) a business unit.'),
+  ('users.view', 'users', 'view', 'View other users within a shared organization.'),
+  ('users.manage', 'users', 'manage', 'Manage user profile-level details for other users.'),
+  ('roles.view', 'roles', 'view', 'View role assignments within an authorized scope.'),
+  ('roles.assign', 'roles', 'assign', 'Assign or revoke a role (with scope) for a user.'),
+  ('audit_logs.view', 'audit_logs', 'view', 'View audit log entries within an authorized scope.')
+on conflict (key) do nothing;
+
+-- =============================================================================
+-- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
+--    Branch Manager gets a read/manage subset of branch & business-unit
+--    administration; the five operational roles (Cashier, Salesperson,
+--    Pharmacist, Waiter, Kitchen Staff) start with NO permissions —
+--    principle of least privilege (docs/Auth_Users_Roles_Authorization.md
+--    §49): none of the permissions those roles actually need
+--    (`sales.create`, `inventory.adjust`, etc.) exist in the catalog yet.
+-- =============================================================================
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+cross join public.permissions p
+where r.slug = 'owner'
+on conflict (role_id, permission_id) do nothing;
+
+with branch_manager_permissions (key) as (
+  values
+    ('branches.view'), ('business_units.view'), ('business_units.create'),
+    ('business_units.update'), ('users.view'), ('roles.view'), ('audit_logs.view')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_permissions bmp on true
+join public.permissions p on p.key = bmp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
