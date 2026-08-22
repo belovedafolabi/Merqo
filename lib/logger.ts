@@ -14,8 +14,6 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 type LogContext = Record<string, unknown>
 
-export const badTypeCheck: number = 'this is not a number'
-
 const SECRET_KEY_PATTERN = /(key|token|secret|password|authorization|cookie|apikey)/i
 const REDACTED = '[redacted]'
 
