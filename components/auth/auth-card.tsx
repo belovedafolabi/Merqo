@@ -1,6 +1,6 @@
 import { Bolt, TriangleAlert } from 'lucide-react'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 /**
@@ -25,7 +25,10 @@ export function AuthCard({
         <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Bolt className="size-5" />
         </span>
-        <CardTitle className="text-h4">{title}</CardTitle>
+        {/* A real <h1>, not shadcn's CardTitle (a plain, non-semantic div) —
+            this is page-level content: each auth screen has exactly one
+            heading, and it needs an actual accessible heading role. */}
+        <h1 className="text-h4 leading-none font-semibold">{title}</h1>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {error && (
