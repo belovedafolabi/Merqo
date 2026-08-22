@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils'
+
 export default function Home() {
   return (
     <main className="flex min-h-full flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
