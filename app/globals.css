@@ -3,16 +3,42 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Design tokens — Milestone 04 (docs/milestones/04-design-system-and-app-shell.md).
+ *
+ * Two independent things live here, deliberately kept separate:
+ *
+ * 1. The neutral base (`:root` / `.dark`) — a true achromatic gray scale,
+ *    per docs/UXUI_Design_System_Specification.md §3. `.dark` is a
+ *    conventional, fully-dark theme kept ready for a future Light/Dark/System
+ *    toggle (§56) — nothing in this milestone switches it on by default.
+ * 2. The Admin shell's "dark canvas" treatment (`--admin-canvas-*`,
+ *    `.bg-admin-canvas`) — the reference design's floating-light-cards-on-a-
+ *    dark-backdrop look. This is additive chrome on top of the *light*
+ *    neutral tokens (cards/text/borders stay light — only the page backdrop
+ *    and sidebar go dark), not a variant of `.dark`. Conflating the two would
+ *    make a future real dark-mode toggle fight this shell's fixed backdrop.
+ *
+ * `--sidebar-*` is intentionally dark-toned in both `:root` and `.dark` — the
+ * reference design's sidebar stays fixed dark chrome regardless of theme.
+ *
+ * `--brand-*` is the per-organization branding override layer
+ * (components/branding/brand-style.tsx writes new values for these at
+ * render time). `--primary`/`--ring`/`--sidebar-primary` reference them, so
+ * a branding change recolors buttons, links, active nav, and focus rings
+ * everywhere at once. Seeded to emerald — the reference design's accent —
+ * only as the *default* organization value, not a hardcoded app color.
+ */
+
 :root {
-  --radius: 0.625rem;
+  --radius: 1rem;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -20,63 +46,96 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.6 0.15 155);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.77 0.16 75);
+  --warning-foreground: oklch(0.145 0 0);
+  --info: oklch(0.6 0.15 245);
+  --info-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Sidebar chrome — always dark, per the reference design (§ shell). */
+  --sidebar: oklch(0.16 0.015 155);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-accent: oklch(0.24 0.02 155);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+
+  /* Brand override layer — seeded to emerald as the default org branding. */
+  --brand-primary: oklch(0.6 0.15 155);
+  --brand-primary-foreground: oklch(0.985 0 0);
+  --brand-secondary: oklch(0.75 0.12 155);
+  --brand-secondary-foreground: oklch(0.145 0 0);
+
+  --primary: var(--brand-primary);
+  --primary-foreground: var(--brand-primary-foreground);
+  --ring: var(--brand-primary);
+  --sidebar-primary: var(--brand-primary);
+  --sidebar-primary-foreground: var(--brand-primary-foreground);
+  --sidebar-ring: var(--brand-primary);
+
+  /* Admin shell's dark backdrop — see file header. */
+  --admin-canvas-from: oklch(0.17 0.025 155);
+  --admin-canvas-via: oklch(0.1 0.02 155);
+  --admin-canvas-to: oklch(0.06 0.01 155);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.19 0 0);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.19 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --secondary: oklch(0.26 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.26 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.26 0 0);
+  --accent-foreground: oklch(0.96 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.145 0 0);
+  --success: oklch(0.7 0.16 155);
+  --success-foreground: oklch(0.145 0 0);
+  --warning: oklch(0.8 0.15 80);
+  --warning-foreground: oklch(0.145 0 0);
+  --info: oklch(0.7 0.14 245);
+  --info-foreground: oklch(0.145 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+
+  --sidebar: oklch(0.14 0.015 155);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-accent: oklch(0.22 0.02 155);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+
+  --primary: var(--brand-primary);
+  --primary-foreground: var(--brand-primary-foreground);
+  --ring: var(--brand-primary);
+  --sidebar-primary: var(--brand-primary);
+  --sidebar-primary-foreground: var(--brand-primary-foreground);
+  --sidebar-ring: var(--brand-primary);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -92,6 +151,13 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -108,6 +174,38 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-foreground: var(--brand-primary-foreground);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-secondary-foreground: var(--brand-secondary-foreground);
+
+  /* Typography scale — docs/UXUI_Design_System_Specification.md §6. Every
+     later milestone picks a size from here; no arbitrary text-[…] values. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-display: 3rem;
+  --text-display--line-height: 1.1;
+  --text-h1: 2.25rem;
+  --text-h1--line-height: 1.2;
+  --text-h2: 1.875rem;
+  --text-h2--line-height: 1.25;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.3;
+  --text-h4: 1.25rem;
+  --text-h4--line-height: 1.35;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.55;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.4;
+
+  /* Shadows — used sparingly; borders/spacing do most of the work
+     (docs/UXUI_Design_System_Specification.md §9). Two levels only. */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03);
+  --shadow-elevated: 0 16px 40px oklch(0 0 0 / 0.2), 0 2px 8px oklch(0 0 0 / 0.08);
 }
 
 @layer base {
@@ -115,6 +213,20 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Admin/auth shell backdrop — see file header. Applied to the outermost
+     wrapper of app/(app) and app/(auth); content sits in `bg-card` panels
+     floating on top of it. */
+  .bg-admin-canvas {
+    background: radial-gradient(
+      140% 120% at 0% 0%,
+      var(--admin-canvas-from) 0%,
+      var(--admin-canvas-via) 55%,
+      var(--admin-canvas-to) 100%
+    );
   }
 }

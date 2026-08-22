@@ -3,6 +3,10 @@
 import { useActionState } from 'react'
 
 import { confirmPasswordReset, type AuthActionState } from '@/app/(auth)/actions'
+import { AuthCard } from '@/components/auth/auth-card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 const initialState: AuthActionState = { error: null }
 
@@ -15,35 +19,24 @@ export default function ResetPasswordPage() {
   const [state, formAction, pending] = useActionState(confirmPasswordReset, initialState)
 
   return (
-    <main className="mx-auto flex min-h-full max-w-sm flex-1 flex-col justify-center gap-6 p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
-
+    <AuthCard title="Choose a new password" error={state.error}>
       <form action={formAction} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          New password
-          <input
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">New password</Label>
+          <Input
+            id="password"
             name="password"
             type="password"
+            autoComplete="new-password"
             required
             minLength={6}
-            className="rounded border px-3 py-2"
           />
-        </label>
+        </div>
 
-        {state.error && (
-          <p role="alert" className="text-sm text-red-600">
-            {state.error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={pending} className="mt-2">
           {pending ? 'Saving…' : 'Save new password'}
-        </button>
+        </Button>
       </form>
-    </main>
+    </AuthCard>
   )
 }

@@ -2,31 +2,43 @@ import { requireUser } from '@/lib/auth/guard'
 import { fetchPermissionGrants } from '@/lib/auth/context'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
-import { signOut } from '@/app/(auth)/actions'
+import { getOrganizationBranding } from '@/lib/branding/queries'
+import { BrandStyle } from '@/components/branding/brand-style'
+import { AdminSidebar } from '@/components/shell/admin-sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 /**
- * The minimal authenticated shell (docs/milestones/03-authentication-and-rbac-foundation.md
- * Frontend Changes) — real navigation/branding arrives with Milestone 04's
- * design system. requireUser() is the actual gate; middleware.ts's redirect
- * is only a UX head start, never relied on as the security boundary.
+ * The Admin Dashboard shell (docs/milestones/04-design-system-and-app-shell.md
+ * Scope: "sidebar/topbar navigation, information-dense layout"). Structurally
+ * separate from app/(pos)/layout.tsx per the milestone's Technical
+ * Requirement — the two share only the token system, not a layout tree.
+ *
+ * requireUser()/fetchPermissionGrants()/PermissionsProvider are unchanged
+ * from Milestone 03 — this milestone is a visual restructuring of the same
+ * authenticated shell, not a new authorization mechanism.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await requireUser()
+  const user = await requireUser()
   const supabase = await createServerSupabaseClient()
-  const grants = await fetchPermissionGrants(supabase)
+  const [grants, branding] = await Promise.all([
+    fetchPermissionGrants(supabase),
+    getOrganizationBranding(),
+  ])
+
+  const userName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'User'
 
   return (
     <PermissionsProvider grants={grants}>
-      <div className="flex min-h-full flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-6 py-4">
-          <span className="font-semibold">Merqo</span>
-          <form action={signOut}>
-            <button type="submit" className="text-sm underline underline-offset-4">
-              Sign out
-            </button>
-          </form>
-        </header>
-        <div className="flex-1">{children}</div>
+      <BrandStyle />
+      <div className="bg-admin-canvas min-h-svh p-2 sm:p-3">
+        <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
+          <AdminSidebar
+            organizationName={branding?.displayName ?? 'Merqo'}
+            userName={userName}
+            userEmail={user.email ?? ''}
+          />
+          <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">{children}</SidebarInset>
+        </SidebarProvider>
       </div>
     </PermissionsProvider>
   )
