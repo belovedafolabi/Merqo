@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete — merged via [PR #21](https://github.com/belovedafolabi/Merqo/pull/21) (2026-08-23)
 
 ## Objective
 
@@ -90,12 +90,12 @@ Build the unified customer domain: customer records, the store-credit ledger, an
 
 ## Acceptance Criteria
 
-- [ ] A customer record is shared correctly across all branches of the organization.
-- [ ] Store-credit balance is always correctly derived from ledger entries; no code path writes a bare balance value.
-- [ ] Store credit can be issued, spent at checkout, and its full history reviewed.
-- [ ] A layaway progresses correctly from creation through partial payments to completion, with every payment immutable.
-- [ ] Overdraw of store credit is rejected, including under concurrent access.
-- [ ] All mutations are permission-checked and audited.
+- [x] A customer record is shared correctly across all branches of the organization.
+- [x] Store-credit balance is always correctly derived from ledger entries; no code path writes a bare balance value.
+- [x] Store credit can be issued, spent at checkout, and its full history reviewed.
+- [x] A layaway progresses correctly from creation through partial payments to completion, with every payment immutable.
+- [x] Overdraw of store credit is rejected, including under concurrent access.
+- [x] All mutations are permission-checked and audited.
 
 ## Definition of Done
 
@@ -105,6 +105,19 @@ All acceptance criteria pass, Milestone 08's store-credit checkout stub is recon
 
 - Resist adding customer loyalty/tiering fields "just in case" — explicitly out of scope per `docs/PRD.md` §24, and adding unused fields now creates confusion about what the product actually does.
 - If Milestone 08 was built with a store-credit stub, this milestone's implementation work explicitly includes replacing that stub with the real ledger call, not leaving two parallel implementations.
+
+### Decisions taken during implementation
+
+Two questions this document left open were resolved with the product owner before building, and later milestones should treat them as settled:
+
+1. **A layaway reserves inventory at creation.** This document's Scope never mentioned inventory, but `docs/Customer Management_Store_Credit_and_Layaway.md` §27–29 recommends it explicitly, and Milestone 07 had already shipped an unused `inventory_balances.reserved_quantity` column for exactly this. `create_layaway()` reserves per line via a new `record_inventory_reservation()`; completion releases the reservation and records a real `SALE` movement; cancellation releases it. `record_inventory_movement()`'s outbound guard now compares against `reserved_quantity`, so reserved stock cannot be sold at the till — behaviour-preserving for all pre-Milestone-09 data, where `reserved_quantity` is always 0.
+
+2. **Store credit is all-or-nothing at checkout.** A balance that cannot cover the full total fails the sale rather than part-paying it, consistent with Milestone 08's explicit exclusion of split payments. Revisiting this means revisiting split payments, not just this milestone.
+
+Two further notes for later milestones:
+
+- The cached-balance question in Technical Requirements was resolved in favour of a cached summary (`store_credit_accounts.balance`, `layaways.amount_paid`) written inside the same transaction as its ledger entry, under a `FOR UPDATE` lock — the same mechanism Milestone 07 proved for stock. The lock is not merely an optimisation: it is what makes the overdraw check correct under concurrent access.
+- Milestone 09's grant assertions surfaced a platform-wide gap unrelated to this domain: Supabase's default ACL granted `TRUNCATE` (unfiltered by RLS) to `anon`/`authenticated` on every table. Revoked schema-wide in [PR #22](https://github.com/belovedafolabi/Merqo/pull/22), ahead of Milestone 15's broader sweep.
 
 ## Risks
 
