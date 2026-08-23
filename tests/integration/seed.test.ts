@@ -86,10 +86,11 @@ describe('seed data (supabase/seed.sql)', () => {
   // create/cancel, discount.apply/override, returns.create, refund.initiate/
   // approve) + 10 from Milestone 09 (customers.view/create/update,
   // store_credit.view/issue/adjust, layaway.view/create/record_payment/
-  // cancel).
-  it('loads exactly 43 permissions', async () => {
+  // cancel) + 9 from Milestone 10 (reports.view/export/view_financials/
+  // view_all_branches/save, expense.view/create/approve/delete).
+  it('loads exactly 52 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(43)
+    expect(result.rows[0].count).toBe(52)
   })
 
   it('the Owner role holds every seeded permission', async () => {
@@ -99,7 +100,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(43)
+    expect(result.rows[0].count).toBe(52)
   })
 
   // Waiter/Kitchen Staff are still bare (the base till set is scoped to
@@ -113,6 +114,15 @@ describe('seed data (supabase/seed.sql)', () => {
   // adjust, layaway.cancel, customers.update — stay Branch Manager/
   // Owner-only, so each milestone updates rather than removes this
   // assertion.
+  //
+  // Milestone 10 adds exactly one to the till set: `reports.view`, taking it
+  // to 13. That grants no new data access — they can already read their own
+  // branch's sales through sales_select, and the report functions are SECURITY
+  // INVOKER — it just lets them see their own day's numbers added up. The four
+  // deliberately withheld are reports.export (the exfiltration surface),
+  // reports.view_financials (cost price), reports.save, and every expense.*
+  // key (docs/PRD.md §27: "A cashier should not automatically have the ability
+  // to create a ₦500,000 expense").
   it('Waiter and Kitchen Staff still start with zero permissions; Cashier/Salesperson/Pharmacist hold the base till set', async () => {
     const result = await pool.query(
       `select r.slug, count(rp.id)::int as permission_count
@@ -123,9 +133,9 @@ describe('seed data (supabase/seed.sql)', () => {
     )
     const bySlug = Object.fromEntries(result.rows.map((row) => [row.slug, row.permission_count]))
     expect(bySlug).toEqual({
-      cashier: 12,
-      salesperson: 12,
-      pharmacist: 12,
+      cashier: 13,
+      salesperson: 13,
+      pharmacist: 13,
       waiter: 0,
       kitchen_staff: 0,
     })
