@@ -4,7 +4,9 @@ import { requireUser } from '@/lib/auth/guard'
 import { fetchPermissionGrants } from '@/lib/auth/context'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
-import { getOnboardingState } from '@/lib/business-structure/queries'
+import { getOnboardingState, getBusinessUnitPosConfig } from '@/lib/business-structure/queries'
+import { PosSessionProvider } from '@/lib/pos/session-context'
+import { CartProvider } from '@/lib/pos/cart-context'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { PosHeader } from '@/components/pos/pos-header'
 
@@ -21,23 +23,44 @@ export default async function PosLayout({ children }: { children: React.ReactNod
   const user = await requireUser()
 
   const onboardingState = await getOnboardingState()
-  if (!onboardingState.onboardingCompletedAt) {
+  if (
+    !onboardingState.onboardingCompletedAt ||
+    !onboardingState.organizationId ||
+    !onboardingState.branch ||
+    !onboardingState.businessUnit
+  ) {
     redirect('/onboarding')
   }
 
   const supabase = await createServerSupabaseClient()
   const grants = await fetchPermissionGrants(supabase)
 
+  const posConfig = await getBusinessUnitPosConfig(onboardingState.businessUnit.id)
+  if (!posConfig) {
+    redirect('/onboarding')
+  }
+
   const cashierName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Cashier'
 
   return (
     <PermissionsProvider grants={grants}>
-      <BrandStyle />
-      <div className="flex min-h-svh flex-col bg-background">
-        <PosHeader cashierName={cashierName} />
-        <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
-      </div>
+      <PosSessionProvider
+        session={{
+          organizationId: onboardingState.organizationId,
+          branchId: onboardingState.branch.id,
+          businessUnitId: onboardingState.businessUnit.id,
+          posConfig,
+        }}
+      >
+        <CartProvider>
+          <BrandStyle />
+          <div className="flex min-h-svh flex-col bg-background">
+            <PosHeader cashierName={cashierName} branchName={onboardingState.branch.name} />
+            <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+          </div>
+        </CartProvider>
+      </PosSessionProvider>
     </PermissionsProvider>
   )
 }

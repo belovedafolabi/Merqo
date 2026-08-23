@@ -82,10 +82,12 @@ describe('seed data (supabase/seed.sql)', () => {
 
   // 16 from Milestones 03–05 + 6 from Milestone 06 (products.view/create/
   // update/archive/view_cost_price, categories.manage) + 3 from Milestone 07
-  // (inventory.view/adjust/transfer).
-  it('loads exactly 25 permissions', async () => {
+  // (inventory.view/adjust/transfer) + 8 from Milestone 08 (sales.view/
+  // create/cancel, discount.apply/override, returns.create, refund.initiate/
+  // approve).
+  it('loads exactly 33 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(25)
+    expect(result.rows[0].count).toBe(33)
   })
 
   it('the Owner role holds every seeded permission', async () => {
@@ -95,10 +97,17 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(25)
+    expect(result.rows[0].count).toBe(33)
   })
 
-  it('the operational roles (Cashier, Salesperson, Pharmacist, Waiter, Kitchen Staff) start with zero permissions', async () => {
+  // Waiter/Kitchen Staff are still bare (Milestone 08's base till set is
+  // scoped to Cashier/Salesperson/Pharmacist — supabase/seed.sql's
+  // pos_operator_permissions comment). Cashier/Salesperson/Pharmacist now
+  // hold exactly the 6-permission base till set (sales.view/create/cancel,
+  // discount.apply, returns.create, refund.initiate) — discount.override and
+  // refund.approve stay Branch Manager/Owner-only per the two-actor refund
+  // flow, so this milestone updates rather than removes this assertion.
+  it('Waiter and Kitchen Staff still start with zero permissions; Cashier/Salesperson/Pharmacist hold the base till set', async () => {
     const result = await pool.query(
       `select r.slug, count(rp.id)::int as permission_count
        from public.roles r
@@ -106,7 +115,14 @@ describe('seed data (supabase/seed.sql)', () => {
        where r.slug in ('cashier', 'salesperson', 'pharmacist', 'waiter', 'kitchen_staff')
        group by r.slug`,
     )
-    expect(result.rows.every((row) => row.permission_count === 0)).toBe(true)
+    const bySlug = Object.fromEntries(result.rows.map((row) => [row.slug, row.permission_count]))
+    expect(bySlug).toEqual({
+      cashier: 6,
+      salesperson: 6,
+      pharmacist: 6,
+      waiter: 0,
+      kitchen_staff: 0,
+    })
   })
 
   // Deliberately not asserting user_roles is empty here: unlike M02 (where

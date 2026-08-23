@@ -11,14 +11,22 @@ export interface ProductTileData {
 
 /**
  * Product grid tile — docs/UXUI_Design_System_Specification.md §17: image,
- * name, price, optional SKU, sized as a large touch target. No product data
- * exists until Milestone 06 — this milestone ships the tile's shape only,
- * exercised by an empty grid + EmptyState in app/(pos)/pos/page.tsx.
+ * name, price, optional SKU, sized as a large touch target. `onSelect` adds
+ * the product to the cart (components/pos/product-grid.tsx) — one tap/click
+ * is the entire "find it, add it" interaction this milestone's Functional
+ * Requirements call for.
  */
-export function ProductTile({ product }: { product: ProductTileData }) {
+export function ProductTile({
+  product,
+  onSelect,
+}: {
+  product: ProductTileData
+  onSelect?: () => void
+}) {
   return (
     <button
       type="button"
+      onClick={onSelect}
       className={cn(
         'flex min-h-28 flex-col items-start justify-between gap-2 rounded-xl border bg-card p-3 text-left shadow-card transition-colors',
         'hover:border-primary/50 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
