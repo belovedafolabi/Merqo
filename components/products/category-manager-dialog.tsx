@@ -54,6 +54,7 @@ export function CategoryManagerDialog({
     initialState,
   )
   const [archiving, setArchiving] = useState<Category | null>(null)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,6 +107,9 @@ export function CategoryManagerDialog({
                 organizationId={organizationId}
                 businessUnitId={businessUnitId}
                 category={category}
+                isEditing={editingCategoryId === category.id}
+                onStartEdit={() => setEditingCategoryId(category.id)}
+                onStopEdit={() => setEditingCategoryId(null)}
                 onArchive={() => setArchiving(category)}
               />
             ))
@@ -137,24 +141,34 @@ function CategoryRow({
   organizationId,
   businessUnitId,
   category,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
   onArchive,
 }: {
   organizationId: string
   businessUnitId: string
   category: Category
+  isEditing: boolean
+  onStartEdit: () => void
+  onStopEdit: () => void
   onArchive: () => void
 }) {
-  const [editing, setEditing] = useState(false)
   const [state, formAction, pending] = useActionState(updateCategoryAction, initialState)
 
+  // Calls the onStopEdit *prop* (owned by the parent's editingCategoryId
+  // state), not a local setState — a prop callback isn't a hook setter the
+  // set-state-in-effect lint rule can trace to this component, matching the
+  // same "close via a passed-down onOpenChange-style callback" shape every
+  // other dialog in this milestone uses (e.g. ProductFormDialog).
   useEffect(() => {
     if (state !== initialState && state.error === null) {
-      setEditing(false)
+      onStopEdit()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
 
-  if (editing) {
+  if (isEditing) {
     return (
       <form
         action={(formData) => {
@@ -176,7 +190,7 @@ function CategoryRow({
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Saving…' : 'Save'}
           </Button>
-          <Button type="button" size="icon" variant="ghost" onClick={() => setEditing(false)}>
+          <Button type="button" size="icon" variant="ghost" onClick={onStopEdit}>
             <X className="size-4" />
           </Button>
         </div>
@@ -198,7 +212,7 @@ function CategoryRow({
             variant="ghost"
             className="size-7"
             aria-label={`Edit ${category.name}`}
-            onClick={() => setEditing(true)}
+            onClick={onStartEdit}
           >
             <Pencil className="size-3.5" />
           </Button>
