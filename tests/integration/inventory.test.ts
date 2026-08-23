@@ -329,9 +329,9 @@ describe('inventory — authorization (permission resolution against real data)'
     expect(resolvePermission(ownerGrants, 'inventory.adjust', { organizationId, branchId })).toBe(
       true,
     )
-    expect(
-      resolvePermission(ownerGrants, 'inventory.transfer', { organizationId, branchId }),
-    ).toBe(true)
+    expect(resolvePermission(ownerGrants, 'inventory.transfer', { organizationId, branchId })).toBe(
+      true,
+    )
 
     const bystander = await createTestUser()
     const bystanderGrants = await fetchPermissionGrants(bystander.client)
@@ -354,7 +354,9 @@ describe('inventory — authorization (permission resolution against real data)'
     )
 
     const manager = await createTestUser()
-    const managerRole = await pool.query(`select id from public.roles where slug = 'branch_manager'`)
+    const managerRole = await pool.query(
+      `select id from public.roles where slug = 'branch_manager'`,
+    )
     await pool.query(
       `insert into public.user_roles (user_id, role_id, organization_id, branch_id) values ($1, $2, $3, $4)`,
       [manager.userId, managerRole.rows[0].id, organizationId, branchA.rows[0].id],
