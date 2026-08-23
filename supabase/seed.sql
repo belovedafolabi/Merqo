@@ -171,6 +171,21 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5c. Milestone 07 — Inventory & Stock Management permissions. Inserted
+--     before section 6's Owner cross-join, same placement as 5b.
+--     `inventory.transfer` gates both legs of a branch-to-branch transfer —
+--     lib/inventory/mutations.ts's initiateStockTransfer() requires it at
+--     BOTH the source and destination branch scope (this milestone's
+--     single-authorization model), so holding it at only one branch is not
+--     enough to move stock out of or into that branch.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('inventory.view', 'inventory', 'view', 'View inventory balances, movement history, and transfers within an authorized branch.'),
+  ('inventory.adjust', 'inventory', 'adjust', 'Create a manual stock adjustment (with reason) or set a low-stock threshold.'),
+  ('inventory.transfer', 'inventory', 'transfer', 'Initiate a branch-to-branch stock transfer (required at both the source and destination branch).')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -212,5 +227,21 @@ select r.id, p.id
 from public.roles r
 join branch_manager_product_permissions bmp on true
 join public.permissions p on p.key = bmp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
+-- Branch Manager gets full inventory management within whatever branch(es)
+-- their own role assignment is scoped to — a transfer still needs a second
+-- role assignment (or an org-wide one) at the *other* branch, per
+-- inventory.transfer's own two-branch requirement above.
+with branch_manager_inventory_permissions (key) as (
+  values
+    ('inventory.view'), ('inventory.adjust'), ('inventory.transfer')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_inventory_permissions bmip on true
+join public.permissions p on p.key = bmip.key
 where r.slug = 'branch_manager'
 on conflict (role_id, permission_id) do nothing;
