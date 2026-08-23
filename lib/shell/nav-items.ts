@@ -13,9 +13,10 @@
  *
  * `permission` gates a visible-but-inert item behind `<Can>`
  * (components/auth/can.tsx) only where a real permission already exists in
- * the seeded catalog (supabase/seed.sql) — "Business Structure" is the only
- * one today (`branches.view`). Items whose domain permission doesn't exist
- * yet are intentionally left ungated (`permission: null`): gating them on a
+ * the seeded catalog (supabase/seed.sql) — "Business Structure"
+ * (`branches.view`) and, since Milestone 06, "Products" (`products.view`).
+ * Items whose domain permission doesn't exist yet are intentionally left
+ * ungated (`permission: null`): gating them on a
  * *different* module's permission, or hiding them for everyone, would be
  * more wrong than showing a module every authenticated user can eventually
  * reach once its own milestone lands and seeds its own permission.
@@ -53,7 +54,7 @@ export const primaryNavItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard', icon: 'LayoutDashboard', permission: null },
   { label: 'POS', href: '/pos', icon: 'ShoppingCart', permission: null },
   { label: 'Sales', href: '/sales', icon: 'Receipt', permission: null },
-  { label: 'Products', href: '/products', icon: 'Package', permission: null },
+  { label: 'Products', href: '/products', icon: 'Package', permission: { key: 'products.view' } },
   { label: 'Inventory', href: '/inventory', icon: 'Boxes', permission: null },
   { label: 'Customers', href: '/customers', icon: 'Users', permission: null },
   { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: null },
