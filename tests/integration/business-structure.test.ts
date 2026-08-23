@@ -54,10 +54,6 @@ async function createBranchAndBusinessUnit(
 }
 
 describe('business_unit_pos_config — RLS', () => {
-  afterAll(async () => {
-    await pool.end()
-  })
-
   it('an Owner can insert, read, and update their own business unit’s POS config', async () => {
     const owner = await createTestUser()
     const { organizationId } = await bootstrapOrganization(owner, 'POS Config Org A')
@@ -156,10 +152,6 @@ describe('business_unit_pos_config — RLS', () => {
 })
 
 describe('business_unit_capabilities — mutation RLS', () => {
-  afterAll(async () => {
-    await pool.end()
-  })
-
   it('an Owner can override a capability on their own business unit', async () => {
     const owner = await createTestUser()
     const { organizationId } = await bootstrapOrganization(owner, 'Capability Override Org A')
