@@ -1,19 +1,3 @@
-import type { LucideIcon } from 'lucide-react'
-import {
-  Boxes,
-  Building2,
-  LayoutDashboard,
-  Package,
-  Receipt,
-  ScrollText,
-  Settings,
-  ShoppingCart,
-  Users,
-  Wallet,
-} from 'lucide-react'
-
-import type { PermissionScope } from '@/lib/auth/permissions'
-
 /**
  * The Admin Dashboard's navigation structure — docs/UXUI_Design_System_Specification.md
  * §12's list, rendered dynamically per this milestone's functional
@@ -35,32 +19,53 @@ import type { PermissionScope } from '@/lib/auth/permissions'
  * *different* module's permission, or hiding them for everyone, would be
  * more wrong than showing a module every authenticated user can eventually
  * reach once its own milestone lands and seeds its own permission.
+ *
+ * `icon` is a string key, not a Lucide component reference: this module is
+ * imported by both components/shell/admin-sidebar.tsx (a Server Component)
+ * and components/shell/nav-list.tsx ('use client'). A component/function
+ * value crossing that Server->Client prop boundary isn't serializable
+ * ("Only plain objects can be passed to Client Components...") — NavList
+ * owns the actual icon-name -> component lookup, since it's the only
+ * consumer that renders one. Every nav-gating permission scope so far is
+ * just `{ organizationId }` (no item needs branch/business-unit scoping),
+ * so `permission` carries only the key — NavList builds the scope itself
+ * from the organization id it already reads via useCurrentOrganizationId().
  */
 export interface NavItem {
   label: string
   href: string
-  icon: LucideIcon
-  permission: { key: string; scope: (organizationId: string) => PermissionScope } | null
+  icon:
+    | 'LayoutDashboard'
+    | 'ShoppingCart'
+    | 'Receipt'
+    | 'Package'
+    | 'Boxes'
+    | 'Users'
+    | 'Wallet'
+    | 'ScrollText'
+    | 'Building2'
+    | 'Settings'
+  permission: { key: string } | null
   badge?: string
 }
 
 export const primaryNavItems: NavItem[] = [
-  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, permission: null },
-  { label: 'POS', href: '/pos', icon: ShoppingCart, permission: null },
-  { label: 'Sales', href: '/sales', icon: Receipt, permission: null },
-  { label: 'Products', href: '/products', icon: Package, permission: null },
-  { label: 'Inventory', href: '/inventory', icon: Boxes, permission: null },
-  { label: 'Customers', href: '/customers', icon: Users, permission: null },
-  { label: 'Layaways', href: '/layaways', icon: Wallet, permission: null },
-  { label: 'Reports', href: '/reports', icon: ScrollText, permission: null },
+  { label: 'Overview', href: '/dashboard', icon: 'LayoutDashboard', permission: null },
+  { label: 'POS', href: '/pos', icon: 'ShoppingCart', permission: null },
+  { label: 'Sales', href: '/sales', icon: 'Receipt', permission: null },
+  { label: 'Products', href: '/products', icon: 'Package', permission: null },
+  { label: 'Inventory', href: '/inventory', icon: 'Boxes', permission: null },
+  { label: 'Customers', href: '/customers', icon: 'Users', permission: null },
+  { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: null },
+  { label: 'Reports', href: '/reports', icon: 'ScrollText', permission: null },
   {
     label: 'Business Structure',
     href: '/business-structure',
-    icon: Building2,
-    permission: { key: 'branches.view', scope: (organizationId) => ({ organizationId }) },
+    icon: 'Building2',
+    permission: { key: 'branches.view' },
   },
 ]
 
 export const secondaryNavItems: NavItem[] = [
-  { label: 'Settings', href: '/settings', icon: Settings, permission: null },
+  { label: 'Settings', href: '/settings', icon: 'Settings', permission: null },
 ]
