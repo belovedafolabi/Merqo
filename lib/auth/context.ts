@@ -81,3 +81,20 @@ export const getCurrentUserContext = cache(async () => {
   const grants = await fetchPermissionGrants(supabase)
   return { user, grants }
 })
+
+/**
+ * The current request's organization id, or null for an unauthenticated
+ * request or one with no resolved grant yet (e.g. mid-bootstrap). Every
+ * grant already carries organization_id, and this project's
+ * single-tenant-per-deployment model
+ * (docs/milestones/DECISIONS_AND_CONFLICTS.md §5) means a signed-in user has
+ * exactly one — so grants[0] is as authoritative as any other grant's
+ * organization_id would be. Introduced in Milestone 05 once a second call
+ * site (lib/business-structure/queries.ts, alongside
+ * lib/branding/queries.ts's pre-existing inline version) made the one-liner
+ * worth sharing.
+ */
+export const getCurrentOrganizationId = cache(async (): Promise<string | null> => {
+  const { grants } = await getCurrentUserContext()
+  return grants[0]?.organizationId ?? null
+})

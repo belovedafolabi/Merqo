@@ -7,17 +7,10 @@ import { recordAuditEvent } from '@/lib/auth/audit'
 import { isLoginThrottled, recordLoginAttempt } from '@/lib/auth/login-throttle'
 import { getRequestMeta } from '@/lib/auth/request-context'
 import { logger } from '@/lib/logger'
+import { slugify } from '@/lib/utils'
 
 export interface AuthActionState {
   error: string | null
-}
-
-function slugifyOrganizationName(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 /**
@@ -64,7 +57,7 @@ export async function signUp(
 
   const { error: bootstrapError } = await supabase.rpc('create_organization_with_owner', {
     p_organization_name: organizationName,
-    p_organization_slug: slugifyOrganizationName(organizationName),
+    p_organization_slug: slugify(organizationName),
     p_full_name: fullName,
   })
 

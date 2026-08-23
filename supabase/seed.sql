@@ -145,6 +145,7 @@ insert into public.permissions (key, resource, action, description) values
   ('business_units.create', 'business_units', 'create', 'Create a new business unit.'),
   ('business_units.update', 'business_units', 'update', 'Update a business unit.'),
   ('business_units.archive', 'business_units', 'archive', 'Archive (soft-delete) a business unit.'),
+  ('business_units.configure_pos', 'business_units', 'configure_pos', 'Configure a business unit''s POS settings (tax rate, service charge, discount policy, default payment method).'),
   ('users.view', 'users', 'view', 'View other users within a shared organization.'),
   ('users.manage', 'users', 'manage', 'Manage user profile-level details for other users.'),
   ('roles.view', 'roles', 'view', 'View role assignments within an authorized scope.'),
