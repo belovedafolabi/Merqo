@@ -86,14 +86,24 @@ describe('core hierarchy schema', () => {
     })
   })
 
-  it('archived_at exists only on organizations, branches, and business_units', async () => {
+  it('archived_at exists only on operational/tenant entities (docs/architecture/database-conventions.md)', async () => {
     const result = await pool.query(
       `select table_name from information_schema.columns
        where table_schema = 'public' and column_name = 'archived_at'
        order by table_name`,
     )
     const tables = result.rows.map((row) => row.table_name)
-    expect(tables).toEqual(['branches', 'business_units', 'organizations'])
+    // Milestone 06 adds categories/products/product_variants — tenant data
+    // with the same soft-delete lifecycle as branches/business_units, per
+    // this milestone's own FR ("archiving, not hard deletion").
+    expect(tables).toEqual([
+      'branches',
+      'business_units',
+      'categories',
+      'organizations',
+      'product_variants',
+      'products',
+    ])
   })
 
   it('updated_at is bumped by the shared set_updated_at trigger on UPDATE', async () => {

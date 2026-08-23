@@ -154,6 +154,23 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5b. Milestone 06 — Product Catalog & Pricing permissions. Inserted before
+--     section 6's Owner cross-join so Owner picks these up automatically.
+--     `products.view_cost_price` is deliberately separate from
+--     `products.view` (this milestone's Security Requirements: "Cost price
+--     is a sensitive field — visible only to users with an appropriate
+--     permission, e.g. not exposed to a Cashier role by default").
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('products.view', 'products', 'view', 'View products, variants, and categories within an authorized scope.'),
+  ('products.create', 'products', 'create', 'Create a new product or variant.'),
+  ('products.update', 'products', 'update', 'Update a product, variant, image, or branch price override.'),
+  ('products.archive', 'products', 'archive', 'Archive (soft-delete) a product or variant.'),
+  ('products.view_cost_price', 'products', 'view_cost_price', 'View a product''s cost price (sensitive — hidden from most roles by default).'),
+  ('categories.manage', 'categories', 'manage', 'Create, update, and archive product categories.')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -178,6 +195,22 @@ insert into public.role_permissions (role_id, permission_id)
 select r.id, p.id
 from public.roles r
 join branch_manager_permissions bmp on true
+join public.permissions p on p.key = bmp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
+-- Branch Manager gets full product/category management, but not
+-- products.view_cost_price — cost price stays Owner-only by default per
+-- this milestone's Security Requirements.
+with branch_manager_product_permissions (key) as (
+  values
+    ('products.view'), ('products.create'), ('products.update'),
+    ('products.archive'), ('categories.manage')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_product_permissions bmp on true
 join public.permissions p on p.key = bmp.key
 where r.slug = 'branch_manager'
 on conflict (role_id, permission_id) do nothing;
