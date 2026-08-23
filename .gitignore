@@ -29,6 +29,8 @@ build/
 # Local tooling
 .turbo
 .claude/settings.local.json
+.claude/worktrees/
+.claude/scheduled_tasks.lock
 
 # OS/editor
 .DS_Store

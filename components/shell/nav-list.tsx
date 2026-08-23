@@ -2,6 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import {
+  Boxes,
+  Building2,
+  LayoutDashboard,
+  Package,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShoppingCart,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { Can } from '@/components/auth/can'
 import { useCurrentOrganizationId } from '@/lib/auth/permissions-context'
@@ -14,6 +27,25 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import type { NavItem } from '@/lib/shell/nav-items'
+
+/**
+ * The icon-name -> component lookup lives here, not in lib/shell/nav-items.ts
+ * — see that module's doc for why (a Lucide component reference isn't
+ * serializable across the Server Component -> Client Component boundary
+ * this file's own `'use client'` creates).
+ */
+const ICONS: Record<NavItem['icon'], LucideIcon> = {
+  LayoutDashboard,
+  ShoppingCart,
+  Receipt,
+  Package,
+  Boxes,
+  Users,
+  Wallet,
+  ScrollText,
+  Building2,
+  Settings,
+}
 
 /**
  * Renders one nav section, gating each item behind `<Can>` when it declares
@@ -32,11 +64,12 @@ export function NavList({ items }: { items: NavItem[] }) {
         <SidebarMenu>
           {items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+            const Icon = ICONS[item.icon]
             const button = (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
                   <Link href={item.href}>
-                    <item.icon />
+                    <Icon />
                     <span>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -47,11 +80,7 @@ export function NavList({ items }: { items: NavItem[] }) {
             if (!item.permission || !organizationId) return button
 
             return (
-              <Can
-                key={item.href}
-                permission={item.permission.key}
-                scope={item.permission.scope(organizationId)}
-              >
+              <Can key={item.href} permission={item.permission.key} scope={{ organizationId }}>
                 {button}
               </Can>
             )
