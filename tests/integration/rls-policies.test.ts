@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest'
 
-import { pool } from './helpers/db'
+import { pool, withTransaction } from './helpers/db'
 import { bootstrapOrganization, createAnonClient, createTestUser } from './helpers/supabase'
 
 /**
@@ -12,11 +12,11 @@ import { bootstrapOrganization, createAnonClient, createTestUser } from './helpe
  * direct Supabase client calls that bypass application code," exactly as
  * the milestone's Security Requirements demand.
  */
-describe('RLS — cross-organization isolation', () => {
-  afterAll(async () => {
-    await pool.end()
-  })
+afterAll(async () => {
+  await pool.end()
+})
 
+describe('RLS — cross-organization isolation', () => {
   it('a user can read their own organization but not another', async () => {
     const ownerA = await createTestUser()
     const { organizationId: orgA } = await bootstrapOrganization(ownerA, 'Org A')
@@ -181,5 +181,31 @@ describe('RLS — cross-organization isolation', () => {
     } else {
       expect(data).toHaveLength(0)
     }
+  })
+})
+
+describe('RLS — dangerous grants withheld schema-wide', () => {
+  it('no table in public grants TRUNCATE, REFERENCES, or TRIGGER to anon or authenticated', async () => {
+    // Supabase's platform bootstrap used to grant TRUNCATE, REFERENCES, and
+    // TRIGGER to `anon`/`authenticated` on every table in `public` by
+    // default (a default ACL for the `postgres` role — see
+    // pg_default_acl). REFERENCES/TRIGGER are inert through PostgREST, but
+    // TRUNCATE is not filtered by RLS at all: it would let either role wipe
+    // every tenant's rows in one statement on any table, append-only or
+    // not. 20260823140000_revoke_authenticated_anon_dangerous_grants.sql
+    // revokes all three schema-wide and corrects the default ACL so future
+    // `create table` migrations don't reacquire them — asserted here so a
+    // migration that re-grants any of the three, on any table, fails loudly
+    // instead of silently reopening the gap.
+    await withTransaction(async (client) => {
+      const grants = await client.query(
+        `select table_name, grantee, privilege_type
+         from information_schema.role_table_grants
+         where table_schema = 'public'
+           and grantee in ('anon', 'authenticated')
+           and privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER')`,
+      )
+      expect(grants.rows).toHaveLength(0)
+    })
   })
 })
