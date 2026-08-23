@@ -34,10 +34,14 @@ export function AdminSidebar({
   organizationName,
   userName,
   userEmail,
+  branchName,
+  businessUnitName,
 }: {
   organizationName: string
   userName: string
   userEmail: string
+  branchName: string | null
+  businessUnitName: string | null
 }) {
   return (
     <Sidebar collapsible="icon">
@@ -48,7 +52,7 @@ export function AdminSidebar({
           </span>
           <span className="truncate text-sm font-semibold">{organizationName}</span>
         </div>
-        <BusinessUnitSwitcher />
+        <BusinessUnitSwitcher branchName={branchName} businessUnitName={businessUnitName} />
         <SidebarInput placeholder="Search…" aria-label="Search" />
       </SidebarHeader>
 

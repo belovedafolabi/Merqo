@@ -1,7 +1,10 @@
+import { redirect } from 'next/navigation'
+
 import { requireUser } from '@/lib/auth/guard'
 import { fetchPermissionGrants } from '@/lib/auth/context'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
+import { getOnboardingState } from '@/lib/business-structure/queries'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { PosHeader } from '@/components/pos/pos-header'
 
@@ -16,6 +19,12 @@ import { PosHeader } from '@/components/pos/pos-header'
  */
 export default async function PosLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
+
+  const onboardingState = await getOnboardingState()
+  if (!onboardingState.onboardingCompletedAt) {
+    redirect('/onboarding')
+  }
+
   const supabase = await createServerSupabaseClient()
   const grants = await fetchPermissionGrants(supabase)
 
