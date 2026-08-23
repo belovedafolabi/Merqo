@@ -186,6 +186,31 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5d. Milestone 08 — POS Transaction Engine permissions. Inserted before
+--     section 6's Owner cross-join, same placement as 5b/5c.
+--     `discount.override` is separate from `discount.apply` (any discount at
+--     all requires the latter; exceeding business_unit_pos_config's
+--     discount_max_percentage/discount_max_amount, or applying one at all
+--     when discount_requires_authorization is set, additionally requires the
+--     former). `refund.initiate`/`refund.approve` are the two-actor
+--     "Cashier requests -> Manager approves" split
+--     (docs/Financials_Payments_and_Internal_Auditing.md §26) — see
+--     20260823120800_create_sales_functions.sql's decide_refund() comment
+--     for why no extra "same person allowed" config column is needed on top
+--     of this pair.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('sales.view', 'sales', 'view', 'View completed sales within an authorized branch.'),
+  ('sales.create', 'sales', 'create', 'Complete a sale, and hold/resume a draft cart.'),
+  ('sales.cancel', 'sales', 'cancel', 'Discard a held (not yet completed) sale.'),
+  ('discount.apply', 'discount', 'apply', 'Apply a discount within the configured policy limits at checkout.'),
+  ('discount.override', 'discount', 'override', 'Apply a discount beyond the configured policy limits, or where authorization is required.'),
+  ('returns.create', 'returns', 'create', 'Process a return against an original sale.'),
+  ('refund.initiate', 'refund', 'initiate', 'Request a refund against a sale or return.'),
+  ('refund.approve', 'refund', 'approve', 'Authorize a pending refund request.')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -244,4 +269,42 @@ from public.roles r
 join branch_manager_inventory_permissions bmip on true
 join public.permissions p on p.key = bmip.key
 where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
+-- Branch Manager gets the full M08 permission set within their assigned
+-- branch(es), same "full authority within its own domain" shape as their
+-- product/inventory grants above — everything a Cashier can do, plus the
+-- two elevated actions (discount.override, refund.approve) that make them
+-- the "Manager" side of docs/Financials_Payments_and_Internal_Auditing.md
+-- §26's "Cashier requests -> Manager approves" flow.
+with branch_manager_sales_permissions (key) as (
+  values
+    ('sales.view'), ('sales.create'), ('sales.cancel'),
+    ('discount.apply'), ('discount.override'),
+    ('returns.create'), ('refund.initiate'), ('refund.approve')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_sales_permissions bmsp on true
+join public.permissions p on p.key = bmsp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
+-- Cashier, Salesperson, and Pharmacist are the operational till roles this
+-- milestone's own role descriptions name explicitly ("Permissions arrive
+-- with the POS Transaction Engine (Milestone 08)") — the base till set,
+-- deliberately excluding discount.override/refund.approve (least privilege;
+-- those stay Branch Manager/Owner-only per the two-actor refund flow above).
+with pos_operator_permissions (key) as (
+  values
+    ('sales.view'), ('sales.create'), ('sales.cancel'),
+    ('discount.apply'), ('returns.create'), ('refund.initiate')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join pos_operator_permissions pop on true
+join public.permissions p on p.key = pop.key
+where r.slug in ('cashier', 'salesperson', 'pharmacist')
 on conflict (role_id, permission_id) do nothing;
