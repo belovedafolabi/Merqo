@@ -36,10 +36,7 @@ export function ArchiveConfirmDialog({
 }: {
   title: string
   description: string
-  action: (
-    prevState: ProductsActionState,
-    formData: FormData,
-  ) => Promise<ProductsActionState>
+  action: (prevState: ProductsActionState, formData: FormData) => Promise<ProductsActionState>
   buildFormData: () => FormData
   open: boolean
   onOpenChange: (open: boolean) => void

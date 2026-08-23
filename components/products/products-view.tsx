@@ -92,7 +92,8 @@ export function ProductsView({
     {
       header: 'Base price',
       className: 'text-right tabular-nums',
-      cell: (row) => row.basePrice.toLocaleString(undefined, { style: 'currency', currency: 'NGN' }),
+      cell: (row) =>
+        row.basePrice.toLocaleString(undefined, { style: 'currency', currency: 'NGN' }),
     },
     {
       header: 'Status',

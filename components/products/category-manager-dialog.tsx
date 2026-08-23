@@ -60,7 +60,9 @@ export function CategoryManagerDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Categories</DialogTitle>
-          <DialogDescription>Organize this business unit’s products into categories.</DialogDescription>
+          <DialogDescription>
+            Organize this business unit’s products into categories.
+          </DialogDescription>
         </DialogHeader>
 
         <form

@@ -155,7 +155,10 @@ export function ProductDetailView({
               <Field label="Barcode" value={product.barcode ?? '—'} />
               <Field label="Category" value={product.categoryName ?? '—'} />
               <Field label="Unit of measurement" value={product.unitOfMeasurement} />
-              <Can permission="products.view_cost_price" scope={{ organizationId, businessUnitId: product.businessUnitId }}>
+              <Can
+                permission="products.view_cost_price"
+                scope={{ organizationId, businessUnitId: product.businessUnitId }}
+              >
                 <Field
                   label="Cost price"
                   value={

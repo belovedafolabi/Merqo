@@ -111,10 +111,9 @@ describe('products — business-unit-scoped uniqueness', () => {
     await withTransaction(async (client) => {
       const { businessUnitId } = await seedBusinessUnit(client, 'SkuReuse')
       const productId = await insertProduct(client, businessUnitId, 'REUSABLE-SKU')
-      await client.query(
-        `update public.products set archived_at = now() where id = $1`,
-        [productId],
-      )
+      await client.query(`update public.products set archived_at = now() where id = $1`, [
+        productId,
+      ])
       await expect(insertProduct(client, businessUnitId, 'REUSABLE-SKU')).resolves.toBeTruthy()
     })
   })
@@ -165,10 +164,9 @@ describe('product_prices — append-only enforcement', () => {
 
       await client.query('SET LOCAL ROLE authenticated')
       await expect(
-        client.query(
-          `insert into public.product_prices (product_id, price) values ($1, 999)`,
-          [productId],
-        ),
+        client.query(`insert into public.product_prices (product_id, price) values ($1, 999)`, [
+          productId,
+        ]),
       ).rejects.toMatchObject({ code: '42501' })
     })
   })
@@ -181,10 +179,9 @@ describe('product_prices — append-only enforcement', () => {
     await withTransaction(async (client) => {
       const { businessUnitId } = await seedBusinessUnit(client, 'PriceHistoryTamperUpdate')
       const productId = await insertProduct(client, businessUnitId, 'PRICE-TAMPER-UPDATE')
-      const row = await client.query(
-        `select record_product_price($1, null, 500, null) as id`,
-        [productId],
-      )
+      const row = await client.query(`select record_product_price($1, null, 500, null) as id`, [
+        productId,
+      ])
       const priceId = row.rows[0].id
 
       await client.query('SET LOCAL ROLE authenticated')
@@ -198,10 +195,9 @@ describe('product_prices — append-only enforcement', () => {
     await withTransaction(async (client) => {
       const { businessUnitId } = await seedBusinessUnit(client, 'PriceHistoryTamperDelete')
       const productId = await insertProduct(client, businessUnitId, 'PRICE-TAMPER-DELETE')
-      const row = await client.query(
-        `select record_product_price($1, null, 500, null) as id`,
-        [productId],
-      )
+      const row = await client.query(`select record_product_price($1, null, 500, null) as id`, [
+        productId,
+      ])
       const priceId = row.rows[0].id
 
       await client.query('SET LOCAL ROLE authenticated')
@@ -217,10 +213,9 @@ describe('product_prices — append-only enforcement', () => {
       const productId = await insertProduct(client, businessUnitId, 'PRICE-RPC')
 
       await client.query('SET LOCAL ROLE authenticated')
-      const result = await client.query(
-        `select record_product_price($1, null, 750, null) as id`,
-        [productId],
-      )
+      const result = await client.query(`select record_product_price($1, null, 750, null) as id`, [
+        productId,
+      ])
       expect(result.rows[0].id).toBeTruthy()
     })
   })
@@ -246,9 +241,9 @@ describe('cost price — hidden from a role without products.view_cost_price', (
     )
 
     const managerGrants = await fetchPermissionGrants(manager.client)
-    expect(
-      resolvePermission(managerGrants, 'products.view_cost_price', { organizationId }),
-    ).toBe(false)
+    expect(resolvePermission(managerGrants, 'products.view_cost_price', { organizationId })).toBe(
+      false,
+    )
     // Branch Manager still gets the general product-management permissions.
     expect(resolvePermission(managerGrants, 'products.view', { organizationId })).toBe(true)
     expect(resolvePermission(managerGrants, 'products.create', { organizationId })).toBe(true)

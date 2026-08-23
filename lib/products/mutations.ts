@@ -325,7 +325,10 @@ export async function updateProductVariant(
     updatePayload.cost_price = parsed.costPrice
   }
 
-  const { error } = await supabase.from('product_variants').update(updatePayload).eq('id', variantId)
+  const { error } = await supabase
+    .from('product_variants')
+    .update(updatePayload)
+    .eq('id', variantId)
   if (error) throw error
 
   await recordAuditEvent(

@@ -54,10 +54,7 @@ export function BranchPriceOverrideDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [state, formAction, pending] = useActionState(
-    upsertBranchPriceOverrideAction,
-    initialState,
-  )
+  const [state, formAction, pending] = useActionState(upsertBranchPriceOverrideAction, initialState)
   const [removeState, removeAction, removePending] = useActionState(
     removeBranchPriceOverrideAction,
     initialState,
@@ -78,8 +75,9 @@ export function BranchPriceOverrideDialog({
         <DialogHeader>
           <DialogTitle>Branch price override — {branchName}</DialogTitle>
           <DialogDescription>
-            Base price is {basePrice.toLocaleString(undefined, { style: 'currency', currency: 'NGN' })}
-            . Set an override to charge a different price at this branch.
+            Base price is{' '}
+            {basePrice.toLocaleString(undefined, { style: 'currency', currency: 'NGN' })}. Set an
+            override to charge a different price at this branch.
           </DialogDescription>
         </DialogHeader>
 

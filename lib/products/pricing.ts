@@ -38,10 +38,7 @@ export function resolveEffectivePriceFromRows(
   return override ? override.price : product.basePrice
 }
 
-export async function resolveEffectivePrice(
-  productId: string,
-  branchId: string,
-): Promise<number> {
+export async function resolveEffectivePrice(productId: string, branchId: string): Promise<number> {
   const supabase = await createServerSupabaseClient()
 
   const { data: product, error: productError } = await supabase

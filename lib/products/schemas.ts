@@ -68,16 +68,8 @@ export const productVariantInputSchema = z.object({
   name: nameSchema,
   sku: optionalCode,
   barcode: optionalCode,
-  costPrice: z.coerce
-    .number()
-    .min(0, 'Cost price cannot be negative.')
-    .optional()
-    .nullable(),
-  basePrice: z.coerce
-    .number()
-    .min(0, 'Base price cannot be negative.')
-    .optional()
-    .nullable(),
+  costPrice: z.coerce.number().min(0, 'Cost price cannot be negative.').optional().nullable(),
+  basePrice: z.coerce.number().min(0, 'Base price cannot be negative.').optional().nullable(),
 })
 export type ProductVariantInput = z.infer<typeof productVariantInputSchema>
 
