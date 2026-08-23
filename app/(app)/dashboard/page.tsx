@@ -1,20 +1,29 @@
 import { Package, Plus } from 'lucide-react'
 
+import { getOnboardingState } from '@/lib/business-structure/queries'
+import { listLowStockBalances } from '@/lib/inventory/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { StatCard } from '@/components/ui/stat-card'
+import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/states/empty-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 /**
- * The Admin Dashboard's landing screen. Milestone 04 ships the shell and
- * shared components only (docs/milestones/04-design-system-and-app-shell.md
- * Out of Scope: "any feature-specific screen content") — every value below
- * is a static placeholder demonstrating the component set real dashboard
- * content (a later milestone) will populate.
+ * The Admin Dashboard's landing screen. Milestone 04 shipped the shell and
+ * shared components only, with every card a static placeholder. Milestone
+ * 07 fills in "Low stock" with a real query
+ * (lib/inventory/queries.ts's listLowStockBalances()) — the other cards
+ * stay placeholders until their own milestone (Sales: 08, Products list:
+ * already live on /products) does the same.
  */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const onboardingState = await getOnboardingState()
+  const lowStockBalances = onboardingState.branch
+    ? await listLowStockBalances(onboardingState.branch.id)
+    : []
+
   return (
     <div className="flex flex-1 flex-col">
       <AdminTopbar title="Dashboard">
@@ -62,11 +71,28 @@ export default function DashboardPage() {
               <CardTitle>Low stock</CardTitle>
             </CardHeader>
             <CardContent>
-              <EmptyState
-                icon={Package}
-                title="No inventory yet"
-                description="Low-stock alerts arrive with Inventory & Stock Management (Milestone 07)."
-              />
+              {lowStockBalances.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title="Nothing low"
+                  description="Every tracked product is above its configured threshold."
+                />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {lowStockBalances.slice(0, 5).map((balance) => (
+                    <li
+                      key={balance.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{balance.productName}</span>
+                        <span className="text-xs text-muted-foreground">{balance.sku}</span>
+                      </div>
+                      <Badge variant="destructive">{balance.quantity} left</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>

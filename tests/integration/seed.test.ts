@@ -81,10 +81,11 @@ describe('seed data (supabase/seed.sql)', () => {
   })
 
   // 16 from Milestones 03–05 + 6 from Milestone 06 (products.view/create/
-  // update/archive/view_cost_price, categories.manage).
-  it('loads exactly 22 permissions', async () => {
+  // update/archive/view_cost_price, categories.manage) + 3 from Milestone 07
+  // (inventory.view/adjust/transfer).
+  it('loads exactly 25 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(22)
+    expect(result.rows[0].count).toBe(25)
   })
 
   it('the Owner role holds every seeded permission', async () => {
@@ -94,7 +95,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(22)
+    expect(result.rows[0].count).toBe(25)
   })
 
   it('the operational roles (Cashier, Salesperson, Pharmacist, Waiter, Kitchen Staff) start with zero permissions', async () => {
