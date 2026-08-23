@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { getSaleAction } from '@/app/(pos)/pos/actions'
 import { Separator } from '@/components/ui/separator'
+import { formatDateTime } from '@/lib/utils'
 import type { Sale } from '@/lib/sales/queries'
 
 function money(value: number): string {
@@ -82,7 +83,7 @@ export function ReceiptView({ saleId }: { saleId: string }) {
       ))}
 
       <p className="text-caption text-muted-foreground">
-        {new Date(sale.createdAt).toLocaleString()} · Receipt #{sale.id.slice(0, 8).toUpperCase()}
+        {formatDateTime(sale.createdAt)} · Receipt #{sale.id.slice(0, 8).toUpperCase()}
       </p>
     </div>
   )

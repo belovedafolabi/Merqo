@@ -97,7 +97,11 @@ async function createSale(
 ) {
   const total = params.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   return client.query(
-    `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, $6, 0, null, 0, 0, $6, 'cash', $6, null)`,
+    // The trailing null is p_customer_id, added by Milestone 09
+    // (20260823130800_alter_sales_functions_add_customer_and_store_credit.sql).
+    // A cash sale to an unidentified walk-in is exactly the case it stays
+    // nullable for.
+    `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, $6, 0, null, 0, 0, $6, 'cash', $6, null, null)`,
     [
       params.organizationId,
       params.branchId,
@@ -272,12 +276,12 @@ describe('concurrency — two simultaneous sales against the same low-stock prod
         // concurrency guarantee inventory.test.ts's own suite proves, now
         // exercised through the sale engine that reuses it.
         const first = clientA.query(
-          `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, 500, 0, null, 0, 0, 500, 'cash', 500, null)`,
+          `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, 500, 0, null, 0, 0, 500, 'cash', 500, null, null)`,
           [organizationId, branchId, businessUnitId, randomUUID(), itemsA],
         )
         await new Promise((resolve) => setTimeout(resolve, 50))
         const second = clientB.query(
-          `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, 500, 0, null, 0, 0, 500, 'cash', 500, null)`,
+          `select * from public.create_sale($1, $2, $3, $4, $5::jsonb, 500, 0, null, 0, 0, 500, 'cash', 500, null, null)`,
           [organizationId, branchId, businessUnitId, randomUUID(), itemsB],
         )
 

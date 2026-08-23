@@ -2,6 +2,7 @@ import { History } from 'lucide-react'
 
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/states/empty-state'
+import { formatDateTime } from '@/lib/utils'
 import type { PriceHistoryEntry } from '@/lib/products/queries'
 
 /**
@@ -14,10 +15,7 @@ import type { PriceHistoryEntry } from '@/lib/products/queries'
  */
 export function PriceHistoryView({ entries }: { entries: PriceHistoryEntry[] }) {
   const columns: DataTableColumn<PriceHistoryEntry>[] = [
-    {
-      header: 'Changed',
-      cell: (row) => new Date(row.changedAt).toLocaleString(),
-    },
+    { header: 'Changed', cell: (row) => formatDateTime(row.changedAt) },
     {
       header: 'Scope',
       cell: (row) => (row.branchId ? `Branch override — ${row.branchName}` : 'Base price'),
