@@ -93,13 +93,21 @@ describe('core hierarchy schema', () => {
        order by table_name`,
     )
     const tables = result.rows.map((row) => row.table_name)
-    // Milestone 06 adds categories/products/product_variants — tenant data
-    // with the same soft-delete lifecycle as branches/business_units, per
-    // this milestone's own FR ("archiving, not hard deletion").
+    // Milestone 06 adds categories/products/product_variants and Milestone
+    // 09 adds customers — tenant data with the same soft-delete lifecycle as
+    // branches/business_units, per those milestones' own FRs ("archiving,
+    // not hard deletion"). A customer in particular can never be hard-
+    // deleted: sales and ledger entries reference the row permanently.
+    //
+    // Notably absent, and deliberately: `layaways` and every ledger table.
+    // A layaway's lifecycle is `status` (active/paid/cancelled), which is
+    // domain state rather than soft deletion, and an append-only financial
+    // entry has no lifecycle to archive at all.
     expect(tables).toEqual([
       'branches',
       'business_units',
       'categories',
+      'customers',
       'organizations',
       'product_variants',
       'products',

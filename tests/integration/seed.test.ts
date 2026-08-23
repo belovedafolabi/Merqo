@@ -84,10 +84,12 @@ describe('seed data (supabase/seed.sql)', () => {
   // update/archive/view_cost_price, categories.manage) + 3 from Milestone 07
   // (inventory.view/adjust/transfer) + 8 from Milestone 08 (sales.view/
   // create/cancel, discount.apply/override, returns.create, refund.initiate/
-  // approve).
-  it('loads exactly 33 permissions', async () => {
+  // approve) + 10 from Milestone 09 (customers.view/create/update,
+  // store_credit.view/issue/adjust, layaway.view/create/record_payment/
+  // cancel).
+  it('loads exactly 43 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(33)
+    expect(result.rows[0].count).toBe(43)
   })
 
   it('the Owner role holds every seeded permission', async () => {
@@ -97,16 +99,20 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(33)
+    expect(result.rows[0].count).toBe(43)
   })
 
-  // Waiter/Kitchen Staff are still bare (Milestone 08's base till set is
-  // scoped to Cashier/Salesperson/Pharmacist — supabase/seed.sql's
-  // pos_operator_permissions comment). Cashier/Salesperson/Pharmacist now
-  // hold exactly the 6-permission base till set (sales.view/create/cancel,
-  // discount.apply, returns.create, refund.initiate) — discount.override and
-  // refund.approve stay Branch Manager/Owner-only per the two-actor refund
-  // flow, so this milestone updates rather than removes this assertion.
+  // Waiter/Kitchen Staff are still bare (the base till set is scoped to
+  // Cashier/Salesperson/Pharmacist — supabase/seed.sql's
+  // pos_operator_permissions comment). Cashier/Salesperson/Pharmacist hold
+  // 12: Milestone 08's 6-permission base till set (sales.view/create/cancel,
+  // discount.apply, returns.create, refund.initiate) plus Milestone 09's 6
+  // customer-facing ones (customers.view/create, store_credit.view,
+  // layaway.view/create/record_payment). The elevated actions in both
+  // milestones — discount.override, refund.approve, store_credit.issue/
+  // adjust, layaway.cancel, customers.update — stay Branch Manager/
+  // Owner-only, so each milestone updates rather than removes this
+  // assertion.
   it('Waiter and Kitchen Staff still start with zero permissions; Cashier/Salesperson/Pharmacist hold the base till set', async () => {
     const result = await pool.query(
       `select r.slug, count(rp.id)::int as permission_count
@@ -117,9 +123,9 @@ describe('seed data (supabase/seed.sql)', () => {
     )
     const bySlug = Object.fromEntries(result.rows.map((row) => [row.slug, row.permission_count]))
     expect(bySlug).toEqual({
-      cashier: 6,
-      salesperson: 6,
-      pharmacist: 6,
+      cashier: 12,
+      salesperson: 12,
+      pharmacist: 12,
       waiter: 0,
       kitchen_staff: 0,
     })

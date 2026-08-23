@@ -14,8 +14,9 @@
  * `permission` gates a visible-but-inert item behind `<Can>`
  * (components/auth/can.tsx) only where a real permission already exists in
  * the seeded catalog (supabase/seed.sql) — "Business Structure"
- * (`branches.view`), since Milestone 06 "Products" (`products.view`), and
- * since Milestone 07 "Inventory" (`inventory.view`).
+ * (`branches.view`), since Milestone 06 "Products" (`products.view`), since
+ * Milestone 07 "Inventory" (`inventory.view`), and since Milestone 09
+ * "Customers" (`customers.view`) and "Layaways" (`layaway.view`).
  * Items whose domain permission doesn't exist yet are intentionally left
  * ungated (`permission: null`): gating them on a
  * *different* module's permission, or hiding them for everyone, would be
@@ -62,8 +63,8 @@ export const primaryNavItems: NavItem[] = [
     icon: 'Boxes',
     permission: { key: 'inventory.view' },
   },
-  { label: 'Customers', href: '/customers', icon: 'Users', permission: null },
-  { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: null },
+  { label: 'Customers', href: '/customers', icon: 'Users', permission: { key: 'customers.view' } },
+  { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: { key: 'layaway.view' } },
   { label: 'Reports', href: '/reports', icon: 'ScrollText', permission: null },
   {
     label: 'Business Structure',

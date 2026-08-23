@@ -111,6 +111,14 @@ export async function createSale(
     await requirePermission('discount.override', { organizationId, branchId: parsed.branchId })
   }
 
+  // The capability gate only answers "does this Business Unit offer store
+  // credit at all". Whether *this customer* can actually cover the total is
+  // decided inside create_sale() -> record_store_credit_entry(), under a row
+  // lock, in the same transaction as the sale — see
+  // supabase/migrations/20260823130800_alter_sales_functions_add_customer_
+  // and_store_credit.sql. Milestone 09 replaced this milestone's original
+  // balance-blind stub; there is deliberately no balance check here, because
+  // a check outside that lock could only ever be stale.
   if (parsed.paymentMethod === 'store_credit') {
     const capabilities = await listBusinessUnitCapabilities(parsed.businessUnitId)
     const storeCreditEnabled = capabilities.some((c) => c.key === 'store_credit' && c.enabled)
@@ -142,6 +150,7 @@ export async function createSale(
     p_payment_method: parsed.paymentMethod,
     p_payment_amount: totals.total,
     p_payment_reference: parsed.paymentReference ?? null,
+    p_customer_id: parsed.customerId ?? null,
   })
   if (error) throw error
   const sale = data as { id: string; total: string | number }
@@ -160,6 +169,7 @@ export async function createSale(
         total: Number(sale.total),
         paymentMethod: parsed.paymentMethod,
         discountAmount: totals.discountAmount,
+        customerId: parsed.customerId ?? null,
       },
     },
     supabase,

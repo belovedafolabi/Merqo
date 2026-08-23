@@ -25,6 +25,12 @@ export type SaleLineItemInput = z.infer<typeof saleLineItemSchema>
 export const createSaleInputSchema = z.object({
   branchId: z.uuid('Select a branch.'),
   businessUnitId: z.uuid('Select a business unit.'),
+  // Optional because the common POS case is an anonymous walk-in
+  // (supabase/migrations/20260823130600_alter_sales_add_customer_id.sql).
+  // The one case that requires it — paying with store credit — is enforced
+  // inside create_sale(), not here, so the requirement lives with the
+  // balance it protects rather than being restated in three places.
+  customerId: z.uuid().optional().nullable(),
   idempotencyKey: z.string().trim().min(1, 'A checkout attempt requires an idempotency key.'),
   items: z.array(saleLineItemSchema).min(1, 'Add at least one product to the cart.'),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),

@@ -12,6 +12,9 @@ import {
 import { searchProducts, lookupProductByBarcode, type Product } from '@/lib/products/queries'
 import { getSale, listHeldSales, type Sale, type HeldSale } from '@/lib/sales/queries'
 import type { SaleLineItemInput } from '@/lib/sales/schemas'
+import { getStoreCreditBalance, searchCustomers, type Customer } from '@/lib/customers/queries'
+import { createCustomer } from '@/lib/customers/mutations'
+import type { CustomerInput } from '@/lib/customers/schemas'
 
 export async function getSaleAction(saleId: string): Promise<Sale | null> {
   return getSale(saleId)
@@ -35,6 +38,41 @@ export async function lookupBarcodeAction(
   barcode: string,
 ): Promise<{ id: string; name: string; basePrice: number } | null> {
   return lookupProductByBarcode(businessUnitId, barcode)
+}
+
+/**
+ * Milestone 09's three checkout-side customer actions. Attaching a customer
+ * is what makes a sale eligible to be paid with store credit at all
+ * (create_sale() rejects a store-credit sale with no customer), and what
+ * puts the sale into that customer's transaction history.
+ *
+ * The balance shown at the till is advisory: it lets the cashier see the
+ * sale can't be covered before submitting, but create_sale() re-validates
+ * under a row lock regardless — a client-side number is always potentially
+ * stale by the time the form posts.
+ */
+export async function searchCustomersAction(
+  organizationId: string,
+  term: string,
+): Promise<Customer[]> {
+  if (!term.trim()) return []
+  return searchCustomers(organizationId, term)
+}
+
+export async function getStoreCreditBalanceAction(customerId: string): Promise<number> {
+  return getStoreCreditBalance(customerId)
+}
+
+export async function quickAddCustomerAction(
+  organizationId: string,
+  input: CustomerInput,
+): Promise<{ customer: Customer | null; error: string | null }> {
+  try {
+    const customer = await createCustomer(organizationId, input)
+    return { customer, error: null }
+  } catch (error) {
+    return { customer: null, error: errorMessage(error) }
+  }
 }
 
 /**
@@ -74,9 +112,12 @@ export async function checkoutAction(
   const discountAmountRaw = formData.get('discountAmount')
 
   try {
+    const customerId = formData.get('customerId')
+
     const sale = await createSale(organizationId, {
       branchId: String(formData.get('branchId') ?? ''),
       businessUnitId: String(formData.get('businessUnitId') ?? ''),
+      customerId: customerId ? String(customerId) : undefined,
       idempotencyKey: String(formData.get('idempotencyKey') ?? ''),
       items,
       discountPercentage: discountPercentageRaw ? Number(discountPercentageRaw) : undefined,

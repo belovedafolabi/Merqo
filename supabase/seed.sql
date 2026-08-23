@@ -211,6 +211,39 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5e. Milestone 09 — Customer, Store Credit & Layaway permissions. Inserted
+--     before section 6's Owner cross-join, same placement as 5b/5c/5d.
+--
+--     There is deliberately no `store_credit.use` key. Spending credit is
+--     not a standalone action — it happens inside create_sale()
+--     (20260823130800_alter_sales_functions_add_customer_and_store_credit.sql)
+--     and is already gated by `sales.create`. A separate key nothing ever
+--     checks would be dead configuration, and one that *was* checked would
+--     create a role that can complete sales but not accept a payment method
+--     the till offers — a state no requirement in this milestone asks for.
+--
+--     `store_credit.issue`/`store_credit.adjust` are split for the same
+--     reason `discount.apply`/`discount.override` are: issuing credit
+--     against a real event (a goodwill gesture at the counter) is ordinary
+--     supervisory work, whereas an `adjustment` entry can move a balance in
+--     either direction with no originating transaction — the closest thing
+--     in the product to minting money, so it stays with the roles that also
+--     approve refunds.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('customers.view', 'customers', 'view', 'View customer records, their transaction history, and their store-credit balance.'),
+  ('customers.create', 'customers', 'create', 'Create a new customer record.'),
+  ('customers.update', 'customers', 'update', 'Update or archive a customer record.'),
+  ('store_credit.view', 'store_credit', 'view', 'View a customer''s store-credit balance and ledger history.'),
+  ('store_credit.issue', 'store_credit', 'issue', 'Issue store credit to a customer.'),
+  ('store_credit.adjust', 'store_credit', 'adjust', 'Post a correcting store-credit adjustment in either direction (sensitive).'),
+  ('layaway.view', 'layaway', 'view', 'View layaways and their installment history within an authorized branch.'),
+  ('layaway.create', 'layaway', 'create', 'Create a layaway against a customer, reserving the stock it covers.'),
+  ('layaway.record_payment', 'layaway', 'record_payment', 'Record an installment payment against an active layaway.'),
+  ('layaway.cancel', 'layaway', 'cancel', 'Cancel an active layaway, releasing the stock it reserved.')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -291,6 +324,24 @@ join public.permissions p on p.key = bmsp.key
 where r.slug = 'branch_manager'
 on conflict (role_id, permission_id) do nothing;
 
+-- Branch Manager gets the full M09 customer/store-credit/layaway set,
+-- including the two elevated actions (store_credit.adjust, layaway.cancel)
+-- that the till roles below deliberately lack — the same "Manager is the
+-- second actor" shape as discount.override/refund.approve above.
+with branch_manager_customer_permissions (key) as (
+  values
+    ('customers.view'), ('customers.create'), ('customers.update'),
+    ('store_credit.view'), ('store_credit.issue'), ('store_credit.adjust'),
+    ('layaway.view'), ('layaway.create'), ('layaway.record_payment'), ('layaway.cancel')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_customer_permissions bmcp on true
+join public.permissions p on p.key = bmcp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
 -- Cashier, Salesperson, and Pharmacist are the operational till roles this
 -- milestone's own role descriptions name explicitly ("Permissions arrive
 -- with the POS Transaction Engine (Milestone 08)") — the base till set,
@@ -306,5 +357,26 @@ select r.id, p.id
 from public.roles r
 join pos_operator_permissions pop on true
 join public.permissions p on p.key = pop.key
+where r.slug in ('cashier', 'salesperson', 'pharmacist')
+on conflict (role_id, permission_id) do nothing;
+
+-- The same three till roles get the customer-facing half of Milestone 09: a
+-- cashier must be able to find or quick-add a customer at checkout, see the
+-- balance they're spending, and take a layaway installment across the
+-- counter. They do not get store_credit.issue/adjust or layaway.cancel —
+-- the three actions that create balance or release reserved stock without a
+-- customer-initiated transaction behind them (least privilege,
+-- docs/Auth_Users_Roles_Authorization.md §49).
+with pos_operator_customer_permissions (key) as (
+  values
+    ('customers.view'), ('customers.create'),
+    ('store_credit.view'),
+    ('layaway.view'), ('layaway.create'), ('layaway.record_payment')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join pos_operator_customer_permissions popc on true
+join public.permissions p on p.key = popc.key
 where r.slug in ('cashier', 'salesperson', 'pharmacist')
 on conflict (role_id, permission_id) do nothing;

@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/states/empty-state'
 import { LowStockThresholdDialog } from '@/components/inventory/low-stock-threshold-dialog'
 import { StockAdjustmentDialog } from '@/components/inventory/stock-adjustment-dialog'
 import { StockTransferDialog } from '@/components/inventory/stock-transfer-dialog'
+import { formatDateTime } from '@/lib/utils'
 import type { Branch } from '@/lib/business-structure/queries'
 import type {
   BranchProductOption,
@@ -133,7 +134,7 @@ export function InventoryView({
   ]
 
   const movementColumns: DataTableColumn<InventoryMovementEntry>[] = [
-    { header: 'Date', cell: (row) => new Date(row.createdAt).toLocaleString() },
+    { header: 'Date', cell: (row) => formatDateTime(row.createdAt) },
     {
       header: 'Product',
       cell: (row) => (
