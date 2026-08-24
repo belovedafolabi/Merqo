@@ -56,10 +56,7 @@ export function NotificationList({ notifications }: { notifications: Notificatio
       className: 'w-6',
       cell: (row) =>
         row.readAt === null ? (
-          <span
-            aria-hidden="true"
-            className="block size-2 rounded-full bg-primary"
-          />
+          <span aria-hidden="true" className="block size-2 rounded-full bg-primary" />
         ) : null,
     },
     {

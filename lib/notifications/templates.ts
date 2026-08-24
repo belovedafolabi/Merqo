@@ -7,7 +7,10 @@ import {
   renderLowStockAlertEmail,
   type LowStockAlertEmailInput,
 } from '@/lib/email/templates/low-stock-alert'
-import { renderRoleChangedEmail, type RoleChangedEmailInput } from '@/lib/email/templates/role-changed'
+import {
+  renderRoleChangedEmail,
+  type RoleChangedEmailInput,
+} from '@/lib/email/templates/role-changed'
 
 /**
  * The one dispatch point from a NotificationType to its rendered email.

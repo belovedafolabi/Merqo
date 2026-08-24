@@ -2,10 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import {
-  markAllNotificationsRead,
-  markNotificationRead,
-} from '@/lib/notifications/mutations'
+import { markAllNotificationsRead, markNotificationRead } from '@/lib/notifications/mutations'
 
 /**
  * Thin Server Action layer — same shape as every domain since Milestone 10.

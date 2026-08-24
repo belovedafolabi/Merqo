@@ -117,21 +117,22 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 
   if (error) throw error
 
-  const saved = new Map(
-    ((data ?? []) as PreferenceRow[]).map((row) => [row.category, row]),
-  )
+  const saved = new Map(((data ?? []) as PreferenceRow[]).map((row) => [row.category, row]))
 
-  return (Object.entries(NOTIFICATION_CATEGORIES) as [NotificationCategory, (typeof NOTIFICATION_CATEGORIES)[NotificationCategory]][]).map(
-    ([category, definition]) => {
-      const row = saved.get(category)
-      return {
-        category,
-        label: definition.label,
-        description: definition.description,
-        mandatory: definition.mandatory,
-        inAppEnabled: row ? row.in_app_enabled : definition.defaults.inApp,
-        emailEnabled: row ? row.email_enabled : definition.defaults.email,
-      }
-    },
-  )
+  return (
+    Object.entries(NOTIFICATION_CATEGORIES) as [
+      NotificationCategory,
+      (typeof NOTIFICATION_CATEGORIES)[NotificationCategory],
+    ][]
+  ).map(([category, definition]) => {
+    const row = saved.get(category)
+    return {
+      category,
+      label: definition.label,
+      description: definition.description,
+      mandatory: definition.mandatory,
+      inAppEnabled: row ? row.in_app_enabled : definition.defaults.inApp,
+      emailEnabled: row ? row.email_enabled : definition.defaults.email,
+    }
+  })
 }

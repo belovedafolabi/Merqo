@@ -36,7 +36,10 @@ export type EmailOutcome =
  * additionally logs the notification-level event name so a delivery failure
  * is findable by grepping "notification." rather than only "email.".
  */
-export async function deliverEmail(to: string, input: NotificationEmailData): Promise<EmailOutcome> {
+export async function deliverEmail(
+  to: string,
+  input: NotificationEmailData,
+): Promise<EmailOutcome> {
   try {
     const message = renderNotificationEmail(input)
     const result = await sendEmail({ to, ...message })

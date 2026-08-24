@@ -177,7 +177,11 @@ export async function createStockAdjustment(
   // happens here. notifyLowStock() never throws, so this needs no
   // try/catch — Milestone 12's failure-isolation invariant holds by the
   // callee's own contract, not by anything written at this call site.
-  await notifyLowStock({ organizationId, branchId: parsed.branchId, productIds: [parsed.productId] })
+  await notifyLowStock({
+    organizationId,
+    branchId: parsed.branchId,
+    productIds: [parsed.productId],
+  })
 
   return movement
 }

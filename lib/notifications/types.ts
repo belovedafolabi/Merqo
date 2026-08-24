@@ -31,32 +31,33 @@ export interface NotificationCategoryDefinition {
   readonly defaults: { inApp: boolean; email: boolean }
 }
 
-export const NOTIFICATION_CATEGORIES: Record<NotificationCategory, NotificationCategoryDefinition> = {
-  inventory: {
-    label: 'Inventory',
-    description: 'Low-stock alerts for products at your branches.',
-    mandatory: false,
-    defaults: { inApp: true, email: true },
-  },
-  administration: {
-    label: 'Administration',
-    description: 'Employee, role, and organization changes.',
-    mandatory: false,
-    defaults: { inApp: true, email: false },
-  },
-  security: {
-    label: 'Security',
-    description: 'Role and permission changes affecting your account.',
-    mandatory: true,
-    defaults: { inApp: true, email: true },
-  },
-  billing: {
-    label: 'Billing',
-    description: 'Subscription and payment events.',
-    mandatory: true,
-    defaults: { inApp: true, email: true },
-  },
-}
+export const NOTIFICATION_CATEGORIES: Record<NotificationCategory, NotificationCategoryDefinition> =
+  {
+    inventory: {
+      label: 'Inventory',
+      description: 'Low-stock alerts for products at your branches.',
+      mandatory: false,
+      defaults: { inApp: true, email: true },
+    },
+    administration: {
+      label: 'Administration',
+      description: 'Employee, role, and organization changes.',
+      mandatory: false,
+      defaults: { inApp: true, email: false },
+    },
+    security: {
+      label: 'Security',
+      description: 'Role and permission changes affecting your account.',
+      mandatory: true,
+      defaults: { inApp: true, email: true },
+    },
+    billing: {
+      label: 'Billing',
+      description: 'Subscription and payment events.',
+      mandatory: true,
+      defaults: { inApp: true, email: true },
+    },
+  }
 
 export interface NotificationTypeDefinition {
   readonly category: NotificationCategory
