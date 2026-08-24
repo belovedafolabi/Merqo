@@ -11,7 +11,9 @@ import {
   Receipt,
   ScrollText,
   Settings,
+  ShieldCheck,
   ShoppingCart,
+  UserCog,
   Users,
   Wallet,
   type LucideIcon,
@@ -47,6 +49,8 @@ const ICONS: Record<NavItem['icon'], LucideIcon> = {
   Banknote,
   Building2,
   Settings,
+  UserCog,
+  ShieldCheck,
 }
 
 /**

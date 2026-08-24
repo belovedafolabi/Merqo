@@ -22,6 +22,12 @@ function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true
   if (pathname.startsWith('/auth/')) return true
   if (pathname.startsWith('/api/')) return true
+  // Milestone 11: an invite link must work for a visitor with no session at
+  // all (they haven't signed up yet) as well as one who is already signed in
+  // under a different account — both are legitimate entrants to
+  // /invite/[token], so this is public rather than gated like every other
+  // (auth) route.
+  if (pathname.startsWith('/invite/')) return true
   return false
 }
 
@@ -78,6 +84,25 @@ export async function proxy(request: NextRequest) {
 
   if (user && isAuthScreen) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Milestone 11's Security Requirement: deactivation "immediately
+  // invalidates their active session(s), not just future logins." The real
+  // boundary is the database — user_is_active() (20260824090100) makes every
+  // RLS-protected query return nothing the instant deactivated_at is set,
+  // regardless of what this proxy does. This check exists only so a
+  // deactivated user sees an explicit sign-out instead of every page
+  // rendering empty, which would look like a bug rather than a revoked
+  // account. Scoped to a signed-in user on a private path — no session, no
+  // RPC to make.
+  if (user && !isPublicPath(pathname)) {
+    const { data: active } = await supabase.rpc('user_is_active')
+    if (active === false) {
+      await supabase.auth.signOut()
+      const redirectUrl = new URL('/sign-in', request.url)
+      redirectUrl.searchParams.set('reason', 'deactivated')
+      return NextResponse.redirect(redirectUrl)
+    }
   }
 
   return response

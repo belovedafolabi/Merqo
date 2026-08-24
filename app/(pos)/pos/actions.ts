@@ -15,9 +15,27 @@ import type { SaleLineItemInput } from '@/lib/sales/schemas'
 import { getStoreCreditBalance, searchCustomers, type Customer } from '@/lib/customers/queries'
 import { createCustomer } from '@/lib/customers/mutations'
 import type { CustomerInput } from '@/lib/customers/schemas'
+import { getOrganizationBranding, type OrganizationBranding } from '@/lib/branding/queries'
+import { getReceiptSettings, type ReceiptSettings } from '@/lib/receipts/settings'
 
 export async function getSaleAction(saleId: string): Promise<Sale | null> {
   return getSale(saleId)
+}
+
+/**
+ * Milestone 11: the branding + receipt-settings ReceiptView needs to render
+ * via ReceiptDocument. A Server Action, not a prop threaded down from a
+ * Server Component ancestor, because checkout-dialog.tsx (and everything
+ * above it in the POS tree — PosSessionProvider, CartProvider) is
+ * 'use client': getOrganizationBranding()/getReceiptSettings() reach
+ * next/headers and cannot run there directly.
+ */
+export async function getReceiptContextAction(): Promise<{
+  branding: OrganizationBranding | null
+  settings: ReceiptSettings
+}> {
+  const [branding, settings] = await Promise.all([getOrganizationBranding(), getReceiptSettings()])
+  return { branding, settings }
 }
 
 export async function listHeldSalesAction(branchId: string): Promise<HeldSale[]> {

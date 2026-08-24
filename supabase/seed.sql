@@ -299,6 +299,45 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5g. Milestone 11 — Administration, Employees & Branding permissions.
+--     Inserted before section 6's Owner cross-join, same placement as 5b–5f.
+--
+--     Only three new keys. `roles.view`/`roles.assign` (Milestone 03),
+--     `users.view`/`users.manage` (03) and `organizations.view`/
+--     `organizations.update` (03) already cover the rest of this milestone's
+--     surface — the branding editor and the receipt-template editor write
+--     columns on `organizations`, so `organizations.update` is exactly right
+--     for both and a `branding.update` key would be catalog bloat for a
+--     distinction nobody makes.
+--
+--     `roles.create` vs `roles.assign` — composing a new role and handing an
+--     existing one out are different acts with different blast radii, and the
+--     milestone's Security Requirements name them separately. Note that
+--     holding `roles.create` is necessary but never sufficient: the RLS
+--     policies in 20260824090800 additionally require the author to already
+--     hold, org-wide, every permission they tick. That is the self-elevation
+--     guard, and it lives in the policy rather than the catalog because a
+--     permission key can only ever answer "may you act", not "may you act
+--     *this far*".
+--
+--     `employees.invite` vs `employees.deactivate` — inviting adds a person
+--     at a scope you already control; deactivating removes a colleague's
+--     access instantly and org-wide. The second is the more dangerous half
+--     and is separately grantable so a manager can staff their branch without
+--     also being able to lock out the Owner.
+--
+--     Deliberately NO `employees.view` key: whoever may invite may see the
+--     directory they are inviting into, and Milestone 03's `users.view`
+--     already gates reading the people list. A third key here would split one
+--     screen across two permissions for no gain.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('roles.create', 'roles', 'create', 'Create and edit a custom role and the permission set it grants (never beyond the author''s own permissions).'),
+  ('employees.invite', 'employees', 'invite', 'Invite an employee by email, and resend or revoke a pending invitation.'),
+  ('employees.deactivate', 'employees', 'deactivate', 'Deactivate or reactivate an employee, immediately revoking access (sensitive).')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -314,6 +353,13 @@ cross join public.permissions p
 where r.slug = 'owner'
 on conflict (role_id, permission_id) do nothing;
 
+-- Branch Manager gets none of Milestone 11's three administration keys
+-- (`roles.create`, `employees.invite`, `employees.deactivate`) by default.
+-- Least privilege, and it is also what keeps the escalation tests honest:
+-- tests/integration/role-builder.test.ts needs a role that genuinely lacks
+-- roles.create for "a role without roles.create cannot create a role" to
+-- assert anything. An Owner can still grant them through the role builder —
+-- that is the whole point of roles being configuration.
 with branch_manager_permissions (key) as (
   values
     ('branches.view'), ('business_units.view'), ('business_units.create'),
