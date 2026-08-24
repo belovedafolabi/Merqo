@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
+import { notifyLowStock } from '@/lib/notifications/low-stock'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { resolveEffectivePrice, resolveVariantPrice } from '@/lib/products/pricing'
 import {
@@ -174,6 +175,18 @@ export async function createSale(
     },
     supabase,
   )
+
+  // Post-commit, after create_sale() has already succeeded — the highest-
+  // volume low-stock producer in the app, and the reason notify_low_stock()
+  // guards on branch access rather than inventory.adjust: a cashier
+  // completing a sale holds sales.create, not inventory.adjust, and must
+  // still be able to trigger this. Never throws, so checkout cannot fail
+  // because of it.
+  await notifyLowStock({
+    organizationId,
+    branchId: parsed.branchId,
+    productIds: parsed.items.map((item) => item.productId),
+  })
 
   return { id: sale.id, total: Number(sale.total) }
 }

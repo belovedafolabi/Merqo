@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Building2, Palette, Receipt } from 'lucide-react'
+import { ArrowRight, Bell, Building2, Palette, Receipt } from 'lucide-react'
 
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +23,12 @@ const SECTIONS = [
     icon: Receipt,
     title: 'Receipts',
     description: 'Choose a receipt layout and what it shows.',
+  },
+  {
+    href: '/settings/notifications',
+    icon: Bell,
+    title: 'Notifications',
+    description: 'Choose which alerts reach you in-app or by email.',
   },
 ]
 

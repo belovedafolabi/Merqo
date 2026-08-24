@@ -10,6 +10,7 @@ const TABS = [
   { href: '/settings/organization', label: 'Organization' },
   { href: '/settings/branding', label: 'Branding' },
   { href: '/settings/receipts', label: 'Receipts' },
+  { href: '/settings/notifications', label: 'Notifications' },
 ] as const
 
 /**
@@ -19,7 +20,10 @@ const TABS = [
  * checklist), and folding them into a narrow settings tab strip would
  * squeeze both. This hub covers what Milestone 11's Scope calls "business
  * configuration screens beyond what Milestone 05 covered at onboarding
- * time": organization profile, branding, and receipts.
+ * time": organization profile, branding, and receipts — plus Milestone 12's
+ * per-user notification preferences, which lives here rather than as its
+ * own sidebar item for the same reason Employees/Roles do NOT: it is one
+ * small form, not a full-width screen.
  */
 export function SettingsNav() {
   const pathname = usePathname()

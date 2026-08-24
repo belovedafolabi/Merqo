@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { requirePermission } from '@/lib/auth/guard'
+import { notifyRoleAssigned } from '@/lib/notifications/role-changed'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   assignRoleInputSchema,
@@ -197,6 +198,10 @@ export async function assignUserRole(rawInput: AssignRoleInput): Promise<string>
     },
     supabase,
   )
+
+  // Milestone 12's basic security trigger. Post-commit, never throws — see
+  // lib/notifications/role-changed.ts's header.
+  await notifyRoleAssigned(data.id, supabase)
 
   return data.id
 }
