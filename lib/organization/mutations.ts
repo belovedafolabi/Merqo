@@ -43,11 +43,7 @@ export async function updateOrganizationProfile(
 }
 
 export type BootstrapOutcome =
-  | 'created'
-  | 'already_bootstrapped'
-  | 'missing_organization_name'
-  | 'name_taken'
-  | 'failed'
+  'created' | 'already_bootstrapped' | 'missing_organization_name' | 'name_taken' | 'failed'
 
 /**
  * The one call path that actually invokes create_organization_with_owner()
