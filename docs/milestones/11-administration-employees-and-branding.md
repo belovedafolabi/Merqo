@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete
 
 ## Objective
 
@@ -98,13 +98,13 @@ Milestones 02–03 built the RBAC *schema and enforcement engine*, and Milestone
 
 ## Acceptance Criteria
 
-- [ ] An employee can be invited, accept the invitation, and log in with the assigned role/scope.
-- [ ] Deactivating an employee immediately revokes access, including any active session.
-- [ ] A custom role, once created and assigned, grants exactly its selected permissions and behaves identically to a built-in role.
-- [ ] Self-elevation of permissions is not possible by default.
-- [ ] Branding changes render correctly and unsafe color combinations are flagged.
-- [ ] Receipt templates render correctly with branding and real transaction data.
-- [ ] All administrative actions in this milestone are permission-checked and audited.
+- [x] An employee can be invited, accept the invitation, and log in with the assigned role/scope.
+- [x] Deactivating an employee immediately revokes access, including any active session.
+- [x] A custom role, once created and assigned, grants exactly its selected permissions and behaves identically to a built-in role.
+- [x] Self-elevation of permissions is not possible by default.
+- [x] Branding changes render correctly and unsafe color combinations are flagged.
+- [x] Receipt templates render correctly with branding and real transaction data.
+- [x] All administrative actions in this milestone are permission-checked and audited.
 
 ## Definition of Done
 
