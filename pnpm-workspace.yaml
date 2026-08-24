@@ -29,5 +29,13 @@ onlyBuiltDependencies:
 # ansi-regex@5.0.0 (pulled in by pretty-format, via @testing-library/dom):
 # GHSA-93q8-gq69-wqmw, ReDoS, fixed in 5.0.1. Dev-only dependency chain
 # (test tooling, never shipped), but trivial to pin correctly.
+#
+# uuid <11.1.1 (pulled in by exceljs, added in Milestone 10 for Excel export):
+# GHSA-2825-h4q3-27g9, missing buffer bounds check in v3/v5/v6 when a `buf`
+# argument is supplied. exceljs only ever calls `v4()` with no arguments
+# (lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js), so the vulnerable path is
+# unreachable through this project — but "unreachable today" is a property of
+# exceljs's internals, not a guarantee, and pinning costs nothing.
 overrides:
   ansi-regex@5.0.0: '5.0.1'
+  uuid@8.3.2: '^11.1.1'
