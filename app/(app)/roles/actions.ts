@@ -1,73 +1,120 @@
 'use server'
 
-import { requirePermission } from '@/lib/auth/guard'
-import { recordAuditEvent } from '@/lib/auth/audit'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+import {
+  assignUserRole,
+  createRole,
+  revokeUserRole,
+  updateRolePermissions,
+} from '@/lib/roles/mutations'
 
 /**
- * The minimal role-assignment admin path this milestone's Scope calls for
- * ("employee/role changes made in this milestone's minimal admin path") —
- * a working code path with no dedicated UI screen, per this milestone's Out
- * of Scope ("employee invite/deactivate screens (Milestone 11)... the
- * schema and enforcement for custom roles exists here; the management UI
- * does not").
+ * Thin Server Action layer for the role builder and role assignment, per the
+ * canonical shape every domain since Milestone 10 follows: parse FormData ->
+ * delegate to lib/roles/mutations.ts -> return { error } -> revalidate. All
+ * real validation, permission-checking, and DB access lives in
+ * lib/roles/mutations.ts; this file exists only to be a useActionState
+ * target.
+ *
+ * Supersedes this file's own previous shape (a UI-less stub exporting
+ * assignUserRole/revokeUserRole directly as plain async functions, per
+ * Milestone 03's "minimal admin path with no dedicated UI screen"). Those two
+ * bodies now live in lib/roles/mutations.ts; this file only re-exposes them
+ * as actions.
  */
-export interface RoleAssignmentInput {
-  userId: string
-  roleId: string
-  organizationId: string
-  branchId?: string | null
-  businessUnitId?: string | null
+export interface RolesActionState {
+  error: string | null
 }
 
-export async function assignUserRole(input: RoleAssignmentInput) {
-  await requirePermission('roles.assign', { organizationId: input.organizationId })
+const initialState: RolesActionState = { error: null }
 
-  const supabase = await createServerSupabaseClient()
-  const { data, error } = await supabase
-    .from('user_roles')
-    .insert({
-      user_id: input.userId,
-      role_id: input.roleId,
-      organization_id: input.organizationId,
-      branch_id: input.branchId ?? null,
-      business_unit_id: input.businessUnitId ?? null,
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+}
+
+export async function createRoleAction(
+  _prevState: RolesActionState,
+  formData: FormData,
+): Promise<RolesActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const name = String(formData.get('name') ?? '')
+  const description = formData.get('description')
+  const permissionKeys = formData.getAll('permissionKeys').map(String)
+
+  try {
+    await createRole(organizationId, {
+      name,
+      description: description ? String(description) : undefined,
+      permissionKeys,
     })
-    .select('id')
-    .single()
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
 
-  if (error) throw error
-
-  await recordAuditEvent(
-    {
-      organizationId: input.organizationId,
-      userId: input.userId,
-      action: 'user_role.assigned',
-      resourceType: 'user_role',
-      resourceId: data.id,
-      metadata: { roleId: input.roleId, targetUserId: input.userId },
-    },
-    supabase,
-  )
-
-  return data.id as string
+  revalidatePath('/roles')
+  return initialState
 }
 
-export async function revokeUserRole(userRoleId: string, organizationId: string) {
-  await requirePermission('roles.assign', { organizationId })
+export async function updateRolePermissionsAction(
+  _prevState: RolesActionState,
+  formData: FormData,
+): Promise<RolesActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const roleId = String(formData.get('roleId') ?? '')
+  const permissionKeys = formData.getAll('permissionKeys').map(String)
 
-  const supabase = await createServerSupabaseClient()
-  const { error } = await supabase.from('user_roles').delete().eq('id', userRoleId)
-  if (error) throw error
+  try {
+    await updateRolePermissions(organizationId, { roleId, permissionKeys })
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
 
-  await recordAuditEvent(
-    {
+  revalidatePath('/roles')
+  return initialState
+}
+
+export async function assignRoleAction(
+  _prevState: RolesActionState,
+  formData: FormData,
+): Promise<RolesActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const userId = String(formData.get('userId') ?? '')
+  const roleId = String(formData.get('roleId') ?? '')
+  const branchId = formData.get('branchId')
+  const businessUnitId = formData.get('businessUnitId')
+
+  try {
+    await assignUserRole({
       organizationId,
-      userId: null,
-      action: 'user_role.revoked',
-      resourceType: 'user_role',
-      resourceId: userRoleId,
-    },
-    supabase,
-  )
+      userId,
+      roleId,
+      branchId: branchId ? String(branchId) : null,
+      businessUnitId: businessUnitId ? String(businessUnitId) : null,
+    })
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  revalidatePath('/employees')
+  revalidatePath('/roles')
+  return initialState
+}
+
+export async function revokeRoleAction(
+  _prevState: RolesActionState,
+  formData: FormData,
+): Promise<RolesActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const userRoleId = String(formData.get('userRoleId') ?? '')
+
+  try {
+    await revokeUserRole(userRoleId, organizationId)
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  revalidatePath('/employees')
+  revalidatePath('/roles')
+  return initialState
 }

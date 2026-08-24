@@ -59,13 +59,25 @@ describe('seed data (supabase/seed.sql)', () => {
     expect(result.rows[0].count).toBe(91)
   })
 
+  // Scoped to is_system_role = true, not a bare count(*) on the table: since
+  // Milestone 11 (20260824090700_alter_roles_add_authoring_policies.sql),
+  // public.roles legitimately holds custom roles too — created by the
+  // role-builder tests in this same suite (tests/integration/role-builder.test.ts,
+  // tests/integration/employees.test.ts, tests/integration/deactivation.test.ts)
+  // as well as by real usage. What this test actually verifies — that the seed
+  // migration planted exactly these 7 built-in roles — only makes sense
+  // filtered to the built-in ones.
   it('loads exactly 7 system roles', async () => {
-    const result = await pool.query(`select count(*)::int as count from public.roles`)
+    const result = await pool.query(
+      `select count(*)::int as count from public.roles where is_system_role = true`,
+    )
     expect(result.rows[0].count).toBe(7)
   })
 
-  it('loads the expected 7 role slugs, all marked is_system_role', async () => {
-    const result = await pool.query(`select slug, is_system_role from public.roles order by slug`)
+  it('loads the expected 7 system role slugs', async () => {
+    const result = await pool.query(
+      `select slug from public.roles where is_system_role = true order by slug`,
+    )
     expect(result.rows.map((row) => row.slug)).toEqual(
       [
         'branch_manager',
@@ -77,7 +89,6 @@ describe('seed data (supabase/seed.sql)', () => {
         'waiter',
       ].sort(),
     )
-    expect(result.rows.every((row) => row.is_system_role)).toBe(true)
   })
 
   // 16 from Milestones 03–05 + 6 from Milestone 06 (products.view/create/
@@ -87,10 +98,11 @@ describe('seed data (supabase/seed.sql)', () => {
   // approve) + 10 from Milestone 09 (customers.view/create/update,
   // store_credit.view/issue/adjust, layaway.view/create/record_payment/
   // cancel) + 9 from Milestone 10 (reports.view/export/view_financials/
-  // view_all_branches/save, expense.view/create/approve/delete).
-  it('loads exactly 52 permissions', async () => {
+  // view_all_branches/save, expense.view/create/approve/delete) + 3 from
+  // Milestone 11 (roles.create, employees.invite, employees.deactivate).
+  it('loads exactly 55 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(52)
+    expect(result.rows[0].count).toBe(55)
   })
 
   it('the Owner role holds every seeded permission', async () => {
@@ -100,7 +112,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(52)
+    expect(result.rows[0].count).toBe(55)
   })
 
   // Waiter/Kitchen Staff are still bare (the base till set is scoped to
