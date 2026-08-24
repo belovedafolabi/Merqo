@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete — merged via [PR #24](https://github.com/belovedafolabi/Merqo/pull/24) (2026-08-24)
 
 ## Objective
 
@@ -91,11 +91,11 @@ Reporting and accounting are where the value of every earlier milestone's carefu
 
 ## Acceptance Criteria
 
-- [ ] All standard reports (sales, inventory, financial, customer) return correct, correctly-scoped data.
-- [ ] The custom report builder produces correct results without any raw-SQL or non-whitelisted-dimension access path.
-- [ ] CSV, Excel, and PDF export all produce correct output matching the underlying report.
-- [ ] Accounting calculations reconcile correctly against the transactional and ledger data from Milestones 06–09.
-- [ ] Report/export access is permission-scoped and cannot leak cross-organization or unauthorized cross-branch data.
+- [x] All standard reports (sales, inventory, financial, customer) return correct, correctly-scoped data.
+- [x] The custom report builder produces correct results without any raw-SQL or non-whitelisted-dimension access path.
+- [x] CSV, Excel, and PDF export all produce correct output matching the underlying report.
+- [x] Accounting calculations reconcile correctly against the transactional and ledger data from Milestones 06–09.
+- [x] Report/export access is permission-scoped and cannot leak cross-organization or unauthorized cross-branch data.
 
 ## Definition of Done
 

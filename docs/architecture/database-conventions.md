@@ -21,6 +21,8 @@ Every table includes `created_at timestamptz not null default now()`, `updated_a
 
 **Documented exception: `audit_logs`.** An audit row is append-only and never updated, so it has no `updated_at` and no `set_updated_at` trigger. It also has no `created_by` — the table already carries `user_id` as the acting user, and duplicating that as `created_by` would be redundant on a table whose entire purpose is recording who did what.
 
+**Documented exception: decision-lifecycle tables (`refunds`, `expenses`).** These carry `created_at` plus explicit decision timestamps (`decided_at`, and on `expenses` also `voided_at`) instead of `updated_at`, and no `set_updated_at` trigger. The reason is structural rather than stylistic: neither table grants `UPDATE` to any application role, so the only writes after insert come from their own `SECURITY DEFINER` functions (`decide_refund()`, `decide_expense()`, `void_expense()`), each of which records *what* changed and *when* in a named column. A generic `updated_at` would say only that something changed, on a row whose whole point is that its amount and date never do.
+
 ## Soft-delete (`archived_at`) vs. `is_active`
 
 Two distinct concepts, used on different table categories — do not conflate them:
