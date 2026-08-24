@@ -103,6 +103,13 @@ describe('core hierarchy schema', () => {
     // A layaway's lifecycle is `status` (active/paid/cancelled), which is
     // domain state rather than soft deletion, and an append-only financial
     // entry has no lifecycle to archive at all.
+    // Milestone 10 adds `saved_reports` — a saved report configuration is
+    // ordinary tenant data a user creates, renames and eventually retires, and
+    // it carries archived_at rather than a DELETE grant so that a report
+    // shared to a branch cannot vanish from under the people it was shared
+    // with. Milestone 10's `expenses` is deliberately NOT here: an expense is
+    // withdrawn via `voided_at` with a mandatory reason, which is a financial
+    // event on the record rather than a soft delete of it.
     expect(tables).toEqual([
       'branches',
       'business_units',
@@ -111,6 +118,7 @@ describe('core hierarchy schema', () => {
       'organizations',
       'product_variants',
       'products',
+      'saved_reports',
     ])
   })
 

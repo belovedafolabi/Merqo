@@ -1,0 +1,22 @@
+-- The stock-movement report's index, again named against its query rather
+-- than guessed.
+--
+-- The query: report_inventory_movements (20260823141000) filters
+-- `branch_id = $1 and created_at >= $2 and created_at < $3` with no product
+-- filter — "stock movement" in docs/PRD.md §28 is a branch-and-period
+-- report, and narrowing to one product is the *detail* view, not this one.
+--
+-- Why the existing index doesn't serve it:
+-- `inventory_movements_branch_product_idx (branch_id, product_id, created_at
+-- desc)` puts `created_at` third. Without an equality on `product_id`, the
+-- range predicate on the third column cannot narrow the scan at all — the
+-- index is walked for every movement the branch has ever recorded and the
+-- dates filtered afterwards. Moving `created_at` into second position is the
+-- whole fix.
+--
+-- The existing composite is kept, not dropped (unlike the sales one in
+-- 20260823140800): it is not a prefix of this new index, and it still serves
+-- the per-product movement history that lib/inventory/queries.ts already
+-- relies on.
+create index inventory_movements_branch_created_at_idx
+  on public.inventory_movements (branch_id, created_at desc);

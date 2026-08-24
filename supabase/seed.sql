@@ -244,6 +244,61 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5f. Milestone 10 — Reporting, Analytics & Accounting permissions. Inserted
+--     before section 6's Owner cross-join, same placement as 5b–5e.
+--
+--     Four `reports.*` keys rather than one, each drawing a line that a single
+--     key could not:
+--
+--     `reports.view` vs `reports.export` — Milestone 10's Security
+--     Requirements are explicit that these are "distinctly" checked, "since
+--     export is a higher-risk data-exfiltration surface than on-screen
+--     viewing". Reading a figure off a screen and walking out with the
+--     underlying spreadsheet are different acts.
+--
+--     `reports.view_financials` — COGS, gross profit and expense totals all
+--     expose `products.cost_price`, in aggregate rather than per-row but
+--     exposed nonetheless. The catalog already treats cost as separately
+--     sensitive (`products.view_cost_price`, Owner-only by default since
+--     Milestone 06), so a reporting layer that handed the same information to
+--     anyone with `reports.view` would quietly undo that decision.
+--     docs/Reporting_Analytics_and_Custom_Reports.md §41 asks for exactly this
+--     split: "a Cashier may create Sales reports but not Profit reports".
+--
+--     `reports.view_all_branches` — the explicit, grantable cross-branch
+--     reporting capability docs/Business_Structure_Branche.md §24.42 describes.
+--     Note carefully that this is an *affordance* gate, not the security
+--     boundary: RLS (user_has_branch_access) already makes another branch's
+--     rows invisible to a branch-scoped role, and the report functions are
+--     SECURITY INVOKER so they inherit that. What this key controls is whether
+--     a user whose role assignment is org-wide *defaults* into seeing every
+--     branch at once, rather than being pinned to one. Granting it to a
+--     branch-scoped user changes nothing they can see.
+--
+--     The `expense.*` set is docs/PRD.md §27's list verbatim. `expense.delete`
+--     grants the *void* action (void_expense(), 20260823140200) — expenses are
+--     never hard-deleted, because an approved expense already sits inside a
+--     reported net-profit figure.
+--
+--     Deliberately NOT here: any threshold-based approval key
+--     (docs/Financial_Architecture_Accounting_Reconciliation.md §28's
+--     "≤ ₦50,000 → Manager, > ₦50,000 → Owner"). §28 itself says that should
+--     be configuration rather than hard-coded behavior, which places it with
+--     Milestone 11's administration scope. Approval here is a flat permission.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('reports.view', 'reports', 'view', 'View the report catalog and run standard reports within an authorized scope.'),
+  ('reports.export', 'reports', 'export', 'Download a report as CSV or Excel, or open its print view.'),
+  ('reports.view_financials', 'reports', 'view_financials', 'View cost-bearing and profit reports (COGS, gross profit, net profit, expense totals) — sensitive, since aggregate cost still exposes cost price.'),
+  ('reports.view_all_branches', 'reports', 'view_all_branches', 'Run a report across every branch in the organization rather than a single one.'),
+  ('reports.save', 'reports', 'save', 'Create, update, and archive a saved custom-report configuration.'),
+  ('expense.view', 'expense', 'view', 'View recorded business expenses within an authorized branch.'),
+  ('expense.create', 'expense', 'create', 'Record a business expense.'),
+  ('expense.approve', 'expense', 'approve', 'Approve or reject a pending expense.'),
+  ('expense.delete', 'expense', 'delete', 'Void an expense, withdrawing it from reported profit (sensitive).')
+on conflict (key) do nothing;
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,
@@ -378,5 +433,69 @@ select r.id, p.id
 from public.roles r
 join pos_operator_customer_permissions popc on true
 join public.permissions p on p.key = popc.key
+where r.slug in ('cashier', 'salesperson', 'pharmacist')
+on conflict (role_id, permission_id) do nothing;
+
+-- Branch Manager gets the reporting and expense set for their own branch(es) —
+-- the same "full authority within its own domain" shape as their product,
+-- inventory, sales and customer grants above, including reports.view_financials
+-- because a manager who cannot see their branch's gross profit cannot manage it.
+--
+-- Two deliberate exclusions:
+--
+--   * `reports.view_all_branches` — withholding this from Branch Manager is
+--     the entire reason the key exists. Milestone 10's Security Requirements
+--     say a Branch Manager "cannot see another branch's financial reports
+--     unless explicitly granted cross-branch reporting permission", and
+--     docs/Business_Structure_Branche.md §24.42 lists cross-branch reporting as
+--     an explicit grantable capability rather than a role default. An
+--     organization that wants a multi-branch manager grants it deliberately.
+--
+--   * `expense.delete` — voiding an approved expense moves reported profit
+--     with no originating business event behind it, which is the same
+--     "closest thing to minting money" reasoning that keeps
+--     `store_credit.adjust` and `refund.approve` at the elevated tier. It
+--     stays Owner-only by default.
+with branch_manager_report_permissions (key) as (
+  values
+    ('reports.view'), ('reports.export'), ('reports.view_financials'), ('reports.save'),
+    ('expense.view'), ('expense.create'), ('expense.approve')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join branch_manager_report_permissions bmrp on true
+join public.permissions p on p.key = bmrp.key
+where r.slug = 'branch_manager'
+on conflict (role_id, permission_id) do nothing;
+
+-- The three till roles get `reports.view` and nothing else from this
+-- milestone. This grants no new *data* access: they can already read their own
+-- branch's sales through sales_select, and the report functions are SECURITY
+-- INVOKER, so a Cashier running a sales report sees exactly the rows they could
+-- already have queried — just added up. What it enables is
+-- docs/Reporting_Analytics_and_Custom_Reports.md §20's till-level view of their
+-- own day.
+--
+-- Each of the four things they do not get is withheld for its own reason:
+--   * reports.export — the exfiltration surface; a till role has no business
+--     need to walk out with a spreadsheet.
+--   * reports.view_financials — cost price, per §41's "a Cashier may create
+--     Sales reports but not Profit reports".
+--   * reports.save — saved configurations are a management artifact.
+--   * every expense.* key — docs/PRD.md §27, verbatim: "A cashier should not
+--     automatically have the ability to create a ₦500,000 expense."
+--
+-- Waiter and Kitchen Staff are unchanged: they hold no permissions at all, and
+-- nothing in this milestone gives them a reason to.
+with pos_operator_report_permissions (key) as (
+  values
+    ('reports.view')
+)
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join pos_operator_report_permissions porp on true
+join public.permissions p on p.key = porp.key
 where r.slug in ('cashier', 'salesperson', 'pharmacist')
 on conflict (role_id, permission_id) do nothing;
