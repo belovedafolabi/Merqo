@@ -6,11 +6,15 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { isLoginThrottled, recordLoginAttempt } from '@/lib/auth/login-throttle'
 import { getRequestMeta } from '@/lib/auth/request-context'
+import { ensureOrganizationBootstrapped } from '@/lib/organization/mutations'
 import { logger } from '@/lib/logger'
 import { slugify } from '@/lib/utils'
 
 export interface AuthActionState {
   error: string | null
+  /** A non-error message to show alongside (or instead of) `error` — e.g.
+   *  "check your email" after a sign-up that returned no session. */
+  notice?: string | null
 }
 
 /**
@@ -34,11 +38,21 @@ export async function signUp(
   }
 
   const supabase = await createServerSupabaseClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName } },
+    options: {
+      // organization_name rides along in user_metadata (not just full_name)
+      // because the branch below can leave sign-up without ever calling
+      // create_organization_with_owner() — this is what lets
+      // ensureOrganizationBootstrapped() (lib/organization/mutations.ts)
+      // finish the job later, at first sign-in or at /auth/confirm, with
+      // the name the user actually typed rather than losing it.
+      data: { full_name: fullName, organization_name: organizationName },
+      emailRedirectTo: `${appUrl}/auth/confirm?type=signup`,
+    },
   })
 
   if (signUpError) {
@@ -47,11 +61,16 @@ export async function signUp(
 
   // Local/CI config disables email confirmation (supabase/config.toml
   // [auth.email] enable_confirmations = false), so signUp() already returns
-  // a live session. A hosted deployment with confirmations enabled would
-  // not — that user completes bootstrap on their first sign-in instead.
+  // a live session and bootstrap can happen inline below. A hosted
+  // deployment with confirmations enabled returns no session here — the
+  // organization gets created once a session actually exists, either via
+  // app/auth/confirm/route.ts (the confirmation-email link) or, as the
+  // load-bearing fallback, ensureOrganizationBootstrapped() inside signIn()
+  // below.
   if (!signUpData.session) {
     return {
       error: null,
+      notice: `Check ${email} for a confirmation link to finish creating your organization.`,
     }
   }
 
@@ -129,6 +148,16 @@ export async function signIn(
     supabase,
   )
 
+  // The load-bearing half of organization bootstrap (see the comment in
+  // signUp() above): a hosted deployment's sign-up returns no session, so
+  // this is the first point a session reliably exists to finish the job
+  // create_organization_with_owner() started. A no-op for every user who
+  // already has one (ensureOrganizationBootstrapped()'s own pre-check).
+  const bootstrapOutcome = await ensureOrganizationBootstrapped(supabase, data.user)
+  if (bootstrapOutcome === 'failed') {
+    return { error: 'Could not finish setting up your organization. Please contact support.' }
+  }
+
   redirect('/dashboard')
 }
 
@@ -175,7 +204,7 @@ export async function requestPasswordReset(
     logger.warn('auth.password_reset_request_failed', { error: error.message })
   }
 
-  return { error: null }
+  return { error: null, notice: 'If an account exists for that email, a reset link is on its way.' }
 }
 
 /**
