@@ -41,6 +41,10 @@ export interface Sale {
   total: number
   createdAt: string
   createdBy: string | null
+  /** The cashier's display name, for the receipt's optional "Served by"
+   *  line (Milestone 11's receipt_show_cashier setting). Null whenever
+   *  createdBy is null, or (rarely) if the user row has since been removed. */
+  createdByName: string | null
   items: SaleItem[]
   payments: Payment[]
 }
@@ -132,6 +136,22 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     .eq('sale_id', saleId)
   if (paymentsError) throw paymentsError
 
+  // A separate query, not an embed on the `sales` select above: `sales` has
+  // no foreign-key hint disambiguation issue here (only one `created_by`),
+  // but keeping this additive rather than touching the existing select
+  // string is what keeps this a pure extension of Milestone 08's query, per
+  // this milestone's Technical Requirements ("reuses Milestone 08's receipt
+  // data model, only adding presentation/template selection on top").
+  let createdByName: string | null = null
+  if (saleRow.created_by) {
+    const { data: creator } = await supabase
+      .from('users')
+      .select('full_name')
+      .eq('id', saleRow.created_by)
+      .maybeSingle<{ full_name: string }>()
+    createdByName = creator?.full_name ?? null
+  }
+
   return {
     id: saleRow.id,
     branchId: saleRow.branch_id,
@@ -144,6 +164,7 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     total: Number(saleRow.total),
     createdAt: saleRow.created_at,
     createdBy: saleRow.created_by,
+    createdByName,
     items: ((itemRows ?? []) as unknown as SaleItemRow[]).map((row) => ({
       id: row.id,
       productId: row.product_id,

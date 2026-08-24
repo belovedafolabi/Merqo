@@ -126,7 +126,7 @@ export async function getRolePermissionKeys(roleId: string): Promise<string[]> {
 
   if (error) throw error
 
-  return ((data ?? []) as { permissions: { key: string } | null }[])
+  return ((data ?? []) as unknown as { permissions: { key: string } | null }[])
     .map((row) => row.permissions?.key)
     .filter((key): key is string => Boolean(key))
 }

@@ -15,7 +15,10 @@ export function AuthCard({
   footer,
 }: {
   title: string
-  error?: string | null
+  // ReactNode, not just string: Milestone 11's sign-in page passes a
+  // Suspense-wrapped notice (reading proxy.ts's ?reason=deactivated) here
+  // alongside the plain string every other auth screen passes.
+  error?: React.ReactNode
   children: React.ReactNode
   footer?: React.ReactNode
 }) {

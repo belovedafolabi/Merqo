@@ -50,6 +50,8 @@ export interface NavItem {
     | 'Banknote'
     | 'Building2'
     | 'Settings'
+    | 'UserCog'
+    | 'ShieldCheck'
   permission: { key: string } | null
   badge?: string
 }
@@ -75,8 +77,18 @@ export const primaryNavItems: NavItem[] = [
     icon: 'Building2',
     permission: { key: 'branches.view' },
   },
+  // Milestone 11: gated on users.view (Milestone 03), same key the directory
+  // page itself requires — anyone who can see the employee list can see the
+  // nav item that leads to it.
+  { label: 'Employees', href: '/employees', icon: 'UserCog', permission: { key: 'users.view' } },
 ]
 
 export const secondaryNavItems: NavItem[] = [
+  // Milestone 11: gated on roles.view (Milestone 03) — every seeded role
+  // already holds it except the operational five (Cashier, Salesperson,
+  // Pharmacist, Waiter, Kitchen Staff), matching who could assign a role
+  // even before the builder existed.
+  { label: 'Roles', href: '/roles', icon: 'ShieldCheck', permission: { key: 'roles.view' } },
+  // Was a dead link until Milestone 11 built /settings — see app/(app)/settings/page.tsx.
   { label: 'Settings', href: '/settings', icon: 'Settings', permission: null },
 ]

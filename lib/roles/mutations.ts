@@ -160,7 +160,13 @@ async function attachPermissions(
 
 export async function assignUserRole(rawInput: AssignRoleInput): Promise<string> {
   const input = assignRoleInputSchema.parse(rawInput)
-  await requirePermission('roles.assign', { organizationId: input.organizationId })
+  // Captured, not discarded: `input.userId` is the EMPLOYEE being granted the
+  // role (assignRoleInputSchema's own doc), not the person doing the
+  // granting. Using it as audit_logs.user_id would misattribute the action —
+  // the log would read as the new employee having assigned the role to
+  // themselves. `actor` is who requirePermission() resolved from the calling
+  // session, matching every other mutation in this codebase.
+  const actor = await requirePermission('roles.assign', { organizationId: input.organizationId })
 
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
@@ -180,7 +186,7 @@ export async function assignUserRole(rawInput: AssignRoleInput): Promise<string>
   await recordAuditEvent(
     {
       organizationId: input.organizationId,
-      userId: input.userId,
+      userId: actor.id,
       action: 'user_role.assigned',
       resourceType: 'user_role',
       resourceId: data.id,
@@ -193,7 +199,7 @@ export async function assignUserRole(rawInput: AssignRoleInput): Promise<string>
 }
 
 export async function revokeUserRole(userRoleId: string, organizationId: string): Promise<void> {
-  await requirePermission('roles.assign', { organizationId })
+  const actor = await requirePermission('roles.assign', { organizationId })
 
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase.from('user_roles').delete().eq('id', userRoleId)
@@ -202,7 +208,10 @@ export async function revokeUserRole(userRoleId: string, organizationId: string)
   await recordAuditEvent(
     {
       organizationId,
-      userId: null,
+      // Previously null: revocation is exactly as attributable an action as
+      // assignment, and requirePermission() already has the actor in hand —
+      // there was no reason to throw it away here.
+      userId: actor.id,
       action: 'user_role.revoked',
       resourceType: 'user_role',
       resourceId: userRoleId,
