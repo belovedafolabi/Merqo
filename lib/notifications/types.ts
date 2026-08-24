@@ -20,9 +20,9 @@ export interface NotificationCategoryDefinition {
   /**
    * Non-disableable per the design corpus §15 ("some notifications should be
    * mandatory... security events, subscription expiry, account lock
-   * events"). Mirrored — not just declared here — by the database: the RLS
-   * UPDATE policy on notification_preferences
-   * (20260824100300_alter_notification_preferences_add_policies.sql) rejects
+   * events"). Mirrored — not just declared here — by the database: both RLS
+   * write policies on notification_preferences
+   * (20260824100300_alter_notification_preferences_add_policies.sql) reject
    * a write that would turn either channel off for a mandatory category, so
    * this flag driving a disabled <Switch> is the friendly version of a rule
    * the database enforces regardless.
