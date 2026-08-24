@@ -26,10 +26,7 @@ interface Fixture {
 
 let fixture: Fixture
 
-async function assignCashier(
-  organizationId: string,
-  userId: string,
-): Promise<void> {
+async function assignCashier(organizationId: string, userId: string): Promise<void> {
   const roleResult = await pool.query(`select id from public.roles where slug = 'cashier'`)
   await pool.query(
     `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,
@@ -41,15 +38,18 @@ async function assignCashier(
   // row, which every other test file also relies on being pristine.
   const grantRole = await pool.query(
     `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
-    [`deactivation-fixture-${randomUUID().slice(0, 8)}`, `deactivation-fixture-${randomUUID().slice(0, 8)}`],
+    [
+      `deactivation-fixture-${randomUUID().slice(0, 8)}`,
+      `deactivation-fixture-${randomUUID().slice(0, 8)}`,
+    ],
   )
   const permissionResult = await pool.query(
     `select id from public.permissions where key = 'branches.view'`,
   )
-  await pool.query(
-    `insert into public.role_permissions (role_id, permission_id) values ($1, $2)`,
-    [grantRole.rows[0].id, permissionResult.rows[0].id],
-  )
+  await pool.query(`insert into public.role_permissions (role_id, permission_id) values ($1, $2)`, [
+    grantRole.rows[0].id,
+    permissionResult.rows[0].id,
+  ])
   await pool.query(
     `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,
     [userId, grantRole.rows[0].id, organizationId],

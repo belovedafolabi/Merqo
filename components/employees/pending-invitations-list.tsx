@@ -12,7 +12,13 @@ import type { PendingInvitation } from '@/lib/employees/queries'
 
 const initialState: EmployeeActionState = { error: null }
 
-function RevokeButton({ organizationId, invitationId }: { organizationId: string; invitationId: string }) {
+function RevokeButton({
+  organizationId,
+  invitationId,
+}: {
+  organizationId: string
+  invitationId: string
+}) {
   const [, formAction, pending] = useActionState(revokeInvitationAction, initialState)
 
   return (

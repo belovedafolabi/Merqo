@@ -119,7 +119,11 @@ export function ReceiptSettingsForm({
             </div>
             <div className="flex items-center justify-between gap-4">
               <Label htmlFor="receipt-show-cashier">Show cashier name</Label>
-              <Switch id="receipt-show-cashier" name="showCashier" defaultChecked={settings.showCashier} />
+              <Switch
+                id="receipt-show-cashier"
+                name="showCashier"
+                defaultChecked={settings.showCashier}
+              />
             </div>
           </div>
 

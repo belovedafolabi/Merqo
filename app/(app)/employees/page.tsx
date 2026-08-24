@@ -4,7 +4,11 @@ import { Users } from 'lucide-react'
 import { getCurrentUserContext } from '@/lib/auth/context'
 import { requirePermission } from '@/lib/auth/guard'
 import { resolvePermission } from '@/lib/auth/permissions'
-import { getOnboardingState, listBranches, listBusinessUnits } from '@/lib/business-structure/queries'
+import {
+  getOnboardingState,
+  listBranches,
+  listBusinessUnits,
+} from '@/lib/business-structure/queries'
 import { listEmployees, listPendingInvitations } from '@/lib/employees/queries'
 import { listRoles } from '@/lib/roles/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'

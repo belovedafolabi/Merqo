@@ -94,7 +94,9 @@ export function RolesView({
         columns={columns}
         rows={roles}
         getRowKey={(row) => row.id}
-        emptyState={<EmptyState icon={ShieldCheck} title="No roles" description="This shouldn't happen." />}
+        emptyState={
+          <EmptyState icon={ShieldCheck} title="No roles" description="This shouldn't happen." />
+        }
       />
 
       {canAuthorRoles && (

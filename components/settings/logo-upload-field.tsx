@@ -3,7 +3,11 @@
 import { useActionState, useRef, useState } from 'react'
 import { TriangleAlert, Upload, X } from 'lucide-react'
 
-import { removeLogoAction, uploadLogoAction, type SettingsActionState } from '@/app/(app)/settings/actions'
+import {
+  removeLogoAction,
+  uploadLogoAction,
+  type SettingsActionState,
+} from '@/app/(app)/settings/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { LOGO_MAX_BYTES, LOGO_MIME_TYPES } from '@/lib/branding/schemas'

@@ -15,7 +15,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Branch, BusinessUnit } from '@/lib/business-structure/queries'
 import type { Employee } from '@/lib/employees/queries'
 import type { RoleSummary } from '@/lib/roles/queries'

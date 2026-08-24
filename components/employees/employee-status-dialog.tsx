@@ -47,7 +47,9 @@ export function EmployeeStatusDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{isDeactivating ? 'Deactivate' : 'Reactivate'} {employee.fullName}?</DialogTitle>
+          <DialogTitle>
+            {isDeactivating ? 'Deactivate' : 'Reactivate'} {employee.fullName}?
+          </DialogTitle>
           <DialogDescription>
             {isDeactivating
               ? 'This immediately revokes their access, including any session they currently have open.'
@@ -75,7 +77,11 @@ export function EmployeeStatusDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant={isDeactivating ? 'destructive' : 'default'} disabled={pending}>
+            <Button
+              type="submit"
+              variant={isDeactivating ? 'destructive' : 'default'}
+              disabled={pending}
+            >
               {pending ? 'Working…' : isDeactivating ? 'Deactivate' : 'Reactivate'}
             </Button>
           </DialogFooter>

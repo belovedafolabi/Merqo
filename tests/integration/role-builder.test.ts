@@ -153,9 +153,9 @@ describe('custom role builder — grants exactly what it says', () => {
 
     // Set-equality: no more, no less.
     expect(grantedInOrg).toEqual([...grantedKeys].sort())
-    expect(resolvePermission(grants, 'inventory.view', { organizationId: fixture.organizationId })).toBe(
-      true,
-    )
+    expect(
+      resolvePermission(grants, 'inventory.view', { organizationId: fixture.organizationId }),
+    ).toBe(true)
     expect(
       resolvePermission(grants, 'products.update', { organizationId: fixture.organizationId }),
     ).toBe(false)
@@ -345,10 +345,9 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
       .eq('id', customRole!.id)
       .select()
 
-    const stillCustom = await pool.query(
-      `select is_system_role from public.roles where id = $1`,
-      [customRole!.id],
-    )
+    const stillCustom = await pool.query(`select is_system_role from public.roles where id = $1`, [
+      customRole!.id,
+    ])
     expect(stillCustom.rows[0].is_system_role).toBe(false)
   })
 })

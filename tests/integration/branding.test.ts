@@ -72,9 +72,10 @@ describe('branding + receipt settings — organizations_update gates every new c
     expect(error).toBeNull()
     expect(data).toHaveLength(0)
 
-    const unchanged = await pool.query(`select brand_name from public.organizations where id = $1`, [
-      fixture.organizationId,
-    ])
+    const unchanged = await pool.query(
+      `select brand_name from public.organizations where id = $1`,
+      [fixture.organizationId],
+    )
     expect(unchanged.rows[0].brand_name).not.toBe('Hijacked')
   })
 
@@ -91,7 +92,7 @@ describe('branding + receipt settings — organizations_update gates every new c
 describe('organization-assets storage bucket', () => {
   const logoBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]) // PNG signature
 
-  it('an Owner can upload to their own organization\'s branding path and read it back publicly', async () => {
+  it("an Owner can upload to their own organization's branding path and read it back publicly", async () => {
     const path = `organizations/${fixture.organizationId}/branding/logo-${randomUUID()}.png`
 
     const { error: uploadError } = await fixture.owner.client.storage
@@ -114,7 +115,7 @@ describe('organization-assets storage bucket', () => {
     expect(error).not.toBeNull()
   })
 
-  it('nobody can upload into another organization\'s branding path, even the Owner of a different org', async () => {
+  it("nobody can upload into another organization's branding path, even the Owner of a different org", async () => {
     const otherOwner = await createTestUser()
     const { organizationId: otherOrgId } = await bootstrapOrganization(
       otherOwner,

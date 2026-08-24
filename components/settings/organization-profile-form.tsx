@@ -3,7 +3,10 @@
 import { useActionState } from 'react'
 import { Check, TriangleAlert } from 'lucide-react'
 
-import { updateOrganizationProfileAction, type SettingsActionState } from '@/app/(app)/settings/actions'
+import {
+  updateOrganizationProfileAction,
+  type SettingsActionState,
+} from '@/app/(app)/settings/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +36,9 @@ export function OrganizationProfileForm({
     <Card className="max-w-xl">
       <CardHeader>
         <CardTitle>Organization</CardTitle>
-        <CardDescription>{profile.name} — contact details printed on receipts and reports.</CardDescription>
+        <CardDescription>
+          {profile.name} — contact details printed on receipts and reports.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form

@@ -50,7 +50,9 @@ export function ReceiptDocument({
         )}
         <p className="font-semibold">{branding?.displayName ?? 'Merqo'}</p>
         {branchName && <p className="text-xs text-muted-foreground">{branchName}</p>}
-        {settings.headerText && <p className="text-xs text-muted-foreground">{settings.headerText}</p>}
+        {settings.headerText && (
+          <p className="text-xs text-muted-foreground">{settings.headerText}</p>
+        )}
       </div>
 
       <div className="border-t border-dashed" />

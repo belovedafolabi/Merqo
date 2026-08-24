@@ -89,13 +89,15 @@ export function PermissionChecklist({
                       // manual name="permissionKeys" checkbox per item would
                       // need the same Set-driven checked state anyway.
                     />
-                    {checked && <input type="hidden" name="permissionKeys" value={permission.key} />}
+                    {checked && (
+                      <input type="hidden" name="permissionKeys" value={permission.key} />
+                    )}
                     <Label
                       htmlFor={`permission-${permission.key}`}
                       className={!owned ? 'text-muted-foreground' : undefined}
                       title={
                         owned
-                          ? permission.description ?? undefined
+                          ? (permission.description ?? undefined)
                           : "You don't hold this permission, so you can't grant it to a role."
                       }
                     >

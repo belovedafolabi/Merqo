@@ -4,7 +4,11 @@ import { ReceiptDocument } from '@/components/receipts/receipt-document'
 import { cn } from '@/lib/utils'
 import type { OrganizationBranding } from '@/lib/branding/queries'
 import { SAMPLE_SALE } from '@/lib/receipts/sample'
-import { RECEIPT_TEMPLATE_IDS, RECEIPT_TEMPLATES, type ReceiptTemplateId } from '@/lib/receipts/templates'
+import {
+  RECEIPT_TEMPLATE_IDS,
+  RECEIPT_TEMPLATES,
+  type ReceiptTemplateId,
+} from '@/lib/receipts/templates'
 
 /**
  * Radio cards, each rendering a live <ReceiptDocument> thumbnail against
@@ -48,7 +52,7 @@ export function ReceiptTemplatePicker({
               {selected && <span className="size-2 rounded-full bg-primary" />}
             </div>
             <p className="text-xs text-muted-foreground">{template.description}</p>
-            <div className="pointer-events-none scale-90 origin-top">
+            <div className="pointer-events-none origin-top scale-90">
               <ReceiptDocument
                 sale={SAMPLE_SALE}
                 templateId={id}

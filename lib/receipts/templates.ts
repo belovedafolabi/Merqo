@@ -35,7 +35,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
   classic: {
     id: 'classic',
     label: 'Classic',
-    description: 'Standard receipt width with full line-item detail — the default for most businesses.',
+    description:
+      'Standard receipt width with full line-item detail — the default for most businesses.',
     density: 'comfortable',
     showItemUnitPrice: true,
     showTaxBreakdown: true,
@@ -45,7 +46,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
   compact: {
     id: 'compact',
     label: 'Compact',
-    description: 'Narrower layout for thermal-printer widths, with unit prices omitted to save space.',
+    description:
+      'Narrower layout for thermal-printer widths, with unit prices omitted to save space.',
     density: 'compact',
     showItemUnitPrice: false,
     showTaxBreakdown: true,
@@ -55,7 +57,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
   detailed: {
     id: 'detailed',
     label: 'Detailed',
-    description: 'Everything Classic shows, plus a full tax and payment breakdown — for businesses that need it on the printed copy.',
+    description:
+      'Everything Classic shows, plus a full tax and payment breakdown — for businesses that need it on the printed copy.',
     density: 'comfortable',
     showItemUnitPrice: true,
     showTaxBreakdown: true,

@@ -4,7 +4,11 @@ import { z } from 'zod'
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { getCurrentOrganizationId } from '@/lib/auth/context'
 import { requirePermission } from '@/lib/auth/guard'
-import { DEFAULT_RECEIPT_TEMPLATE_ID, RECEIPT_TEMPLATE_IDS, type ReceiptTemplateId } from '@/lib/receipts/templates'
+import {
+  DEFAULT_RECEIPT_TEMPLATE_ID,
+  RECEIPT_TEMPLATE_IDS,
+  type ReceiptTemplateId,
+} from '@/lib/receipts/templates'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 /**
@@ -46,7 +50,9 @@ export const getReceiptSettings = cache(async (): Promise<ReceiptSettings> => {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('organizations')
-    .select('receipt_template_id, receipt_header_text, receipt_footer_text, receipt_show_logo, receipt_show_cashier')
+    .select(
+      'receipt_template_id, receipt_header_text, receipt_footer_text, receipt_show_logo, receipt_show_cashier',
+    )
     .eq('id', organizationId)
     .single<ReceiptSettingsRow>()
 

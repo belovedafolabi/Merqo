@@ -27,11 +27,7 @@ const STATUS_COPY: Record<Exclude<InvitationStatus['status'], 'pending'>, string
  * (20260824090500) takes the hash, never the raw value, matching what is
  * actually stored in employee_invitations.token_hash.
  */
-export default async function InvitePage({
-  params,
-}: {
-  params: Promise<{ token: string }>
-}) {
+export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const tokenHash = hashInvitationToken(token)
 

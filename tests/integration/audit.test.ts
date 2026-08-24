@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, describe, expect, it } from 'vitest'
 
-import { generateInvitationToken, hashInvitationToken, invitationExpiry } from '@/lib/employees/invitations'
+import {
+  generateInvitationToken,
+  hashInvitationToken,
+  invitationExpiry,
+} from '@/lib/employees/invitations'
 import { pool, withTransaction } from './helpers/db'
 import { bootstrapOrganization, createAnonClient, createTestUser } from './helpers/supabase'
 
@@ -106,7 +110,10 @@ describe('audit log — write path and append-only enforcement', () => {
    * through is itself correct), not a second, redundant per-action test.
    */
   describe('Milestone 11 — SQL-layer administration actions are audited', () => {
-    async function auditActionsFor(organizationId: string, resourceType: string): Promise<string[]> {
+    async function auditActionsFor(
+      organizationId: string,
+      resourceType: string,
+    ): Promise<string[]> {
       const result = await pool.query(
         `select action from public.audit_logs where organization_id = $1 and resource_type = $2 order by created_at`,
         [organizationId, resourceType],
@@ -134,7 +141,9 @@ describe('audit log — write path and append-only enforcement', () => {
 
       const invitee = createAnonClient()
       await invitee.auth.signUp({ email, password: `Test-${randomUUID()}` })
-      await invitee.rpc('accept_employee_invitation', { p_token_hash: hashInvitationToken(rawToken) })
+      await invitee.rpc('accept_employee_invitation', {
+        p_token_hash: hashInvitationToken(rawToken),
+      })
 
       const actions = await auditActionsFor(organizationId, 'employee_invitation')
       expect(actions).toEqual(expect.arrayContaining(['employee_invitation.accepted']))
@@ -145,7 +154,10 @@ describe('audit log — write path and append-only enforcement', () => {
 
     it('employee.deactivated and employee.reactivated', async () => {
       const owner = await createTestUser()
-      const { organizationId } = await bootstrapOrganization(owner, `AuditDeactivate${randomUUID().slice(0, 8)}`)
+      const { organizationId } = await bootstrapOrganization(
+        owner,
+        `AuditDeactivate${randomUUID().slice(0, 8)}`,
+      )
 
       const employee = await createTestUser()
       const roleResult = await pool.query(`select id from public.roles where slug = 'cashier'`)

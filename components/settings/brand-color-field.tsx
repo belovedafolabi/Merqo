@@ -61,7 +61,8 @@ export function BrandColorField({
       {resolved?.usedFallback && (
         <p className="flex items-center gap-1.5 text-xs text-warning">
           <TriangleAlert className="size-3.5 shrink-0" />
-          This color doesn&apos;t meet contrast requirements and will be replaced with a safe default.
+          This color doesn&apos;t meet contrast requirements and will be replaced with a safe
+          default.
         </p>
       )}
     </div>

@@ -48,9 +48,7 @@ describe('lib/email/service', () => {
 
     expect(result.transport).toBe('log')
     expect(result.id).toBeNull()
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('email.transport_fallback_log'),
-    )
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('email.transport_fallback_log'))
   })
 
   it('a failing transport is both logged and rethrown as EmailDeliveryError — never one without the other', async () => {
@@ -61,7 +59,9 @@ describe('lib/email/service', () => {
       vi.fn().mockResolvedValue({
         ok: false,
         status: 403,
-        json: async () => ({ message: 'You can only send testing emails to your own email address' }),
+        json: async () => ({
+          message: 'You can only send testing emails to your own email address',
+        }),
       }),
     )
 
@@ -78,7 +78,9 @@ describe('lib/email/service', () => {
       vi.fn().mockResolvedValue({
         ok: false,
         status: 403,
-        json: async () => ({ message: 'You can only send testing emails to your own email address' }),
+        json: async () => ({
+          message: 'You can only send testing emails to your own email address',
+        }),
       }),
     )
     await expect(sendEmail(MESSAGE)).rejects.toThrow(
@@ -94,7 +96,9 @@ describe('lib/email/service', () => {
       join(process.cwd(), 'lib', 'email', 'transports', 'log.ts'),
     ]
 
-    const matches = filesToCheck.filter((path) => readFileSync(path, 'utf8').includes('api.resend.com'))
+    const matches = filesToCheck.filter((path) =>
+      readFileSync(path, 'utf8').includes('api.resend.com'),
+    )
     expect(matches).toEqual([targetFile])
   })
 })

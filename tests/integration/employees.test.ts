@@ -4,7 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { fetchPermissionGrants } from '@/lib/auth/context'
 import { resolvePermission } from '@/lib/auth/permissions'
-import { generateInvitationToken, hashInvitationToken, invitationExpiry } from '@/lib/employees/invitations'
+import {
+  generateInvitationToken,
+  hashInvitationToken,
+  invitationExpiry,
+} from '@/lib/employees/invitations'
 import { pool } from './helpers/db'
 import { bootstrapOrganization, createAnonClient, createTestUser } from './helpers/supabase'
 
@@ -114,18 +118,21 @@ describe('employee invitations — full invite → accept → login flow', () =>
     expect(signUpError).toBeNull()
     expect(signUpData.session).not.toBeNull()
 
-    const { data: userRoleId, error: acceptError } = await invitee.rpc('accept_employee_invitation', {
-      p_token_hash: tokenHash,
-    })
+    const { data: userRoleId, error: acceptError } = await invitee.rpc(
+      'accept_employee_invitation',
+      {
+        p_token_hash: tokenHash,
+      },
+    )
     expect(acceptError).toBeNull()
     expect(userRoleId).toBeTruthy()
 
     const grants = await fetchPermissionGrants(invitee)
     const grantedInOrg = grants.filter((g) => g.organizationId === fixture.organizationId)
     expect(grantedInOrg).toHaveLength(1)
-    expect(resolvePermission(grants, 'branches.view', { organizationId: fixture.organizationId })).toBe(
-      true,
-    )
+    expect(
+      resolvePermission(grants, 'branches.view', { organizationId: fixture.organizationId }),
+    ).toBe(true)
 
     // rawToken is asserted merely to exist and differ from the hash — this is
     // what the email/copy-link UI actually sends; the hash is what the
@@ -233,10 +240,10 @@ describe('employee invitations — the escalation door is locked here too', () =
     const permissionResult = await pool.query(
       `select id from public.permissions where key = 'employees.invite'`,
     )
-    await pool.query(`insert into public.role_permissions (role_id, permission_id) values ($1, $2)`, [
-      inviterResult.rows[0].id,
-      permissionResult.rows[0].id,
-    ])
+    await pool.query(
+      `insert into public.role_permissions (role_id, permission_id) values ($1, $2)`,
+      [inviterResult.rows[0].id, permissionResult.rows[0].id],
+    )
     const weakInviter = await createTestUser()
     await pool.query(
       `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,

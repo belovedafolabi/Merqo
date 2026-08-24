@@ -49,7 +49,10 @@ function slugify(name: string): string {
  * builder UI shows the failure and lets the author retry — unlike, say, a
  * sale total, nothing here needs "all or nothing".
  */
-export async function createRole(organizationId: string, rawInput: CreateRoleInput): Promise<string> {
+export async function createRole(
+  organizationId: string,
+  rawInput: CreateRoleInput,
+): Promise<string> {
   const input = createRoleInputSchema.parse(rawInput)
   const user = await requirePermission('roles.create', { organizationId })
 

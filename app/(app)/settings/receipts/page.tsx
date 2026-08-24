@@ -15,5 +15,7 @@ export default async function ReceiptSettingsPage() {
 
   const [settings, branding] = await Promise.all([getReceiptSettings(), getOrganizationBranding()])
 
-  return <ReceiptSettingsForm organizationId={organizationId} settings={settings} branding={branding} />
+  return (
+    <ReceiptSettingsForm organizationId={organizationId} settings={settings} branding={branding} />
+  )
 }

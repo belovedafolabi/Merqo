@@ -144,10 +144,19 @@ export async function listOwnOrgWidePermissionKeys(organizationId: string): Prom
   if (error) throw error
 
   return new Set(
-    ((data ?? []) as { permission_key: string; organization_id: string; branch_id: string | null; business_unit_id: string | null }[])
+    (
+      (data ?? []) as {
+        permission_key: string
+        organization_id: string
+        branch_id: string | null
+        business_unit_id: string | null
+      }[]
+    )
       .filter(
         (row) =>
-          row.organization_id === organizationId && row.branch_id === null && row.business_unit_id === null,
+          row.organization_id === organizationId &&
+          row.branch_id === null &&
+          row.business_unit_id === null,
       )
       .map((row) => row.permission_key),
   )

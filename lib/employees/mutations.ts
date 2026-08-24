@@ -224,7 +224,10 @@ export async function inviteEmployee(
   }
 }
 
-export async function revokeInvitation(organizationId: string, invitationId: string): Promise<void> {
+export async function revokeInvitation(
+  organizationId: string,
+  invitationId: string,
+): Promise<void> {
   const user = await requirePermission('employees.invite', { organizationId })
   const supabase = await createServerSupabaseClient()
 

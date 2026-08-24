@@ -75,7 +75,11 @@ export function BrandingEditor({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <BrandColorField name="primaryColor" label="Primary color" defaultValue={branding.primaryColor} />
+            <BrandColorField
+              name="primaryColor"
+              label="Primary color"
+              defaultValue={branding.primaryColor}
+            />
             <BrandColorField
               name="secondaryColor"
               label="Secondary color"

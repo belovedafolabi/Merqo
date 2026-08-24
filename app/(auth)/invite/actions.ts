@@ -24,7 +24,8 @@ const ERROR_COPY: Record<string, string> = {
   invitation_revoked: 'This invitation has been revoked.',
   invitation_already_accepted: 'This invitation has already been accepted.',
   invitation_expired: 'This invitation has expired.',
-  invitation_email_mismatch: 'This invitation was sent to a different email address than the one you signed in with.',
+  invitation_email_mismatch:
+    'This invitation was sent to a different email address than the one you signed in with.',
 }
 
 function friendlyError(message: string): string {
@@ -73,7 +74,9 @@ export async function acceptInvitationAction(
       // "create an account" instead of "I already have an account". Rather
       // than a dead-end error, tell them what to do next.
       if (error.message.toLowerCase().includes('already registered')) {
-        return { error: 'An account already exists for this email. Use "I already have an account" below.' }
+        return {
+          error: 'An account already exists for this email. Use "I already have an account" below.',
+        }
       }
       return { error: error.message }
     }
@@ -91,9 +94,12 @@ export async function acceptInvitationAction(
     }
   }
 
-  const { data: userRoleId, error: acceptError } = await supabase.rpc('accept_employee_invitation', {
-    p_token_hash: hashInvitationToken(token),
-  })
+  const { data: userRoleId, error: acceptError } = await supabase.rpc(
+    'accept_employee_invitation',
+    {
+      p_token_hash: hashInvitationToken(token),
+    },
+  )
 
   if (acceptError) {
     return { error: friendlyError(acceptError.message) }

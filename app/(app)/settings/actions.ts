@@ -2,7 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { removeOrganizationLogo, updateBranding, uploadOrganizationLogo } from '@/lib/branding/mutations'
+import {
+  removeOrganizationLogo,
+  updateBranding,
+  uploadOrganizationLogo,
+} from '@/lib/branding/mutations'
 import { updateOrganizationProfile } from '@/lib/organization/mutations'
 import { updateReceiptSettings } from '@/lib/receipts/settings'
 
@@ -110,7 +114,8 @@ export async function updateReceiptSettingsAction(
 
   try {
     await updateReceiptSettings(organizationId, {
-      templateId: String(formData.get('templateId') ?? 'classic') as 'classic' | 'compact' | 'detailed',
+      templateId: String(formData.get('templateId') ?? 'classic') as
+        'classic' | 'compact' | 'detailed',
       headerText: (formData.get('headerText') as string) || undefined,
       footerText: (formData.get('footerText') as string) || undefined,
       // Radix's <Switch> submits the native default "on" when checked

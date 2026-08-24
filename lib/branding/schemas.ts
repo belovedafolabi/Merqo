@@ -68,7 +68,10 @@ const MAGIC_BYTES: Record<LogoMimeType, readonly number[]> = {
 }
 
 export function sniffLogoMimeType(bytes: Uint8Array): LogoMimeType | null {
-  for (const [mime, signature] of Object.entries(MAGIC_BYTES) as [LogoMimeType, readonly number[]][]) {
+  for (const [mime, signature] of Object.entries(MAGIC_BYTES) as [
+    LogoMimeType,
+    readonly number[],
+  ][]) {
     if (signature.every((byte, index) => bytes[index] === byte)) {
       if (mime === 'image/webp') {
         const webpTag = [0x57, 0x45, 0x42, 0x50] // "WEBP"

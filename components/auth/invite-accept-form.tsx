@@ -22,8 +22,8 @@ export function InviteAcceptForm({ token, email }: { token: string; email: strin
     return (
       <Alert>
         <AlertDescription>
-          Check {email} for a confirmation link, then come back to this page and use &ldquo;I already
-          have an account&rdquo; below to finish accepting.
+          Check {email} for a confirmation link, then come back to this page and use &ldquo;I
+          already have an account&rdquo; below to finish accepting.
         </AlertDescription>
       </Alert>
     )

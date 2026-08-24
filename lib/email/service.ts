@@ -2,7 +2,12 @@ import { logger } from '@/lib/logger'
 
 import { createLogTransport } from './transports/log'
 import { createResendTransport } from './transports/resend'
-import { type EmailMessage, type EmailSendResult, type EmailTransport, EmailDeliveryError } from './types'
+import {
+  type EmailMessage,
+  type EmailSendResult,
+  type EmailTransport,
+  EmailDeliveryError,
+} from './types'
 
 /**
  * EmailService — the single outbound-email seam (see ./types.ts for the
@@ -39,7 +44,10 @@ export function resolveEmailTransport(): EmailTransport {
   const apiKey = process.env.RESEND_API_KEY
 
   if (apiKey) {
-    cachedTransport = createResendTransport(apiKey, process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM_EMAIL)
+    cachedTransport = createResendTransport(
+      apiKey,
+      process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM_EMAIL,
+    )
   } else {
     logger.warn('email.transport_fallback_log', {
       reason: 'RESEND_API_KEY is not set; messages will be logged rather than sent',

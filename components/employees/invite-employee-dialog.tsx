@@ -16,7 +16,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Branch, BusinessUnit } from '@/lib/business-structure/queries'
 import type { RoleSummary } from '@/lib/roles/queries'
 
@@ -98,7 +104,12 @@ export function InviteEmployeeDialog({
             <div className="flex flex-col gap-2">
               <Label htmlFor="invite-url">Invite link</Label>
               <div className="flex gap-2">
-                <Input id="invite-url" readOnly value={state.inviteUrl} className="font-mono text-xs" />
+                <Input
+                  id="invite-url"
+                  readOnly
+                  value={state.inviteUrl}
+                  className="font-mono text-xs"
+                />
                 <Button
                   type="button"
                   variant="outline"
@@ -170,7 +181,9 @@ export function InviteEmployeeDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Leave unset for organization-wide access.</p>
+              <p className="text-xs text-muted-foreground">
+                Leave unset for organization-wide access.
+              </p>
             </div>
 
             {businessUnits.length > 0 && (

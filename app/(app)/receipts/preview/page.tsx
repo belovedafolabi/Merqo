@@ -5,7 +5,11 @@ import { getOrganizationBranding } from '@/lib/branding/queries'
 import { getOnboardingState, listBranches } from '@/lib/business-structure/queries'
 import { getReceiptSettings } from '@/lib/receipts/settings'
 import { SAMPLE_SALE } from '@/lib/receipts/sample'
-import { DEFAULT_RECEIPT_TEMPLATE_ID, RECEIPT_TEMPLATE_IDS, type ReceiptTemplateId } from '@/lib/receipts/templates'
+import {
+  DEFAULT_RECEIPT_TEMPLATE_ID,
+  RECEIPT_TEMPLATE_IDS,
+  type ReceiptTemplateId,
+} from '@/lib/receipts/templates'
 import { getSale } from '@/lib/sales/queries'
 import { ReceiptPrintFrame } from '@/components/receipts/receipt-print-frame'
 

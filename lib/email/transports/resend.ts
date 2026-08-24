@@ -1,4 +1,9 @@
-import { type EmailMessage, type EmailSendResult, type EmailTransport, EmailDeliveryError } from '../types'
+import {
+  type EmailMessage,
+  type EmailSendResult,
+  type EmailTransport,
+  EmailDeliveryError,
+} from '../types'
 
 /**
  * Resend, over its REST API.

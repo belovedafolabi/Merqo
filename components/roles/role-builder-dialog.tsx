@@ -3,7 +3,11 @@
 import { useActionState, useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
-import { createRoleAction, updateRolePermissionsAction, type RolesActionState } from '@/app/(app)/roles/actions'
+import {
+  createRoleAction,
+  updateRolePermissionsAction,
+  type RolesActionState,
+} from '@/app/(app)/roles/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -102,7 +106,14 @@ export function RoleBuilderDialog({
             <>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="role-name">Name</Label>
-                <Input id="role-name" name="name" required minLength={2} maxLength={60} placeholder="Stock Auditor" />
+                <Input
+                  id="role-name"
+                  name="name"
+                  required
+                  minLength={2}
+                  maxLength={60}
+                  placeholder="Stock Auditor"
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="role-description">Description (optional)</Label>

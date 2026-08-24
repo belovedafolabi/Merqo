@@ -22,7 +22,11 @@ describe('hexColorSchema', () => {
 
 describe('brandingSettingsSchema', () => {
   it('treats blank fields as absent rather than empty strings', () => {
-    const result = brandingSettingsSchema.parse({ brandName: '', primaryColor: '', secondaryColor: '' })
+    const result = brandingSettingsSchema.parse({
+      brandName: '',
+      primaryColor: '',
+      secondaryColor: '',
+    })
     expect(result).toEqual({ brandName: undefined, primaryColor: null, secondaryColor: null })
   })
 })
