@@ -18,6 +18,7 @@ export default function SignUpPage() {
     <AuthCard
       title="Create your organization"
       error={state.error}
+      notice={state.notice}
       footer={
         <>
           Already have an account?{' '}

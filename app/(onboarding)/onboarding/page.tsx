@@ -6,6 +6,7 @@ import {
   listBusinessUnitCapabilities,
 } from '@/lib/business-structure/queries'
 import { OnboardingShell } from '@/components/onboarding/onboarding-shell'
+import { OrganizationStep } from '@/components/onboarding/organization-step'
 import { BranchStep } from '@/components/onboarding/branch-step'
 import { BusinessUnitStep } from '@/components/onboarding/business-unit-step'
 import { ConfigureStep } from '@/components/onboarding/configure-step'
@@ -18,6 +19,14 @@ const STEPS: WizardStep[] = [
   { label: 'Configure' },
   { label: 'Finish' },
 ]
+
+// Only shown for a signed-in user with no organization yet — a stranded
+// pre-fix account (see lib/organization/mutations.ts's
+// ensureOrganizationBootstrapped()'s 'missing_organization_name' outcome) or
+// a name-collision at sign-up. A normal sign-up never reaches this branch,
+// so it stays a separate step list rather than growing STEPS to 5 for
+// everyone.
+const ORG_STEPS: WizardStep[] = [{ label: 'Organization' }, ...STEPS]
 
 /**
  * The onboarding wizard's single entry point — every step redirects back
@@ -32,7 +41,16 @@ export default async function OnboardingPage() {
   const state = await getOnboardingState()
 
   if (!state.organizationId) {
-    redirect('/sign-in')
+    return (
+      <OnboardingShell
+        title="Name your organization"
+        description="This is the business you're setting up Merqo for."
+        steps={ORG_STEPS}
+        currentStepIndex={0}
+      >
+        <OrganizationStep />
+      </OnboardingShell>
+    )
   }
   if (state.onboardingCompletedAt) {
     redirect('/dashboard')

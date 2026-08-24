@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { type EmailOtpType } from '@supabase/supabase-js'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { ensureOrganizationBootstrapped } from '@/lib/organization/mutations'
 
 /**
  * Supabase's documented SSR email-link pattern: the password-reset email
@@ -12,6 +13,13 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
  * NextResponse.redirect (not next/navigation's redirect(), which relies on
  * the Server Component/Action render pipeline this plain Route Handler
  * doesn't go through).
+ *
+ * Every non-recovery confirmation (signUp()'s own emailRedirectTo points
+ * here with type=signup) also gets a shot at organization bootstrap here —
+ * defense-in-depth alongside signIn()'s own call, since a user who never
+ * signs in again but does click the confirmation link should still end up
+ * with an organization. Harmless/no-op for an invited employee (no
+ * organization_name in their metadata) and for a user who already has one.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -22,6 +30,12 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabaseClient()
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
     if (!error) {
+      if (type !== 'recovery') {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user) await ensureOrganizationBootstrapped(supabase, user)
+      }
       return NextResponse.redirect(
         new URL(type === 'recovery' ? '/reset-password' : '/dashboard', request.url),
       )

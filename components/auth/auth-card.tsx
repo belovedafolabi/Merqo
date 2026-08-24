@@ -1,4 +1,4 @@
-import { Bolt, TriangleAlert } from 'lucide-react'
+import { Bolt, MailCheck, TriangleAlert } from 'lucide-react'
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 export function AuthCard({
   title,
   error,
+  notice,
   children,
   footer,
 }: {
@@ -19,6 +20,11 @@ export function AuthCard({
   // Suspense-wrapped notice (reading proxy.ts's ?reason=deactivated) here
   // alongside the plain string every other auth screen passes.
   error?: React.ReactNode
+  // A non-error message — e.g. "check your email" after a sign-up that
+  // returned no session (a hosted deployment with email confirmation
+  // enabled). Renders alongside `error` rather than replacing it; the two
+  // are never mutually exclusive in practice.
+  notice?: React.ReactNode
   children: React.ReactNode
   footer?: React.ReactNode
 }) {
@@ -38,6 +44,12 @@ export function AuthCard({
           <Alert variant="destructive" role="alert">
             <TriangleAlert />
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {notice && (
+          <Alert role="status">
+            <MailCheck />
+            <AlertDescription>{notice}</AlertDescription>
           </Alert>
         )}
         {children}

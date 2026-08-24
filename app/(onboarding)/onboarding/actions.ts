@@ -9,6 +9,7 @@ import {
   updateBusinessUnitCapabilities,
   upsertBusinessUnitPosConfig,
 } from '@/lib/business-structure/mutations'
+import { createOrganizationForCurrentUser } from '@/lib/organization/mutations'
 
 /**
  * Server Actions for the onboarding wizard (app/(onboarding)/onboarding/page.tsx).
@@ -25,6 +26,29 @@ export interface OnboardingActionState {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+}
+
+/**
+ * app/(onboarding)/onboarding/page.tsx's ORG_STEPS recovery branch —
+ * components/onboarding/organization-step.tsx's form target. Reuses
+ * createOrganizationForCurrentUser() (lib/organization/mutations.ts), the
+ * same create_organization_with_owner() call path signIn()'s
+ * ensureOrganizationBootstrapped() uses, so "already taken" / "already
+ * belongs to an organization" get identical handling either way.
+ */
+export async function createOrganizationStepAction(
+  _prevState: OnboardingActionState,
+  formData: FormData,
+): Promise<OnboardingActionState> {
+  const name = String(formData.get('name') ?? '')
+
+  try {
+    await createOrganizationForCurrentUser(name)
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  redirect('/onboarding')
 }
 
 export async function createBranchStepAction(

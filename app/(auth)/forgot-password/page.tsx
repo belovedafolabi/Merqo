@@ -18,6 +18,7 @@ export default function ForgotPasswordPage() {
     <AuthCard
       title="Reset your password"
       error={state.error}
+      notice={state.notice}
       footer={
         <div className="flex flex-col gap-2">
           <span>If an account exists for that email, a reset link has been sent.</span>
