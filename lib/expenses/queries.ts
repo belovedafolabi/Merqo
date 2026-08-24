@@ -1,31 +1,19 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import type { Expense } from '@/lib/expenses/summary'
 
 /**
  * Read-side queries for expenses. Same shape as lib/sales/queries.ts — RLS
  * (`expenses_select`, 20260823140300) is the enforced visibility boundary;
  * these functions exist for query precision and row mapping, not as a second
  * authorization layer.
+ *
+ * The `Expense` shape and the pure `summarizeExpenses()` live in
+ * lib/expenses/summary.ts, not here — this module imports `next/headers`
+ * transitively, so a client component importing a value from it would break
+ * the build. See that module's header.
  */
 
-export interface Expense {
-  id: string
-  branchId: string
-  branchName: string
-  businessUnitId: string | null
-  category: string
-  amount: number
-  paymentMethod: string
-  description: string | null
-  expenseDate: string
-  status: 'pending' | 'approved' | 'rejected'
-  decisionReason: string | null
-  decidedAt: string | null
-  approvedByName: string | null
-  voidedAt: string | null
-  voidReason: string | null
-  createdAt: string
-  createdByName: string | null
-}
+export type { Expense } from '@/lib/expenses/summary'
 
 interface ExpenseRow {
   id: string
@@ -114,29 +102,4 @@ export async function listExpenses(
   if (error) throw error
 
   return ((data ?? []) as unknown as ExpenseRow[]).map(mapExpense)
-}
-
-export interface ExpenseTotals {
-  pendingCount: number
-  pendingAmount: number
-  approvedAmount: number
-}
-
-/**
- * The three figures the expenses screen puts above the table. Derived from the
- * same rows the table shows rather than from a separate aggregate query, so
- * the header and the list can never disagree about what is on screen.
- */
-export function summarizeExpenses(expenses: readonly Expense[]): ExpenseTotals {
-  const live = expenses.filter((expense) => expense.voidedAt === null)
-  const pending = live.filter((expense) => expense.status === 'pending')
-
-  const sum = (rows: readonly Expense[]) =>
-    Math.round((rows.reduce((total, row) => total + row.amount, 0) + Number.EPSILON) * 100) / 100
-
-  return {
-    pendingCount: pending.length,
-    pendingAmount: sum(pending),
-    approvedAmount: sum(live.filter((expense) => expense.status === 'approved')),
-  }
 }

@@ -138,7 +138,11 @@ export async function recordReportExport(
     userId: user.id,
     action: 'reports.exported',
     resourceType: 'report',
-    resourceId: reportId,
-    metadata: { format, rowCount },
+    // `resource_id` is a uuid column, and a standard report has no database
+    // row to point at — its id is a catalog slug like 'sales-summary'. The
+    // report identity goes in metadata instead of being forced into a column
+    // that cannot hold it.
+    resourceId: null,
+    metadata: { reportId, format, rowCount },
   })
 }

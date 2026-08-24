@@ -3,6 +3,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -35,12 +36,20 @@ export function DataTable<TRow>({
   rows,
   getRowKey,
   emptyState,
+  footer,
   className,
 }: {
   columns: DataTableColumn<TRow>[]
   rows: TRow[]
   getRowKey: (row: TRow) => string
   emptyState?: React.ReactNode
+  /**
+   * Optional totals row, keyed by column. Added by Milestone 10, which is the
+   * first milestone with reports whose columns actually sum to something — a
+   * footer rendered as a sibling `<table>` would not share the body's column
+   * widths, so the totals would not line up under the figures they total.
+   */
+  footer?: (column: DataTableColumn<TRow>, index: number) => React.ReactNode
   className?: string
 }) {
   if (rows.length === 0 && emptyState) {
@@ -69,6 +78,17 @@ export function DataTable<TRow>({
           </TableRow>
         ))}
       </TableBody>
+      {footer && (
+        <TableFooter>
+          <TableRow>
+            {columns.map((column, index) => (
+              <TableCell key={column.header} className={column.className}>
+                {footer(column, index)}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableFooter>
+      )}
     </Table>
   )
 }

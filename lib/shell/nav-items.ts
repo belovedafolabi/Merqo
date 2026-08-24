@@ -15,8 +15,9 @@
  * (components/auth/can.tsx) only where a real permission already exists in
  * the seeded catalog (supabase/seed.sql) — "Business Structure"
  * (`branches.view`), since Milestone 06 "Products" (`products.view`), since
- * Milestone 07 "Inventory" (`inventory.view`), and since Milestone 09
- * "Customers" (`customers.view`) and "Layaways" (`layaway.view`).
+ * Milestone 07 "Inventory" (`inventory.view`), since Milestone 09
+ * "Customers" (`customers.view`) and "Layaways" (`layaway.view`), and since
+ * Milestone 10 "Reports" (`reports.view`) and "Expenses" (`expense.view`).
  * Items whose domain permission doesn't exist yet are intentionally left
  * ungated (`permission: null`): gating them on a
  * *different* module's permission, or hiding them for everyone, would be
@@ -46,6 +47,7 @@ export interface NavItem {
     | 'Users'
     | 'Wallet'
     | 'ScrollText'
+    | 'Banknote'
     | 'Building2'
     | 'Settings'
   permission: { key: string } | null
@@ -65,7 +67,8 @@ export const primaryNavItems: NavItem[] = [
   },
   { label: 'Customers', href: '/customers', icon: 'Users', permission: { key: 'customers.view' } },
   { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: { key: 'layaway.view' } },
-  { label: 'Reports', href: '/reports', icon: 'ScrollText', permission: null },
+  { label: 'Reports', href: '/reports', icon: 'ScrollText', permission: { key: 'reports.view' } },
+  { label: 'Expenses', href: '/expenses', icon: 'Banknote', permission: { key: 'expense.view' } },
   {
     label: 'Business Structure',
     href: '/business-structure',

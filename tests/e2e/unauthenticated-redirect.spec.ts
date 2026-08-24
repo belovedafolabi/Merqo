@@ -20,7 +20,22 @@ import { expect, test } from '@playwright/test'
  * unconfigured state as the real `e2e` CI job — no env vars are set here or
  * in that job — so it's exercising the actual gap, not a mock of it.
  */
-const PROTECTED_PATHS = ['/dashboard', '/pos']
+/**
+ * Milestone 10 adds `/reports` and `/expenses`, and both are worth listing
+ * here specifically. Every other protected route reaches `requireUser()`
+ * through the shared layout; these two are the first to call
+ * `requirePermission()` directly in their own page bodies, which throws rather
+ * than redirecting (lib/auth/guard.ts). This spec pins down that a signed-out
+ * visitor still gets the sign-in redirect from the layout *before* that throw
+ * can happen — the ordering is what keeps a missing session from surfacing as
+ * a 500.
+ *
+ * Note what is deliberately not tested here: the reports themselves. This CI
+ * job has no Supabase behind it at all, so a test that signed in and asserted
+ * on report figures could not run — that coverage lives in
+ * tests/integration/reports.test.ts, which does have a database.
+ */
+const PROTECTED_PATHS = ['/dashboard', '/pos', '/reports', '/expenses']
 
 for (const path of PROTECTED_PATHS) {
   test(`unauthenticated visit to ${path} redirects to /sign-in instead of erroring`, async ({
