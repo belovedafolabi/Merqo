@@ -186,6 +186,7 @@ returns table (
   user_id uuid,
   email text,
   full_name text,
+  email_enabled boolean,
   product_name text,
   sku text,
   branch_name text,
@@ -269,6 +270,7 @@ begin
     i.user_id,
     i.email,
     i.full_name,
+    i.email_enabled,
     i.product_name,
     i.sku,
     v_branch_name,
@@ -276,8 +278,7 @@ begin
     i.low_stock_threshold,
     '/inventory?branchId=' || p_branch_id
   from inserted i
-  where i.id is not null
-    and i.email_enabled;
+  where i.id is not null;
 end;
 $$;
 
@@ -286,9 +287,11 @@ comment on function public.notify_low_stock(uuid, uuid[]) is
   'Called from lib/inventory/mutations.ts and lib/sales/mutations.ts after '
   'their own RPC has committed. Guards on branch access (a cashier must be '
   'able to trigger this); recipients resolve on inventory.adjust (only the '
-  'restock authority should be emailed). Returns only the rows it actually '
-  'inserted (dedupe/cooldown may suppress a row) whose recipient has email '
-  'enabled — that set is the caller''s email worklist.';
+  'restock authority should be notified). Returns only the rows it actually '
+  'inserted (dedupe/cooldown may suppress a row) — every one an in-app '
+  'notification, with email_enabled telling the caller which of those to '
+  'also email. The full set is the in-app count; the email_enabled subset '
+  'is the email worklist.';
 
 -- ---------------------------------------------------------------------------
 -- 4. notify_role_assigned — the milestone's basic security trigger
@@ -309,6 +312,7 @@ returns table (
   user_id uuid,
   email text,
   full_name text,
+  email_enabled boolean,
   role_name text,
   organization_name text
 )
@@ -362,15 +366,18 @@ begin
   );
 
   return query
-  select v_id, v_target_user_id, v_target_email, v_target_full_name, v_role_name, v_organization_name
-  where v_id is not null and v_email_enabled;
+  select v_id, v_target_user_id, v_target_email, v_target_full_name, v_email_enabled, v_role_name, v_organization_name
+  where v_id is not null;
 end;
 $$;
 
 comment on function public.notify_role_assigned(uuid) is
   'The basic security trigger this milestone wires — full depth (suspicious '
   'activity, permission-change diffing) is Milestone 15''s scope. security '
-  'category, non-disableable per 20260824100300''s update policy.';
+  'category, non-disableable per 20260824100300''s update policy. Returns '
+  'the inserted row with email_enabled telling the caller whether to also '
+  'email it — see notify_low_stock()''s comment for why that decision is '
+  'left to the caller rather than filtered in SQL.';
 
 -- ---------------------------------------------------------------------------
 -- Grants: the two entry points authenticated code actually calls. Everything
