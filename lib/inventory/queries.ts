@@ -104,7 +104,19 @@ export async function listInventoryBalances(branchId: string): Promise<Inventory
   return ((data ?? []) as unknown as BalanceRow[]).map(mapBalanceRow)
 }
 
-/** Below its configured threshold — a null threshold means "not configured", never "low". */
+/**
+ * Below its configured threshold — a null threshold means "not configured",
+ * never "low".
+ *
+ * The predicate is `available_quantity`, not `quantity`. `reserved_quantity`
+ * is stock already committed to a layaway or an open order, so it cannot be
+ * sold to anyone else; a threshold measured against raw on-hand quantity
+ * claims you have stock you are not actually able to move. Milestone 10's
+ * report RPC already took this position
+ * (supabase/migrations/20260823141000_create_report_functions.sql), and
+ * Milestone 12 made it the single rule everywhere — this query, the inventory
+ * view's badge, and public.notify_low_stock() all read the same way.
+ */
 export async function listLowStockBalances(branchId: string): Promise<InventoryBalance[]> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
@@ -112,11 +124,11 @@ export async function listLowStockBalances(branchId: string): Promise<InventoryB
     .select(balanceSelect)
     .eq('branch_id', branchId)
     .not('low_stock_threshold', 'is', null)
-    .order('quantity', { ascending: true })
+    .order('available_quantity', { ascending: true })
 
   if (error) throw error
   return ((data ?? []) as unknown as BalanceRow[])
-    .filter((row) => Number(row.quantity) <= Number(row.low_stock_threshold))
+    .filter((row) => Number(row.available_quantity) <= Number(row.low_stock_threshold))
     .map(mapBalanceRow)
 }
 

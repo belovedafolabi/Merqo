@@ -85,9 +85,14 @@ export function InventoryView({
     )
   }, [balances, search])
 
+  // `availableQuantity`, not `quantity` — reserved stock is committed to a
+  // layaway or an open order and cannot be sold, so a threshold measured
+  // against on-hand quantity would call a shelf healthy that has nothing
+  // sellable on it. Same rule as lib/inventory/queries.ts's
+  // listLowStockBalances() and public.notify_low_stock().
   const lowStockCount = balances.filter(
     (balance) =>
-      balance.lowStockThreshold !== null && balance.quantity <= balance.lowStockThreshold,
+      balance.lowStockThreshold !== null && balance.availableQuantity <= balance.lowStockThreshold,
   ).length
 
   const balanceColumns: DataTableColumn<InventoryBalance>[] = [
@@ -109,7 +114,8 @@ export function InventoryView({
     {
       header: 'Status',
       cell: (row) => {
-        const isLow = row.lowStockThreshold !== null && row.quantity <= row.lowStockThreshold
+        const isLow =
+          row.lowStockThreshold !== null && row.availableQuantity <= row.lowStockThreshold
         return isLow ? (
           <Badge variant="destructive">Low stock</Badge>
         ) : (
