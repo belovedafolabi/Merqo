@@ -6,20 +6,17 @@ import { expect, test } from '@playwright/test'
  * "Playwright checks that the Admin shell and POS shell each render
  * correctly at desktop, tablet, and mobile viewport widths").
  *
- * The `e2e` CI job (.github/workflows/ci.yml) runs against a plain
- * `next build && next start` with no Supabase instance behind it — only
- * `db-migrations` provisions one, for the integration-test job. That's not
- * just "no session" — `NEXT_PUBLIC_SUPABASE_URL`/`_ANON_KEY` are unset
- * entirely. `/dashboard` and `/pos` therefore reach their Server Component
- * layouts unauthenticated and redirect to `/sign-in` via `requireUser()`
- * (lib/auth/context.ts's `isSupabaseConfigured()` guard — see
- * tests/e2e/unauthenticated-redirect.spec.ts for that specific regression
- * coverage). This spec verifies the sign-in screen itself — sharing the
- * Admin shell's dark-canvas/card visual language, per this milestone's
- * auth-restyle deliverable — renders correctly at every breakpoint. A later
- * milestone with a seeded E2E test user (Milestone 05 onward typically needs
- * one for its own flows) can extend this file with the equivalent checks
- * against the authenticated shells directly.
+ * This spec runs in the unauthenticated `chromium` project, so it verifies
+ * the sign-in screen itself — sharing the Admin shell's dark-canvas/card
+ * visual language, per that milestone's auth-restyle deliverable — renders
+ * correctly at every breakpoint.
+ *
+ * The equivalent checks against the *authenticated* shells, which this file
+ * used to defer "to a later milestone with a seeded E2E test user", now
+ * exist: Milestone 14 added tests/e2e/auth.setup.ts and the tablet/phone
+ * projects in playwright.config.ts, and the POS-side responsive coverage
+ * lives in tests/e2e/authenticated/. This file stays focused on the
+ * signed-out surface, which those projects never visit.
  */
 
 const VIEWPORTS = [
