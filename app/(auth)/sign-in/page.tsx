@@ -16,17 +16,24 @@ const initialState: AuthActionState = { error: null }
  *  Requirement comment for why this exists rather than a silently empty app. */
 const DEACTIVATED_MESSAGE = 'Your account has been deactivated. Contact your administrator.'
 
+/** app/(auth)/actions.ts's signIn() — Milestone 13's subscription lock,
+ *  the "login is disabled ... directing the Owner to renew" branch. */
+const SUBSCRIPTION_EXPIRED_MESSAGE =
+  "This organization's subscription has expired. Contact your organization's owner to renew."
+
 /**
- * Reads `?reason=deactivated` (set by proxy.ts on a signed-out deactivation
- * redirect). Split out from the page so useSearchParams()'s Suspense
- * requirement doesn't force the whole form — including useActionState's
- * submit affordance — behind a loading fallback for what is, on every normal
- * visit, a one-tick synchronous read.
+ * Reads `?reason=` (set by proxy.ts on a signed-out deactivation redirect, or
+ * signIn() on a subscription-locked non-renewer). Split out from the page so
+ * useSearchParams()'s Suspense requirement doesn't force the whole form —
+ * including useActionState's submit affordance — behind a loading fallback
+ * for what is, on every normal visit, a one-tick synchronous read.
  */
-function DeactivationNotice() {
+function SignInReasonNotice() {
   const searchParams = useSearchParams()
-  if (searchParams.get('reason') !== 'deactivated') return null
-  return DEACTIVATED_MESSAGE
+  const reason = searchParams.get('reason')
+  if (reason === 'deactivated') return DEACTIVATED_MESSAGE
+  if (reason === 'subscription_expired') return SUBSCRIPTION_EXPIRED_MESSAGE
+  return null
 }
 
 export default function SignInPage() {
@@ -38,7 +45,7 @@ export default function SignInPage() {
       error={
         state.error ?? (
           <Suspense fallback={null}>
-            <DeactivationNotice />
+            <SignInReasonNotice />
           </Suspense>
         )
       }

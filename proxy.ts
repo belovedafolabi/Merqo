@@ -18,6 +18,12 @@ import { logger } from '@/lib/logger'
  */
 const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-password']
 
+/**
+ * The locked screen itself must stay reachable by a locked-out user — see
+ * the subscription-lock check below.
+ */
+const LOCK_EXEMPT_PATHS = ['/subscription-locked']
+
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true
   if (pathname.startsWith('/auth/')) return true
@@ -102,6 +108,27 @@ export async function proxy(request: NextRequest) {
       const redirectUrl = new URL('/sign-in', request.url)
       redirectUrl.searchParams.set('reason', 'deactivated')
       return NextResponse.redirect(redirectUrl)
+    }
+  }
+
+  // Milestone 13's subscription lock. The real boundary is
+  // organization_access_permitted() (20260825100500) — every RLS-protected
+  // query already denies a locked-out user regardless of this check. This
+  // exists only so they see an explicit "renew to continue" screen instead
+  // of every page silently rendering empty, the same UX-only role the
+  // deactivation check above plays.
+  //
+  // Deliberately NO signOut() here, unlike deactivation: an Owner needs a
+  // live session to pay. Locked users are quarantined to
+  // /subscription-locked, not signed out — app/(auth)/actions.ts's signIn()
+  // is where full lockout for a non-Owner actually happens (on their next
+  // sign-in), not here on every request.
+  if (user && !isPublicPath(pathname) && !LOCK_EXEMPT_PATHS.includes(pathname)) {
+    const { data: accessState } = await supabase
+      .rpc('subscription_access_state')
+      .maybeSingle<{ locked: boolean }>()
+    if (accessState?.locked) {
+      return NextResponse.redirect(new URL('/subscription-locked', request.url))
     }
   }
 

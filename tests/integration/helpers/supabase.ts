@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 
+import { pool } from './db'
+
 /**
  * Real Supabase clients against the local instance
  * (supabase/config.toml — `pnpm db:start` / `supabase start` in CI), used
@@ -90,4 +92,57 @@ export async function bootstrapOrganization(
   if (error) throw error
   const row = data as { organization_id: string; user_role_id: string }
   return { organizationId: row.organization_id, userRoleId: row.user_role_id }
+}
+
+/**
+ * Milestone 13 test helper: promotes an already-signed-up test user to
+ * Super Admin via the ungranted promote_to_super_admin() RPC
+ * (20260825100400). Called through the raw `pg` pool (postgres superuser),
+ * NOT the service-role Supabase client — the function is granted to
+ * NOBODY, including service_role (see that migration's own comment), by
+ * design: it is a one-shot runbook step, not an application- or even
+ * service-role-reachable operation. Only a direct Postgres session, as the
+ * function owner or a superuser, can call it — exactly what `pool` is.
+ *
+ * `organizationId` is required here even though the real runbook call omits
+ * it — a test database accumulates many organizations across many test
+ * files, so "the first organization" (the production default) would be
+ * nondeterministic in this context. Always pass the fixture's own org.
+ */
+export async function promoteToSuperAdmin(email: string, organizationId: string): Promise<string> {
+  const result = await pool.query<{ promote_to_super_admin: string }>(
+    `select promote_to_super_admin($1, $2)`,
+    [email, organizationId],
+  )
+  const row = result.rows[0]
+  if (!row) throw new Error('promote_to_super_admin returned no row')
+  return row.promote_to_super_admin
+}
+
+/**
+ * Milestone 13 test helper: backdates/forwards a subscription's period via
+ * the raw `pg` pool, not the service-role Supabase client — subscriptions
+ * has no insert/update/delete GRANT to any role including service_role (see
+ * 20260825100800/100900's comments: every real write goes through a
+ * SECURITY DEFINER function, which runs as the function owner regardless of
+ * the caller's own table grants). No application code has an equivalent
+ * direct-update path either; every real extension goes through
+ * apply_subscription_payment().
+ */
+export async function setSubscriptionPeriodEnd(
+  organizationId: string,
+  periodEnd: Date,
+): Promise<void> {
+  // Also pushes current_period_start back 30 days from the new end —
+  // subscriptions_period_order (20260825100100) requires end > start, and
+  // bootstrap sets start to "now" at organization creation, moments before
+  // a test backdates end into the past. Updating start alongside end keeps
+  // the row valid regardless of which direction the caller moves end.
+  const periodStart = new Date(periodEnd.getTime() - 30 * 24 * 60 * 60 * 1000)
+  await pool.query(
+    `update public.subscriptions
+     set current_period_end = $1, current_period_start = $2
+     where organization_id = $3`,
+    [periodEnd.toISOString(), periodStart.toISOString(), organizationId],
+  )
 }
