@@ -46,12 +46,17 @@ function toPosix(path: string): string {
 describe('lib/email layering (Milestone 12 Definition of Done)', () => {
   const allFiles = SCAN_DIRS.flatMap((dir) => listSourceFiles(join(ROOT, dir)))
 
+  // Both checks below read the full contents of every source file under
+  // lib/, app/, and components/ — hundreds of files. The default 5s Vitest
+  // timeout is tuned for logic-only tests and has proven too tight for that
+  // much disk I/O on a slow CI/dev machine; 20s gives real headroom without
+  // masking a genuine hang.
   it('api.resend.com is named in exactly one file across lib/, app/, and components/', () => {
     const targetFile = join(ROOT, 'lib', 'email', 'transports', 'resend.ts')
     const matches = allFiles.filter((path) => readFileSync(path, 'utf8').includes('api.resend.com'))
 
     expect(matches).toEqual([targetFile])
-  })
+  }, 20_000)
 
   it('no file outside lib/email/** and lib/notifications/** imports from @/lib/email/', () => {
     const emailDir = toPosix(join(ROOT, 'lib', 'email'))
@@ -66,7 +71,7 @@ describe('lib/email layering (Milestone 12 Definition of Done)', () => {
     })
 
     expect(offenders).toEqual([])
-  })
+  }, 20_000)
 
   it('package.json has no resend dependency', () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
