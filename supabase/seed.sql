@@ -360,19 +360,43 @@ on conflict (key) do nothing;
 -- =============================================================================
 
 -- =============================================================================
--- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
---    Branch Manager gets a read/manage subset of branch & business-unit
---    administration; the five operational roles (Cashier, Salesperson,
---    Pharmacist, Waiter, Kitchen Staff) start with NO permissions —
---    principle of least privilege (docs/Auth_Users_Roles_Authorization.md
---    §49): none of the permissions those roles actually need
---    (`sales.create`, `inventory.adjust`, etc.) exist in the catalog yet.
+-- 5i. Milestone 13 — Subscription, Billing & Platform Administration. Two
+--     org-facing keys (`subscription.view`/`subscription.renew`, held by
+--     Owner like every other key) plus two `platform.*` keys that must
+--     NEVER reach Owner — see section 6's cross-join fix immediately below,
+--     which is the other half of this change.
+-- =============================================================================
+insert into public.permissions (key, resource, action, description) values
+  ('subscription.view', 'subscription', 'view', 'View this organization''s subscription status, billing period, and payment history.'),
+  ('subscription.renew', 'subscription', 'renew', 'Initiate a subscription renewal and complete payment via Paystack.'),
+  ('platform.override', 'platform', 'override', 'Untethered platform-owner access, exempt from the subscription lock. Never granted to any client-facing role — see section 6''s cross-join exclusion.'),
+  ('platform.manage_pricing', 'platform', 'manage_pricing', 'Configure this deployment''s subscription pricing for each billing duration.')
+on conflict (key) do nothing;
+
+-- =============================================================================
+-- 6. Default role -> permission mapping. Owner gets the full seeded catalog
+--    EXCEPT the `platform.*` resource (Milestone 13: those are Super
+--    Admin-only — see 5i and 5j); Branch Manager gets a read/manage subset
+--    of branch & business-unit administration; the five operational roles
+--    (Cashier, Salesperson, Pharmacist, Waiter, Kitchen Staff) start with NO
+--    permissions — principle of least privilege
+--    (docs/Auth_Users_Roles_Authorization.md §49): none of the permissions
+--    those roles actually need (`sales.create`, `inventory.adjust`, etc.)
+--    exist in the catalog yet.
+--
+--    `p.resource <> 'platform'` is load-bearing, not defensive styling: this
+--    seed is re-run idempotently (CI's double `db reset`), and without this
+--    exclusion, running it a second time after 5i's platform.* keys already
+--    exist would silently grant Owner Super-Admin powers on that second
+--    pass, since the cross-join sees whatever permission rows exist at
+--    query time regardless of how many times the script has run before.
 -- =============================================================================
 insert into public.role_permissions (role_id, permission_id)
 select r.id, p.id
 from public.roles r
 cross join public.permissions p
 where r.slug = 'owner'
+  and p.resource <> 'platform'
 on conflict (role_id, permission_id) do nothing;
 
 -- Branch Manager gets none of Milestone 11's three administration keys
@@ -567,3 +591,50 @@ join pos_operator_report_permissions porp on true
 join public.permissions p on p.key = porp.key
 where r.slug in ('cashier', 'salesperson', 'pharmacist')
 on conflict (role_id, permission_id) do nothing;
+
+-- =============================================================================
+-- 7. Milestone 13 — the Super Admin role. Untethered within this single
+--    deployment (DECISIONS_AND_CONFLICTS.md §5, resolved 2026-08-25: not a
+--    cross-client console). Provisioned to a real account by running
+--    `select public.promote_to_super_admin('you@example.com');` once from
+--    the Supabase SQL editor — see README.md's runbook. Never assignable
+--    through the ordinary role-builder UI: the escalation guard
+--    (20260824090900_alter_user_roles_add_escalation_guard.sql) already
+--    requires an assigner to personally hold every permission a role
+--    grants, so only an existing Super Admin could ever hand this role to
+--    someone else, and none does by default.
+--
+--    Holds the ENTIRE permission catalog including platform.* — Super Admin
+--    is deliberately a superset of Owner, not a sibling role with its own
+--    carved-out grant list.
+-- =============================================================================
+insert into public.roles (name, slug, description, is_system_role) values
+  ('Super Admin', 'super_admin',
+   'The platform owner''s untethered role within this deployment '
+   '(DECISIONS_AND_CONFLICTS.md §5). Holds every permission including '
+   'platform.*, and is exempt from the subscription lock. Provisioned to a '
+   'real account via public.promote_to_super_admin() — see README.md.',
+   true)
+on conflict (slug) do nothing;
+
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+cross join public.permissions p
+where r.slug = 'super_admin'
+on conflict (role_id, permission_id) do nothing;
+
+-- =============================================================================
+-- 8. Milestone 13 — placeholder subscription pricing. Every deployment needs
+--    a price for all four durations to exist before the first Owner ever
+--    sees the renewal screen; the Super Admin configures real values via
+--    set_subscription_price() (20260825100600) afterward. Amounts are in
+--    kobo (NGN minor units) — ₦5,000/₦13,500/₦25,000/₦45,000 as placeholder
+--    monthly/quarterly/semi-annual/annual prices, not a pricing decision.
+-- =============================================================================
+insert into public.subscription_pricing (billing_period, price_minor, currency) values
+  ('MONTHLY', 500000, 'NGN'),
+  ('QUARTERLY', 1350000, 'NGN'),
+  ('SEMI_ANNUAL', 2500000, 'NGN'),
+  ('ANNUAL', 4500000, 'NGN')
+on conflict (billing_period) do nothing;
