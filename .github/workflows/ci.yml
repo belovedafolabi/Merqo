@@ -169,6 +169,33 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # Milestone 14 gave this job a database for the first time. Before it,
+      # every E2E spec was public or an unauthenticated-redirect assertion,
+      # because the authenticated POS/checkout coverage this milestone's
+      # Testing Requirements call for has nothing to sign into without one.
+      - name: Start local Supabase (applies migrations + seed)
+        run: pnpm exec supabase start
+
+      - name: Export local Supabase URL/anon key for the E2E run
+        # Same `-o json` + jq reasoning as the db-migrations job above:
+        # `-o env` writes dotenv-quoted values that $GITHUB_ENV does not
+        # unquote. Only the anon key is exported — tests/e2e/helpers/seed.ts
+        # seeds through the owner's own authenticated client, never the
+        # service-role key, so this job never needs that secret at all.
+        run: |
+          status=$(pnpm exec supabase status -o json)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(echo "$status" | jq -r '.API_URL')" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(echo "$status" | jq -r '.ANON_KEY')" >> "$GITHUB_ENV"
+
+      - name: Check required Supabase env is present (values never printed)
+        run: |
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is not set for the E2E run"
+              exit 1
+            fi
+          done
+
       - name: Cache Playwright browsers
         uses: actions/cache@v6
         with:
@@ -178,6 +205,9 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      # The Supabase env exported above must already be set here: Playwright's
+      # webServer runs `pnpm build`, and NEXT_PUBLIC_* are inlined into the
+      # client bundle at build time.
       - name: Run E2E tests
         run: pnpm test:e2e
 
@@ -188,3 +218,7 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        run: pnpm exec supabase stop

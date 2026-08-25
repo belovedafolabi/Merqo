@@ -25,6 +25,8 @@ build/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# Seeded E2E credentials + auth cookies written by tests/e2e/auth.setup.ts
+/tests/e2e/.auth/
 
 # Local tooling
 .turbo
