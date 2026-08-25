@@ -50,24 +50,32 @@ function MarkReadButton({ notificationId }: { notificationId: string }) {
  * render rather than trusting the stored string outright.
  */
 export function NotificationList({ notifications }: { notifications: NotificationSummary[] }) {
+  // The unread indicator lives inside the "Notification" cell rather than
+  // its own column. DataTable keys each <TableHead>/<TableCell> by
+  // column.header (components/ui/data-table.tsx) — a second blank-header
+  // column here would collide with the action column's own blank header
+  // below, which is exactly the "two children with the same key" React
+  // warning a first version of this file shipped with. One blank header
+  // (the action column) is the established pattern
+  // (components/employees/pending-invitations-list.tsx does the same).
   const columns: DataTableColumn<NotificationSummary>[] = [
-    {
-      header: '',
-      className: 'w-6',
-      cell: (row) =>
-        row.readAt === null ? (
-          <span aria-hidden="true" className="block size-2 rounded-full bg-primary" />
-        ) : null,
-    },
     {
       header: 'Notification',
       cell: (row) => {
         const body = (
-          <div className="flex flex-col gap-0.5">
-            <span className={row.readAt === null ? 'font-semibold' : 'font-medium'}>
-              {row.title}
-            </span>
-            <span className="text-body-sm text-muted-foreground">{row.message}</span>
+          <div className="flex items-start gap-2">
+            {row.readAt === null && (
+              <span
+                aria-hidden="true"
+                className="mt-1.5 block size-2 shrink-0 rounded-full bg-primary"
+              />
+            )}
+            <div className="flex flex-col gap-0.5">
+              <span className={row.readAt === null ? 'font-semibold' : 'font-medium'}>
+                {row.title}
+              </span>
+              <span className="text-body-sm text-muted-foreground">{row.message}</span>
+            </div>
           </div>
         )
         return row.href && row.href.startsWith('/') ? (
