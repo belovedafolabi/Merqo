@@ -60,6 +60,14 @@ No document in the corpus describes a separate, additional "meta-platform" servi
 
 **Working assumption used in this roadmap:** **Super Admin is the platform owner's untethered role *within each single-tenant deployment*** — full override access to that one client's organization, branches, business units, subscription/pricing configuration, and audit trail — not a separate cross-deployment admin service. If the actual intent is a genuine multi-client console (e.g., the platform owner manages many client deployments from one shared dashboard), that is a materially different, additional system and should be raised with the project owner before Milestone 13 begins.
 
+**Resolution (2026-08-25, before Milestone 13's implementation began):** confirmed by the project
+owner — single-tenant untethered, as assumed above. No cross-client meta-console. Realized as a
+single permission key, `platform.override`, checked in exactly one function
+(`public.user_is_platform_admin()`, `20260825100400_create_platform_admin_functions.sql`) with no
+`organization_id` parameter — the only such omission anywhere in the schema. Provisioned via the
+ungranted `public.promote_to_super_admin()` SQL function (README.md's runbook), never through the
+role builder or any application code path.
+
 ---
 
 ## 6. Notification delivery — no event outbox; the milestone doc overrides the design corpus

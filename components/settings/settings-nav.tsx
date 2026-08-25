@@ -3,14 +3,25 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { Can } from '@/components/auth/can'
+import { useCurrentOrganizationId } from '@/lib/auth/permissions-context'
 import { cn } from '@/lib/utils'
 
 const TABS = [
-  { href: '/settings', label: 'Overview' },
-  { href: '/settings/organization', label: 'Organization' },
-  { href: '/settings/branding', label: 'Branding' },
-  { href: '/settings/receipts', label: 'Receipts' },
-  { href: '/settings/notifications', label: 'Notifications' },
+  { href: '/settings', label: 'Overview', permission: null },
+  { href: '/settings/organization', label: 'Organization', permission: null },
+  { href: '/settings/branding', label: 'Branding', permission: null },
+  { href: '/settings/receipts', label: 'Receipts', permission: null },
+  { href: '/settings/notifications', label: 'Notifications', permission: null },
+  // Milestone 13: every org member can view their organization's own
+  // subscription (subscription.view is on Owner and every locked-out user
+  // by construction — see 20260825100500), so this tab is unconditional
+  // like every other one above it.
+  { href: '/settings/subscription', label: 'Subscription', permission: null },
+  // Super Admin only — hidden via <Can>, unlike every tab above, because
+  // showing it to an Owner who will only ever hit a permission error on the
+  // page is worse than not showing it at all.
+  { href: '/settings/pricing', label: 'Pricing', permission: 'platform.manage_pricing' as const },
 ] as const
 
 /**
@@ -27,12 +38,13 @@ const TABS = [
  */
 export function SettingsNav() {
   const pathname = usePathname()
+  const organizationId = useCurrentOrganizationId()
 
   return (
     <nav className="flex gap-1 border-b">
       {TABS.map((tab) => {
         const isActive = pathname === tab.href
-        return (
+        const link = (
           <Link
             key={tab.href}
             href={tab.href}
@@ -45,6 +57,13 @@ export function SettingsNav() {
           >
             {tab.label}
           </Link>
+        )
+
+        if (!tab.permission || !organizationId) return link
+        return (
+          <Can key={tab.href} permission={tab.permission} scope={{ organizationId }}>
+            {link}
+          </Can>
         )
       })}
     </nav>

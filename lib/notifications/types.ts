@@ -12,7 +12,13 @@
 
 export type NotificationCategory = 'inventory' | 'administration' | 'security' | 'billing'
 
-export type NotificationType = 'inventory.low_stock' | 'employee.invited' | 'employee.role_changed'
+export type NotificationType =
+  | 'inventory.low_stock'
+  | 'employee.invited'
+  | 'employee.role_changed'
+  | 'subscription.expiring'
+  | 'subscription.expired'
+  | 'subscription.renewed'
 
 export interface NotificationCategoryDefinition {
   readonly label: string
@@ -69,4 +75,7 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeDefini
   'inventory.low_stock': { category: 'inventory', email: true },
   'employee.invited': { category: 'administration', email: true },
   'employee.role_changed': { category: 'security', email: true },
+  'subscription.expiring': { category: 'billing', email: true },
+  'subscription.expired': { category: 'billing', email: true },
+  'subscription.renewed': { category: 'billing', email: true },
 }

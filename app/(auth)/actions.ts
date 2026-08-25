@@ -7,6 +7,7 @@ import { recordAuditEvent } from '@/lib/auth/audit'
 import { isLoginThrottled, recordLoginAttempt } from '@/lib/auth/login-throttle'
 import { getRequestMeta } from '@/lib/auth/request-context'
 import { ensureOrganizationBootstrapped } from '@/lib/organization/mutations'
+import { getSubscriptionAccessState } from '@/lib/subscription/queries'
 import { logger } from '@/lib/logger'
 import { slugify } from '@/lib/utils'
 
@@ -156,6 +157,34 @@ export async function signIn(
   const bootstrapOutcome = await ensureOrganizationBootstrapped(supabase, data.user)
   if (bootstrapOutcome === 'failed') {
     return { error: 'Could not finish setting up your organization. Please contact support.' }
+  }
+
+  // Milestone 13's subscription lock, PRD §38: "login is disabled for the
+  // organization's users ... directing the Owner to renew." The real
+  // boundary is organization_access_permitted() (20260825100500) — this is
+  // the explicit-message layer, mirroring the throttle check above.
+  const accessState = await getSubscriptionAccessState()
+  if (accessState?.locked) {
+    if (!accessState.canRenew) {
+      // Genuinely disabled: sign out and bounce to /sign-in with a reason,
+      // same shape as the deactivation redirect proxy.ts issues.
+      await supabase.auth.signOut()
+      await recordAuditEvent(
+        {
+          organizationId: accessState.organizationId,
+          userId: data.user.id,
+          action: 'auth.sign_in_blocked_subscription',
+          resourceType: 'user',
+          resourceId: data.user.id,
+        },
+        supabase,
+      )
+      redirect('/sign-in?reason=subscription_expired')
+    }
+
+    // Permitted but quarantined: the Owner keeps a session (they need one to
+    // pay) and lands on the locked screen instead of the dashboard.
+    redirect('/subscription-locked')
   }
 
   redirect('/dashboard')

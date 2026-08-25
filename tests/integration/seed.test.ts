@@ -67,14 +67,14 @@ describe('seed data (supabase/seed.sql)', () => {
   // as well as by real usage. What this test actually verifies — that the seed
   // migration planted exactly these 7 built-in roles — only makes sense
   // filtered to the built-in ones.
-  it('loads exactly 7 system roles', async () => {
+  it('loads exactly 8 system roles', async () => {
     const result = await pool.query(
       `select count(*)::int as count from public.roles where is_system_role = true`,
     )
-    expect(result.rows[0].count).toBe(7)
+    expect(result.rows[0].count).toBe(8)
   })
 
-  it('loads the expected 7 system role slugs', async () => {
+  it('loads the expected 8 system role slugs', async () => {
     const result = await pool.query(
       `select slug from public.roles where is_system_role = true order by slug`,
     )
@@ -86,6 +86,7 @@ describe('seed data (supabase/seed.sql)', () => {
         'owner',
         'pharmacist',
         'salesperson',
+        'super_admin',
         'waiter',
       ].sort(),
     )
@@ -99,20 +100,36 @@ describe('seed data (supabase/seed.sql)', () => {
   // store_credit.view/issue/adjust, layaway.view/create/record_payment/
   // cancel) + 9 from Milestone 10 (reports.view/export/view_financials/
   // view_all_branches/save, expense.view/create/approve/delete) + 3 from
-  // Milestone 11 (roles.create, employees.invite, employees.deactivate).
-  it('loads exactly 55 permissions', async () => {
+  // Milestone 11 (roles.create, employees.invite, employees.deactivate) + 4
+  // from Milestone 13 (subscription.view, subscription.renew,
+  // platform.override, platform.manage_pricing).
+  it('loads exactly 59 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(55)
+    expect(result.rows[0].count).toBe(59)
   })
 
-  it('the Owner role holds every seeded permission', async () => {
+  // 55 (every pre-Milestone-13 permission) + subscription.view +
+  // subscription.renew — NOT the two platform.* keys, which seed.sql's §6
+  // cross-join deliberately excludes from Owner (Super Admin only, per
+  // DECISIONS_AND_CONFLICTS.md §5).
+  it('the Owner role holds every seeded permission except platform.*', async () => {
     const result = await pool.query(
       `select count(*)::int as count
        from public.role_permissions rp
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(55)
+    expect(result.rows[0].count).toBe(57)
+  })
+
+  it('the super_admin role holds every seeded permission, including platform.*', async () => {
+    const result = await pool.query(
+      `select count(*)::int as count
+       from public.role_permissions rp
+       join public.roles r on r.id = rp.role_id
+       where r.slug = 'super_admin'`,
+    )
+    expect(result.rows[0].count).toBe(59)
   })
 
   // Waiter/Kitchen Staff are still bare (the base till set is scoped to
