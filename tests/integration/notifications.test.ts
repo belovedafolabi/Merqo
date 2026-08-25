@@ -191,10 +191,17 @@ describe('notify_low_stock() — Milestone 07 low stock, end to end (Testing Req
     const { branchId, productId } = await seedBranchProductWithThreshold(owner, 'PrefEmail')
     await makeLowStock(owner, branchId, productId, 3, 5)
 
-    const { error: prefError } = await owner.client.from('notification_preferences').upsert(
-      { user_id: owner.userId, category: 'inventory', in_app_enabled: true, email_enabled: false },
-      { onConflict: 'user_id,category' },
-    )
+    const { error: prefError } = await owner.client
+      .from('notification_preferences')
+      .upsert(
+        {
+          user_id: owner.userId,
+          category: 'inventory',
+          in_app_enabled: true,
+          email_enabled: false,
+        },
+        { onConflict: 'user_id,category' },
+      )
     expect(prefError).toBeNull()
 
     const { data } = await callNotifyLowStock(owner, branchId)
@@ -216,10 +223,17 @@ describe('notify_low_stock() — Milestone 07 low stock, end to end (Testing Req
     const { branchId, productId } = await seedBranchProductWithThreshold(owner, 'PrefInApp')
     await makeLowStock(owner, branchId, productId, 3, 5)
 
-    const { error: prefError } = await owner.client.from('notification_preferences').upsert(
-      { user_id: owner.userId, category: 'inventory', in_app_enabled: false, email_enabled: true },
-      { onConflict: 'user_id,category' },
-    )
+    const { error: prefError } = await owner.client
+      .from('notification_preferences')
+      .upsert(
+        {
+          user_id: owner.userId,
+          category: 'inventory',
+          in_app_enabled: false,
+          email_enabled: true,
+        },
+        { onConflict: 'user_id,category' },
+      )
     expect(prefError).toBeNull()
 
     const { data } = await callNotifyLowStock(owner, branchId)
@@ -393,7 +407,11 @@ describe('notify_role_assigned() — the basic security trigger', () => {
     const role = await pool.query(`select id from public.roles where slug = 'branch_manager'`)
     const { data: userRole } = await owner.client
       .from('user_roles')
-      .insert({ user_id: assignee.userId, role_id: role.rows[0].id, organization_id: organizationId })
+      .insert({
+        user_id: assignee.userId,
+        role_id: role.rows[0].id,
+        organization_id: organizationId,
+      })
       .select('id')
       .single()
 
@@ -413,7 +431,12 @@ describe('notification_preferences — the mandatory-category guard (both INSERT
 
     const { error } = await user.client
       .from('notification_preferences')
-      .insert({ user_id: user.userId, category: 'security', in_app_enabled: false, email_enabled: false })
+      .insert({
+        user_id: user.userId,
+        category: 'security',
+        in_app_enabled: false,
+        email_enabled: false,
+      })
     expect(error).not.toBeNull()
   })
 
@@ -423,7 +446,12 @@ describe('notification_preferences — the mandatory-category guard (both INSERT
 
     const { error: insertError } = await user.client
       .from('notification_preferences')
-      .insert({ user_id: user.userId, category: 'billing', in_app_enabled: true, email_enabled: true })
+      .insert({
+        user_id: user.userId,
+        category: 'billing',
+        in_app_enabled: true,
+        email_enabled: true,
+      })
     expect(insertError).toBeNull()
 
     const { error: updateError } = await user.client
@@ -438,22 +466,27 @@ describe('notification_preferences — the mandatory-category guard (both INSERT
     const user = await createTestUser()
     await bootstrapOrganization(user, 'MandatoryAllowed Org')
 
-    const { error } = await user.client.from('notification_preferences').upsert(
-      { user_id: user.userId, category: 'inventory', in_app_enabled: true, email_enabled: false },
-      { onConflict: 'user_id,category' },
-    )
+    const { error } = await user.client
+      .from('notification_preferences')
+      .upsert(
+        { user_id: user.userId, category: 'inventory', in_app_enabled: true, email_enabled: false },
+        { onConflict: 'user_id,category' },
+      )
     expect(error).toBeNull()
   })
 })
 
 describe('notifications — cross-user authorization (Testing Requirement 4)', () => {
-  it('a user cannot read, mark-read, or overwrite another user\'s notifications', async () => {
+  it("a user cannot read, mark-read, or overwrite another user's notifications", async () => {
     const owner = await createTestUser()
     const { branchId, productId } = await seedBranchProductWithThreshold(owner, 'CrossUser')
     await makeLowStock(owner, branchId, productId, 3, 5)
     await callNotifyLowStock(owner, branchId)
 
-    const { data: ownRows } = await owner.client.from('notifications').select('id').eq('user_id', owner.userId)
+    const { data: ownRows } = await owner.client
+      .from('notifications')
+      .select('id')
+      .eq('user_id', owner.userId)
     expect(ownRows).toHaveLength(1)
     const notificationId = ownRows![0]!.id as string
 

@@ -15,7 +15,7 @@ for the authoritative resolution of architectural decisions.
 | Framework            | Next.js 16 (App Router) + React 19 + TypeScript 6          |
 | Styling              | Tailwind CSS v4 (CSS-first) + shadcn/ui                    |
 | Backend/data         | Supabase (Postgres + Auth + Storage)                       |
-| Email                | Resend (from Milestone 12)                                 |
+| Email                | Resend                                                     |
 | Subscription billing | Paystack — software subscriptions only, never POS payments |
 | Package manager      | pnpm                                                       |
 | Testing              | Vitest + React Testing Library (unit), Playwright (E2E)    |

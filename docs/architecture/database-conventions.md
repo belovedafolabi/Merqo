@@ -23,6 +23,8 @@ Every table includes `created_at timestamptz not null default now()`, `updated_a
 
 **Documented exception: decision-lifecycle tables (`refunds`, `expenses`).** These carry `created_at` plus explicit decision timestamps (`decided_at`, and on `expenses` also `voided_at`) instead of `updated_at`, and no `set_updated_at` trigger. The reason is structural rather than stylistic: neither table grants `UPDATE` to any application role, so the only writes after insert come from their own `SECURITY DEFINER` functions (`decide_refund()`, `decide_expense()`, `void_expense()`), each of which records *what* changed and *when* in a named column. A generic `updated_at` would say only that something changed, on a row whose whole point is that its amount and date never do.
 
+**Documented exception: `notifications`.** Append-only except for a single boolean-adjacent field (`read_at`), so it has no `updated_at`, no `created_by`, and no `set_updated_at` trigger — `updated_at` would only ever duplicate `read_at`, and the shared trigger would fire on the table's hottest write path (mark-as-read) to maintain a column nothing reads. `created_by` is meaningless here: every row's author is the system, via a `SECURITY DEFINER` `notify_*()` function, never a person. Its sibling table `notification_preferences`, by contrast, *is* genuinely mutable user configuration and keeps the standard `updated_at`/`set_updated_at` trigger — see `supabase/migrations/20260824100000_create_notifications.sql` and `20260824100200_create_notification_preferences.sql`.
+
 ## Soft-delete (`archived_at`) vs. `is_active`
 
 Two distinct concepts, used on different table categories — do not conflate them:
