@@ -8,6 +8,7 @@ import { getOrganizationBranding } from '@/lib/branding/queries'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
+import { SubscriptionExpiryBanner } from '@/components/subscription/expiry-banner'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 /**
@@ -52,7 +53,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             branchName={onboardingState.branch?.name ?? null}
             businessUnitName={onboardingState.businessUnit?.name ?? null}
           />
-          <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">{children}</SidebarInset>
+          <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">
+            <SubscriptionExpiryBanner />
+            {children}
+          </SidebarInset>
         </SidebarProvider>
       </div>
     </PermissionsProvider>

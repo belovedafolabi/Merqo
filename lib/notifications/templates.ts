@@ -11,6 +11,18 @@ import {
   renderRoleChangedEmail,
   type RoleChangedEmailInput,
 } from '@/lib/email/templates/role-changed'
+import {
+  renderSubscriptionExpiringEmail,
+  type SubscriptionExpiringEmailInput,
+} from '@/lib/email/templates/subscription-expiring'
+import {
+  renderSubscriptionExpiredEmail,
+  type SubscriptionExpiredEmailInput,
+} from '@/lib/email/templates/subscription-expired'
+import {
+  renderSubscriptionRenewedEmail,
+  type SubscriptionRenewedEmailInput,
+} from '@/lib/email/templates/subscription-renewed'
 
 /**
  * The one dispatch point from a NotificationType to its rendered email.
@@ -26,6 +38,9 @@ export type NotificationEmailData =
   | { type: 'employee.invited'; data: EmployeeInvitationEmailInput }
   | { type: 'inventory.low_stock'; data: LowStockAlertEmailInput }
   | { type: 'employee.role_changed'; data: RoleChangedEmailInput }
+  | { type: 'subscription.expiring'; data: SubscriptionExpiringEmailInput }
+  | { type: 'subscription.expired'; data: SubscriptionExpiredEmailInput }
+  | { type: 'subscription.renewed'; data: SubscriptionRenewedEmailInput }
 
 export function renderNotificationEmail(
   input: NotificationEmailData,
@@ -37,6 +52,12 @@ export function renderNotificationEmail(
       return renderLowStockAlertEmail(input.data)
     case 'employee.role_changed':
       return renderRoleChangedEmail(input.data)
+    case 'subscription.expiring':
+      return renderSubscriptionExpiringEmail(input.data)
+    case 'subscription.expired':
+      return renderSubscriptionExpiredEmail(input.data)
+    case 'subscription.renewed':
+      return renderSubscriptionRenewedEmail(input.data)
   }
 }
 

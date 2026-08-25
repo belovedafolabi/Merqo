@@ -51,6 +51,23 @@ describe('lib/notifications/types', () => {
         organizationName: 'Acme',
         href: '/settings/organization',
       },
+      'subscription.expiring': {
+        organizationName: 'Acme',
+        daysRemaining: 7,
+        currentPeriodEnd: '2026-09-01T00:00:00.000Z',
+        priceMinor: 500000,
+        currency: 'NGN',
+        href: '/settings/subscription',
+      },
+      'subscription.expired': {
+        organizationName: 'Acme',
+        href: '/settings/subscription',
+      },
+      'subscription.renewed': {
+        organizationName: 'Acme',
+        newPeriodEnd: '2026-09-25T00:00:00.000Z',
+        href: '/settings/subscription',
+      },
     }
 
     for (const [type, definition] of Object.entries(NOTIFICATION_TYPES)) {

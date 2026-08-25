@@ -145,6 +145,34 @@ logger.info('sale.created', { saleId, branchId })
 Hosted on Vercel: production deploys from `main`, preview deploys per pull request. Environment
 variables are set in Vercel's dashboard for both Production and Preview — never in git.
 
+### Runbook: promoting a Super Admin (Milestone 13)
+
+The Super Admin role (`platform.override` + `platform.manage_pricing`, exempt from the
+subscription lock — see `docs/milestones/DECISIONS_AND_CONFLICTS.md` §5) cannot be assigned
+through the app or the role builder; it is granted once, deliberately out-of-band, via a SQL
+function with no `EXECUTE` grant to any application role:
+
+1. Have the target account sign up normally first (a `public.users` row must already exist).
+2. From the Supabase Dashboard's SQL Editor (or `psql` connected as the `postgres` role), run:
+   ```sql
+   select public.promote_to_super_admin('owner@example.com');
+   ```
+3. This is idempotent (`on conflict do nothing`) and audited (`platform.super_admin_promoted`
+   in `audit_logs`). No app restart or redeploy needed — the next request that account makes
+   picks up the new grant.
+
+### Runbook: Paystack webhook + the daily subscription cron
+
+- Register `https://<your-domain>/api/webhooks/paystack` as the webhook URL in the Paystack
+  Dashboard (Settings → API Keys & Webhooks). Paystack signs every delivery with your **secret
+  key** — there is no separate webhook secret to configure on Paystack's side, despite
+  `PAYSTACK_WEBHOOK_SECRET` existing as a reserved (optional) env var; see `.env.example`.
+- Generate `CRON_SECRET` (`openssl rand -hex 32`) and set it as a Vercel project environment
+  variable. Vercel's Cron (configured in `vercel.json`) automatically sends
+  `Authorization: Bearer $CRON_SECRET` to `/api/cron/subscriptions` once that variable exists —
+  no further wiring needed. Leaving it unset makes the endpoint refuse to run (503), never run
+  unauthenticated.
+
 ## Known constraints — revisit before Milestone 16 (production launch)
 
 - **Supabase free tier**: connection pool and storage limits apply. Not a concern at current

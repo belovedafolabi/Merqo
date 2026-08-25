@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete
 
 ## Objective
 
@@ -102,13 +102,13 @@ Subscription is the platform's own monetization mechanism and the one place Pays
 
 ## Acceptance Criteria
 
-- [ ] Super Admin can configure pricing for all four durations.
-- [ ] An Owner can renew a subscription and the extension only takes effect after backend-verified payment.
-- [ ] A tampered or unsigned webhook payload is rejected.
-- [ ] A duplicate webhook does not double-extend a subscription.
-- [ ] 7-day expiry warning is delivered via dashboard banner and email.
-- [ ] On expiry, non-Super-Admin login and active sessions are blocked; Super Admin access is unaffected.
-- [ ] All subscription/payment events are audited.
+- [x] Super Admin can configure pricing for all four durations.
+- [x] An Owner can renew a subscription and the extension only takes effect after backend-verified payment.
+- [x] A tampered or unsigned webhook payload is rejected.
+- [x] A duplicate webhook does not double-extend a subscription.
+- [x] 7-day expiry warning is delivered via dashboard banner and email.
+- [x] On expiry, non-Super-Admin login and active sessions are blocked; Super Admin access is unaffected.
+- [x] All subscription/payment events are audited.
 
 ## Definition of Done
 
@@ -116,8 +116,11 @@ All acceptance criteria pass against Paystack's sandbox environment, and a manua
 
 ## Implementation Notes
 
-- Treat `DECISIONS_AND_CONFLICTS.md` §5's Super Admin scope as a live open question — if implementation reveals the project owner actually wants cross-client management, raise it before building further Super Admin features on the single-tenant assumption.
-- Reuse Milestone 08's idempotency pattern (idempotency key checked before processing) for webhook handling rather than inventing a second idempotency mechanism.
+- Treat `DECISIONS_AND_CONFLICTS.md` §5's Super Admin scope as a live open question — if implementation reveals the project owner actually wants cross-client management, raise it before building further Super Admin features on the single-tenant assumption. **Resolved 2026-08-25** — confirmed single-tenant untethered; see that section's resolution note.
+- Reuse Milestone 08's idempotency pattern (idempotency key checked before processing) for webhook handling rather than inventing a second idempotency mechanism. Done via the `PENDING → SUCCESS` conditional update on `subscription_payments`, with `webhook_events` as a cheaper second guard.
+- **Session revocation, stated honestly**: "active sessions terminate" does not mean an already-issued Supabase JWT is invalidated instantly — Supabase has no such API, and this schema's JWTs never carried authorization to begin with (only `auth.uid()`). The lock is enforced by `organization_access_permitted()` being consulted on every RLS-protected query, so it takes effect in the same transaction expiry occurs, against an already-issued token — the same three-layer argument the Milestone 11 deactivation precedent already makes. `proxy.ts`/`signIn()` are the UX layer, not the boundary.
+- **`PAYSTACK_WEBHOOK_SECRET`** is not a real Paystack credential — Paystack signs webhooks with the secret key itself. The reserved env var is honored by falling back to `PAYSTACK_SECRET_KEY` when unset.
+- **Sandbox integration coverage is partial by design**: the hosted-checkout page (entering a card) cannot be driven from CI. Automated coverage is the initialize/verify round trip against Paystack's real sandbox (`tests/integration/subscription-paystack-live.test.ts`, opt-in) plus the full extension path with verify's response stubbed (`tests/integration/subscription-webhook.test.ts`). The hosted-checkout leg is exercised manually per the Definition of Done.
 
 ## Risks
 
