@@ -191,17 +191,15 @@ describe('notify_low_stock() — Milestone 07 low stock, end to end (Testing Req
     const { branchId, productId } = await seedBranchProductWithThreshold(owner, 'PrefEmail')
     await makeLowStock(owner, branchId, productId, 3, 5)
 
-    const { error: prefError } = await owner.client
-      .from('notification_preferences')
-      .upsert(
-        {
-          user_id: owner.userId,
-          category: 'inventory',
-          in_app_enabled: true,
-          email_enabled: false,
-        },
-        { onConflict: 'user_id,category' },
-      )
+    const { error: prefError } = await owner.client.from('notification_preferences').upsert(
+      {
+        user_id: owner.userId,
+        category: 'inventory',
+        in_app_enabled: true,
+        email_enabled: false,
+      },
+      { onConflict: 'user_id,category' },
+    )
     expect(prefError).toBeNull()
 
     const { data } = await callNotifyLowStock(owner, branchId)
@@ -223,17 +221,15 @@ describe('notify_low_stock() — Milestone 07 low stock, end to end (Testing Req
     const { branchId, productId } = await seedBranchProductWithThreshold(owner, 'PrefInApp')
     await makeLowStock(owner, branchId, productId, 3, 5)
 
-    const { error: prefError } = await owner.client
-      .from('notification_preferences')
-      .upsert(
-        {
-          user_id: owner.userId,
-          category: 'inventory',
-          in_app_enabled: false,
-          email_enabled: true,
-        },
-        { onConflict: 'user_id,category' },
-      )
+    const { error: prefError } = await owner.client.from('notification_preferences').upsert(
+      {
+        user_id: owner.userId,
+        category: 'inventory',
+        in_app_enabled: false,
+        email_enabled: true,
+      },
+      { onConflict: 'user_id,category' },
+    )
     expect(prefError).toBeNull()
 
     const { data } = await callNotifyLowStock(owner, branchId)
@@ -429,14 +425,12 @@ describe('notification_preferences — the mandatory-category guard (both INSERT
     const user = await createTestUser()
     await bootstrapOrganization(user, 'MandatoryInsert Org')
 
-    const { error } = await user.client
-      .from('notification_preferences')
-      .insert({
-        user_id: user.userId,
-        category: 'security',
-        in_app_enabled: false,
-        email_enabled: false,
-      })
+    const { error } = await user.client.from('notification_preferences').insert({
+      user_id: user.userId,
+      category: 'security',
+      in_app_enabled: false,
+      email_enabled: false,
+    })
     expect(error).not.toBeNull()
   })
 
@@ -444,14 +438,12 @@ describe('notification_preferences — the mandatory-category guard (both INSERT
     const user = await createTestUser()
     await bootstrapOrganization(user, 'MandatoryUpdate Org')
 
-    const { error: insertError } = await user.client
-      .from('notification_preferences')
-      .insert({
-        user_id: user.userId,
-        category: 'billing',
-        in_app_enabled: true,
-        email_enabled: true,
-      })
+    const { error: insertError } = await user.client.from('notification_preferences').insert({
+      user_id: user.userId,
+      category: 'billing',
+      in_app_enabled: true,
+      email_enabled: true,
+    })
     expect(insertError).toBeNull()
 
     const { error: updateError } = await user.client
