@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetEmailTransport, sendEmail } from '@/lib/email/service'
@@ -88,17 +85,9 @@ describe('lib/email/service', () => {
     )
   })
 
-  it('api.resend.com is named in exactly one file under lib/ — the single integration point', () => {
-    const targetFile = join(process.cwd(), 'lib', 'email', 'transports', 'resend.ts')
-    const filesToCheck = [
-      targetFile,
-      join(process.cwd(), 'lib', 'email', 'service.ts'),
-      join(process.cwd(), 'lib', 'email', 'transports', 'log.ts'),
-    ]
-
-    const matches = filesToCheck.filter((path) =>
-      readFileSync(path, 'utf8').includes('api.resend.com'),
-    )
-    expect(matches).toEqual([targetFile])
-  })
+  // The "api.resend.com named in exactly one file" check that used to live
+  // here is now tests/unit/email/layering.test.ts — generalised to a
+  // repo-wide sweep (lib/, app/, components/) plus an import-statement check,
+  // per Milestone 12's Definition of Done. Superseding it here rather than
+  // keeping both avoids two checks that could silently drift apart.
 })

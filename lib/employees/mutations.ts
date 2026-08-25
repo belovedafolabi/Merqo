@@ -1,8 +1,5 @@
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { requirePermission } from '@/lib/auth/guard'
-import { sendEmail } from '@/lib/email/service'
-import { renderEmployeeInvitationEmail } from '@/lib/email/templates/employee-invitation'
-import { EmailDeliveryError } from '@/lib/email/types'
 import {
   generateInvitationToken,
   hashInvitationToken,
@@ -15,6 +12,7 @@ import {
   type InviteEmployeeInput,
   type SetEmployeeActiveInput,
 } from '@/lib/employees/schemas'
+import { deliverEmail } from '@/lib/notifications/service'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 /**
@@ -79,33 +77,39 @@ async function loadInviteContext(
   }
 }
 
+/**
+ * Routes through NotificationService's deliverEmail() (lib/notifications/
+ * service.ts) rather than lib/email/service.ts's sendEmail() directly — the
+ * Milestone 12 reconciliation this file's own header used to promise before
+ * that milestone existed. deliverEmail(), not notifyUser()/notifyLowStock()-
+ * style RPC helper: the invitee has no public.users row yet, so there is
+ * nothing to write an in-app notification against — this is email-only by
+ * construction, matching the {delivered, warning} shape this function's
+ * caller has always expected.
+ */
 async function sendInvitationEmail(
   email: string,
   rawToken: string,
   context: { organizationName: string; roleName: string; inviterName: string },
   expiresAt: Date,
 ): Promise<{ delivered: boolean; warning: string | null }> {
-  const message = renderEmployeeInvitationEmail({
-    inviteUrl: invitationUrl(rawToken),
-    organizationName: context.organizationName,
-    roleName: context.roleName,
-    inviterName: context.inviterName,
-    expiresAt,
+  const outcome = await deliverEmail(email, {
+    type: 'employee.invited',
+    data: {
+      inviteUrl: invitationUrl(rawToken),
+      organizationName: context.organizationName,
+      roleName: context.roleName,
+      inviterName: context.inviterName,
+      expiresAt,
+    },
   })
 
-  try {
-    await sendEmail({ to: email, ...message })
-    return { delivered: true, warning: null }
-  } catch (error) {
-    // Never a silent failure (Milestone 11's Observability requirement) —
-    // sendEmail() has already logged it. The invitation row is committed
-    // either way; this only changes what the directory shows next to it.
-    const warning =
-      error instanceof EmailDeliveryError
-        ? error.message
-        : 'The invitation email could not be sent. Share the link directly instead.'
-    return { delivered: false, warning }
-  }
+  // Never a silent failure (Milestone 11's Observability requirement) —
+  // deliverEmail() has already logged it. The invitation row is committed
+  // either way; this only changes what the directory shows next to it.
+  return outcome.delivered
+    ? { delivered: true, warning: null }
+    : { delivered: false, warning: outcome.reason }
 }
 
 export async function inviteEmployee(

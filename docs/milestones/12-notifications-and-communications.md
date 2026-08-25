@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Complete
 
 ## Objective
 
@@ -93,11 +93,11 @@ Several earlier and later milestones produce events that need to reach a user (l
 
 ## Acceptance Criteria
 
-- [ ] Every notification in the system is produced via the shared `NotificationService`, with zero direct Resend calls from business logic (verified by code review/search during this milestone).
-- [ ] In-app notifications display correctly, scoped to the correct user, with working mark-as-read.
-- [ ] A low-stock condition from Milestone 07 produces a real in-app notification and email.
-- [ ] A simulated email-delivery failure does not affect the triggering business operation.
-- [ ] Notification preferences are respected.
+- [x] Every notification in the system is produced via the shared `NotificationService`, with zero direct Resend calls from business logic (verified by code review/search during this milestone).
+- [x] In-app notifications display correctly, scoped to the correct user, with working mark-as-read.
+- [x] A low-stock condition from Milestone 07 produces a real in-app notification and email.
+- [x] A simulated email-delivery failure does not affect the triggering business operation.
+- [x] Notification preferences are respected.
 
 ## Definition of Done
 

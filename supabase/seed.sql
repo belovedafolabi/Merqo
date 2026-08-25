@@ -338,6 +338,28 @@ insert into public.permissions (key, resource, action, description) values
 on conflict (key) do nothing;
 
 -- =============================================================================
+-- 5h. Milestone 12 — Notifications & Communications: NO new permission keys.
+--     Deliberate, not an oversight — same reasoning as 5g's deliberately
+--     absent `employees.view` immediately above.
+--
+--     Reading and marking as read your OWN notifications, and editing your
+--     OWN notification preferences, are authorized entirely by RLS
+--     (`user_id = auth.uid()` — see 20260824100100 and 20260824100300), not
+--     by a permission key. A key every role must hold or the in-app inbox
+--     breaks is a key that decides nothing; there is no `profile.view` key
+--     in this catalog for the identical reason.
+--
+--     The one RBAC decision this milestone makes is *who receives a branch's
+--     low-stock alert*, and that reuses the existing `inventory.adjust` key
+--     (Milestone 07) rather than adding a notifications-specific one — see
+--     public.notify_low_stock() in
+--     20260824100400_create_notification_functions.sql.
+--
+--     Because no rows are inserted here, section 6's Owner cross-join and the
+--     Branch Manager allowlist below need no changes for this milestone.
+-- =============================================================================
+
+-- =============================================================================
 -- 6. Default role -> permission mapping. Owner gets the full seeded catalog;
 --    Branch Manager gets a read/manage subset of branch & business-unit
 --    administration; the five operational roles (Cashier, Salesperson,

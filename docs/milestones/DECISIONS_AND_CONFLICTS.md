@@ -62,6 +62,19 @@ No document in the corpus describes a separate, additional "meta-platform" servi
 
 ---
 
+## 6. Notification delivery — no event outbox; the milestone doc overrides the design corpus
+
+`Notifications_Emails_and_Event_Sysytems.md` §7 proposes an `event_outbox` table (`event_type`, `aggregate_type`, `aggregate_id`, `payload`, `processed_at`) as the mechanism that keeps notification delivery from blocking the transaction that triggered it. `docs/milestones/12-notifications-and-communications.md`'s Implementation Notes explicitly forbid it: "Do not introduce a message queue... synchronous delivery within the Server Action, with graceful failure handling, is sufficient at this scale." Per this register's own rule (the milestone doc is the implementation-ready reconciliation; the design corpus is raw source material), the milestone doc wins.
+
+**What was built instead:** each `notify_<event>()` `SECURITY DEFINER` Postgres function (`supabase/migrations/20260824100400_create_notification_functions.sql`) inserts its in-app rows via `INSERT ... ON CONFLICT DO NOTHING ... RETURNING`, and the `RETURNING` set — exactly the rows actually inserted, not suppressed by the dedupe cooldown — is the caller's email worklist. Nothing is ever persisted as "pending"; there is no `processed_at` to sweep. The caller (`lib/notifications/low-stock.ts`, `role-changed.ts`) is invoked strictly after its triggering business RPC has already committed, in its own transaction, and never throws — so failure isolation is structural (nothing downstream of a commit can roll it back) rather than dependent on an outbox's retry semantics.
+
+**Two related calls made in the same milestone, following the same reconciliation:**
+
+- The low-stock predicate is `available_quantity` (quantity minus what's reserved for a layaway/open order) everywhere, not raw `quantity` — Milestone 10's reporting RPC already used it; `lib/inventory/queries.ts` and the inventory view were the outliers and now agree.
+- Notification retention (design corpus §43: sweep read rows after ~90 days) is deferred to Milestone 13, which needs a scheduled-execution primitive anyway for subscription-expiry warnings — building that primitive once and adding a three-line sweep to it is less infrastructure than building a scheduler twice.
+
+---
+
 ## Confirmed, non-conflicting decisions (stated for completeness — no ambiguity found)
 
 - **Offline capability:** consistently and unambiguously removed across every document that discusses it (`PRD.md` §5/§32, `TAS.md` Invariant 10 and §18, `Hardware_Security_Audit_Observability_and_ AI.md` §31.47–49). No milestone reintroduces it.

@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
+import { notifyLowStock } from '@/lib/notifications/low-stock'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   lowStockThresholdInputSchema,
@@ -171,6 +172,17 @@ export async function createStockAdjustment(
     supabase,
   )
 
+  // Post-commit, in its own transaction (see 20260824100400's header for
+  // why): the adjustment above has already succeeded regardless of what
+  // happens here. notifyLowStock() never throws, so this needs no
+  // try/catch — Milestone 12's failure-isolation invariant holds by the
+  // callee's own contract, not by anything written at this call site.
+  await notifyLowStock({
+    organizationId,
+    branchId: parsed.branchId,
+    productIds: [parsed.productId],
+  })
+
   return movement
 }
 
@@ -237,6 +249,19 @@ export async function initiateStockTransfer(
     },
     supabase,
   )
+
+  // SOURCE branch only. execute_stock_transfer() is the one write path that
+  // bypasses recordInventoryMovement()'s TS wrapper entirely (it calls
+  // record_inventory_movement() twice, itself, inside Postgres) — so this is
+  // the only place a transfer-driven depletion below threshold gets
+  // detected. The destination side only ever increases, so it is never a
+  // low-stock candidate. Never throws; see createStockAdjustment()'s comment
+  // above for why no try/catch is needed here either.
+  await notifyLowStock({
+    organizationId,
+    branchId: parsed.sourceBranchId,
+    productIds: parsed.items.map((item) => item.sourceProductId),
+  })
 
   return { id: transfer.id }
 }

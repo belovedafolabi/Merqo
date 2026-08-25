@@ -7,6 +7,8 @@ import {
   updateBranding,
   uploadOrganizationLogo,
 } from '@/lib/branding/mutations'
+import { updateNotificationPreference } from '@/lib/notifications/mutations'
+import type { NotificationCategory } from '@/lib/notifications/types'
 import { updateOrganizationProfile } from '@/lib/organization/mutations'
 import { updateReceiptSettings } from '@/lib/receipts/settings'
 
@@ -130,5 +132,34 @@ export async function updateReceiptSettingsAction(
   }
 
   revalidatePath('/settings/receipts')
+  return initialState
+}
+
+export async function updateNotificationPreferencesAction(
+  _prevState: SettingsActionState,
+  formData: FormData,
+): Promise<SettingsActionState> {
+  try {
+    await updateNotificationPreference({
+      // Same trust-then-validate cast updateReceiptSettingsAction's
+      // templateId uses above — updateNotificationPreferenceInputSchema's
+      // z.enum() inside the mutation is the actual validation.
+      category: String(formData.get('category') ?? '') as NotificationCategory,
+      // Radix's <Switch> submits "on" when checked, and is absent from
+      // FormData entirely when unchecked — same convention as
+      // updateReceiptSettingsAction's showLogo/showCashier above.
+      inAppEnabled: formData.get('inAppEnabled') === 'on',
+      emailEnabled: formData.get('emailEnabled') === 'on',
+    })
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  // The bell (components/notifications/notification-bell.tsx) renders in
+  // AdminTopbar, mounted on every app/(app)/** page — same reasoning as
+  // updateBrandingAction's revalidatePath above, though a preference change
+  // does not itself move the unread count; kept for consistency with the
+  // notifications domain's other revalidation calls.
+  revalidatePath('/settings/notifications')
   return initialState
 }
