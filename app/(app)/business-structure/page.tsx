@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentOrganizationId } from '@/lib/auth/context'
+import { requirePermission } from '@/lib/auth/guard'
 import {
   getBusinessUnitPosConfig,
   listBranches,
@@ -22,6 +23,11 @@ import { BusinessStructureView } from '@/components/business-structure/business-
 export default async function BusinessStructurePage() {
   const organizationId = await getCurrentOrganizationId()
   if (!organizationId) redirect('/sign-in')
+
+  // Milestone 15 audit finding 7 — see app/(app)/products/page.tsx. The doc
+  // comment above has claimed "gated on `branches.view` since Milestone 04";
+  // that gate was only ever in the nav.
+  await requirePermission('branches.view', { organizationId })
 
   const [branches, businessUnits, businessTypes] = await Promise.all([
     listBranches(organizationId),

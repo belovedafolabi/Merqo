@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Package } from 'lucide-react'
 
+import { requirePermission } from '@/lib/auth/guard'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { listCategories, listProducts } from '@/lib/products/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
@@ -24,6 +25,15 @@ export default async function ProductsPage() {
   const onboardingState = await getOnboardingState()
   const organizationId = onboardingState.organizationId
   if (!organizationId) redirect('/sign-in')
+
+  // Milestone 15 audit finding 7: this page's own doc comment above says
+  // "gated on `products.view`", but the gate lived only in the nav (`<Can>`)
+  // and in the mutations — a user without the permission who typed the URL
+  // still got the full management UI. RLS kept the data correct and the
+  // create/edit actions still refused, so this is defense-in-depth, not a
+  // breach — but it is inconsistent with reports/employees/expenses/roles,
+  // which all guard here. Now it matches them.
+  await requirePermission('products.view', { organizationId })
 
   const businessUnit = onboardingState.businessUnit
 

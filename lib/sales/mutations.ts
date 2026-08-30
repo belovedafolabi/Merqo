@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { notifyLowStock } from '@/lib/notifications/low-stock'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { consumeRateLimit, RateLimitError } from '@/lib/rate-limit/limiter'
 import { resolveEffectivePrice, resolveVariantPrice } from '@/lib/products/pricing'
 import {
   getBusinessUnitPosConfig,
@@ -71,6 +72,25 @@ export async function createSale(
     branchId: parsed.branchId,
   })
 
+  // Milestone 15 Acceptance Criteria: "Rate limiting is in place on login,
+  // webhook, and checkout endpoints."
+  //
+  // Keyed on the cashier's user id, and that choice matters more here than
+  // the number does. A busy supermarket runs many tills behind ONE NAT'd
+  // public IP, so an IP key would let one fast lane throttle the whole
+  // store; an organization key would be worse still. Per-cashier, the limit
+  // (120/minute — see lib/rate-limit/config.ts) is roughly two sales per
+  // second sustained: unreachable by a human scanning and taking payment,
+  // trivially reached by a runaway client loop or a replayed token.
+  //
+  // Deliberately AFTER requirePermission(), so unauthenticated or
+  // unauthorized traffic never consumes a slot from a legitimate cashier's
+  // bucket.
+  const supabase = await createServerSupabaseClient()
+  if (!(await consumeRateLimit(supabase, 'checkout', user.id))) {
+    throw new RateLimitError('checkout')
+  }
+
   const posConfig = await getBusinessUnitPosConfig(parsed.businessUnitId)
   if (!posConfig) {
     throw new Error('This business unit has no POS configuration yet.')
@@ -128,7 +148,6 @@ export async function createSale(
     }
   }
 
-  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase.rpc('create_sale', {
     p_organization_id: organizationId,
     p_branch_id: parsed.branchId,

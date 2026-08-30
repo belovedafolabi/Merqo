@@ -83,6 +83,41 @@ role builder or any application code path.
 
 ---
 
+## 7. Milestone 15 hand-offs to Milestone 16
+
+Two items surfaced during Milestone 15's audit that are deliberately not
+fixed there — one because the durable fix is a schema change with data-model
+implications, one because it costs money.
+
+### 7a. `roles` needs an `organization_id` column
+
+Milestone 15 finding 2 scoped `roles_select` / `role_permissions_select` to
+the caller's organization. Because `roles` has no `organization_id`
+(`20260822090900` deliberately declined scope columns), the predicate goes
+through `roles.created_by`, which is `ON DELETE SET NULL`. Deleting an
+author's auth identity would orphan their custom role into invisibility for
+every user in that organization.
+
+**Unreachable today:** Milestone 11 deactivates users (`deactivated_at`) and
+never deletes rows, and there is no application path that deletes an
+`auth.users` row. **Durable fix (Milestone 16):** add
+`roles.organization_id`, backfill it from `created_by`'s organization, make
+it `NOT NULL`, and re-point the two policies (and `role_is_visible()`) at it.
+Owner: Milestone 16 schema-optimization pass.
+
+### 7b. CodeQL / GitHub Advanced Security
+
+Milestone 15 added `pnpm audit` (production, high) as a CI gate but did not
+add CodeQL. CodeQL is free on public repositories and requires paid GitHub
+Advanced Security on a private one; `belovedafolabi/Merqo` is private, and
+GHAS is a real line item against the $0–$10/month constraint. **Decision:**
+rely on `pnpm audit` + Dependabot + gitleaks +
+`tests/integration/security-sweep.test.ts` for now. **Revisit (Milestone
+16 or later):** if the repo is made public, or the budget changes, enable
+CodeQL (`javascript-typescript`, PR + weekly).
+
+---
+
 ## Confirmed, non-conflicting decisions (stated for completeness — no ambiguity found)
 
 - **Offline capability:** consistently and unambiguously removed across every document that discusses it (`PRD.md` §5/§32, `TAS.md` Invariant 10 and §18, `Hardware_Security_Audit_Observability_and_ AI.md` §31.47–49). No milestone reintroduces it.

@@ -39,3 +39,14 @@ onlyBuiltDependencies:
 overrides:
   ansi-regex@5.0.0: '5.0.1'
   uuid@8.3.2: '^11.1.1'
+
+# Milestone 15: the .github/workflows/ci.yml `deps-audit` job runs
+# `pnpm audit --prod --audit-level high` as a genuine gate (no `|| true`).
+# When a production advisory has no fix available yet, add its GHSA or CVE id
+# here AND a matching row in docs/milestones/15-audit/dependency-triage.md
+# (advisory, why the vulnerable path is unreachable or unfixable, revisit-by
+# date). This is a reviewed, committed decision — not a disabled gate. Empty
+# today: no outstanding production advisory.
+auditConfig:
+  ignoreGhsas: []
+  ignoreCves: []

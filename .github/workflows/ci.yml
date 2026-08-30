@@ -73,9 +73,40 @@ jobs:
       - name: Build
         run: pnpm build
 
+  deps-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+
+      # A separate job, not a step in `quality`, so a newly-published advisory
+      # never blocks lint/typecheck/test feedback on an unrelated PR. Genuinely
+      # gating: no `continue-on-error`, no `|| true`. An advisory with no fix
+      # available yet is triaged into `pnpm.auditConfig.ignoreCves` /
+      # `ignoreGhsas` in package.json, each entry mirrored by a row in
+      # docs/milestones/15-audit/dependency-triage.md — a reviewed, committed
+      # decision rather than a disabled gate. `--prod` is deliberate: a
+      # devDependency advisory (a test runner, a build tool) does not ship to
+      # a client deployment and should not hold a release.
+      - name: pnpm audit (production dependencies, high and critical)
+        run: pnpm audit --prod --audit-level high
+
   db-migrations:
     name: Database migrations & schema tests
     runs-on: ubuntu-latest
+    # Gate on `quality` so a migration/integration run does not spend CI
+    # minutes on a branch that does not lint or typecheck. Milestone 15 audit
+    # finding 6: this job previously ran regardless.
+    needs: quality
     steps:
       - uses: actions/checkout@v7
 

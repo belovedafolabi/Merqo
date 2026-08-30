@@ -1,7 +1,10 @@
 import { getCurrentUser } from '@/lib/auth/context'
+import { requireUser } from '@/lib/auth/guard'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 import {
+  notificationIdSchema,
+  organizationIdSchema,
   updateNotificationPreferenceInputSchema,
   type UpdateNotificationPreferenceInput,
 } from './schemas'
@@ -16,14 +19,28 @@ import {
  * permission key. There is no organizational resource being acted on here —
  * see the seed.sql 5h comment for the same reasoning applied to the
  * permission catalog.
+ *
+ * Every write does require a SESSION, though (requireUser()), which is a
+ * different question from which permission applies. Milestone 15's audit
+ * found these two functions were the only mutations in the app with neither
+ * — reachable, if inert, by an unauthenticated caller.
  */
 
 export async function markNotificationRead(notificationId: string): Promise<void> {
+  // Milestone 15 audit finding 3. requireUser(), not requirePermission() —
+  // the per-permission reasoning in this file's header still stands, but
+  // "no permission key applies" is not the same as "no session required".
+  // Without this, an unauthenticated POST reached PostgREST and was silently
+  // no-op'd by RLS; now it redirects to sign-in like every other private
+  // surface, which is both the correct behaviour and a far clearer signal.
+  await requireUser()
+  const id = notificationIdSchema.parse(notificationId)
+
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
-    .eq('id', notificationId)
+    .eq('id', id)
     .is('read_at', null)
 
   if (error) throw error
@@ -36,11 +53,14 @@ export async function markNotificationRead(notificationId: string): Promise<void
  * function's own filter says.
  */
 export async function markAllNotificationsRead(organizationId: string): Promise<void> {
+  await requireUser()
+  const orgId = organizationIdSchema.parse(organizationId)
+
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
-    .eq('organization_id', organizationId)
+    .eq('organization_id', orgId)
     .is('read_at', null)
 
   if (error) throw error

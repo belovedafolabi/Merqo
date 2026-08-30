@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Wallet } from 'lucide-react'
 
+import { requirePermission } from '@/lib/auth/guard'
 import { getOnboardingState, listBusinessUnitCapabilities } from '@/lib/business-structure/queries'
 import { listBranchProductOptions } from '@/lib/inventory/queries'
 import { listLayaways } from '@/lib/customers/queries'
@@ -26,6 +27,9 @@ export default async function LayawaysPage() {
   const onboardingState = await getOnboardingState()
   const organizationId = onboardingState.organizationId
   if (!organizationId) redirect('/sign-in')
+
+  // Milestone 15 audit finding 7 — see app/(app)/products/page.tsx.
+  await requirePermission('layaway.view', { organizationId })
 
   const branch = onboardingState.branch
   const businessUnit = onboardingState.businessUnit

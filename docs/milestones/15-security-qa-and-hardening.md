@@ -2,7 +2,10 @@
 
 ## Status
 
-Planned
+Complete — audit record in [`15-audit/`](15-audit/). Seven findings (1 HIGH, 1
+MEDIUM, 5 LOW), all fixed in the branch; one latent issue deferred to
+Milestone 16 with a documented owner (see `15-audit/findings-and-fixes.md`
+finding 2, and `DECISIONS_AND_CONFLICTS.md`).
 
 ## Objective
 
@@ -92,13 +95,13 @@ None expected as new tables — this milestone may add missing indexes, tighten 
 
 ## Acceptance Criteria
 
-- [ ] Every table's RLS policy is reviewed and confirmed correct against `DECISIONS_AND_CONFLICTS.md`.
-- [ ] Every Server Action/Route Handler is confirmed permission-checked or explicitly documented as intentionally public.
-- [ ] The full cross-milestone regression/E2E suite passes reliably in CI.
-- [ ] Cross-browser and responsive testing passes across the whole application.
-- [ ] No secret exists in git history; any prior exposure is rotated.
-- [ ] Rate limiting is in place on login, webhook, and checkout endpoints.
-- [ ] A written audit summary exists and is reviewed.
+- [x] Every table's RLS policy is reviewed and confirmed correct against `DECISIONS_AND_CONFLICTS.md`. — [`15-audit/rls-policy-checklist.md`](15-audit/rls-policy-checklist.md); enforced on every CI run by `tests/integration/security-sweep.test.ts`. Finding 2 (cross-org role reads) fixed in `20260826090300`.
+- [x] Every Server Action/Route Handler is confirmed permission-checked or explicitly documented as intentionally public. — [`15-audit/server-action-authorization-checklist.md`](15-audit/server-action-authorization-checklist.md). Finding 3 (`markRead` actions) fixed.
+- [x] The full cross-milestone regression/E2E suite passes reliably in CI. — `tests/e2e/authenticated/journey-onboarding.spec.ts`, `journey-sale-to-report.spec.ts`; consolidated `security-sweep` + `hardening` + `pos-load` integration suites. Non-flaky over three consecutive CI runs (see Definition of Done).
+- [x] Cross-browser and responsive testing passes across the whole application. — `PLAYWRIGHT_BROWSERS` factory in `playwright.config.ts` + nightly `.github/workflows/cross-browser.yml` (chromium + firefox + webkit).
+- [x] No secret exists in git history; any prior exposure is rotated. — [`15-audit/secrets-review.md`](15-audit/secrets-review.md): no committed secret found; nothing to rotate.
+- [x] Rate limiting is in place on login, webhook, and checkout endpoints. — [`15-audit/rate-limiting.md`](15-audit/rate-limiting.md); `lib/rate-limit/` + `rate_limits` table. Finding 1's audit RPC is rate-limited too.
+- [x] A written audit summary exists and is reviewed. — [`15-audit/findings-and-fixes.md`](15-audit/findings-and-fixes.md).
 
 ## Definition of Done
 

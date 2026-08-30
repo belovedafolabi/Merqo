@@ -12,6 +12,7 @@ import {
   listInventoryBalances,
   listMovementHistory,
 } from '@/lib/inventory/queries'
+import { requirePermission } from '@/lib/auth/guard'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { EmptyState } from '@/components/states/empty-state'
 import { InventoryView } from '@/components/inventory/inventory-view'
@@ -32,6 +33,11 @@ export default async function InventoryPage() {
   const onboardingState = await getOnboardingState()
   const organizationId = onboardingState.organizationId
   if (!organizationId) redirect('/sign-in')
+
+  // Milestone 15 audit finding 7 — see app/(app)/products/page.tsx for the
+  // full note. This page's doc comment claims "gated on `inventory.view`";
+  // the gate was only in the nav and the mutations until now.
+  await requirePermission('inventory.view', { organizationId })
 
   const branch = onboardingState.branch
   const businessUnit = onboardingState.businessUnit

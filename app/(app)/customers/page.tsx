@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth/guard'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { listCustomers } from '@/lib/customers/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
@@ -18,6 +19,9 @@ import { CustomersView } from '@/components/customers/customers-view'
 export default async function CustomersPage() {
   const { organizationId } = await getOnboardingState()
   if (!organizationId) redirect('/sign-in')
+
+  // Milestone 15 audit finding 7 — see app/(app)/products/page.tsx.
+  await requirePermission('customers.view', { organizationId })
 
   const customers = await listCustomers(organizationId)
 

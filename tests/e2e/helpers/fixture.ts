@@ -11,7 +11,13 @@ import type { E2EFixture } from './seed'
  */
 const AUTH_DIR = path.join('tests', 'e2e', '.auth')
 
+// The filename says "cashier" for historical reasons — it actually holds the
+// primary fixture's OWNER session (every permission). Renaming it would touch
+// all five Milestone 14 specs for no behavioural gain; this note is cheaper.
 export const STORAGE_STATE = path.join(AUTH_DIR, 'cashier.json')
+// Milestone 15: the genuinely limited (Cashier-role) session, used only by
+// specs under tests/e2e/authenticated/limited/.
+export const LIMITED_STORAGE_STATE = path.join(AUTH_DIR, 'limited.json')
 export const FIXTURE_FILE = path.join(AUTH_DIR, 'fixture.json')
 export { AUTH_DIR }
 
