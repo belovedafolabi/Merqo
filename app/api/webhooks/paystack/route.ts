@@ -92,10 +92,7 @@ export async function POST(request: NextRequest) {
   // idempotency ledger below makes the eventual retry safe to replay.
   if (!(await consumeRateLimit(createAnonSupabaseClient(), 'webhook', clientIp))) {
     logger.warn('paystack.webhook_rate_limited', { ip: clientIp })
-    return NextResponse.json(
-      { received: false },
-      { status: 429, headers: { 'Retry-After': '60' } },
-    )
+    return NextResponse.json({ received: false }, { status: 429, headers: { 'Retry-After': '60' } })
   }
 
   let payload: { event?: string; data?: { reference?: string; id?: number } }

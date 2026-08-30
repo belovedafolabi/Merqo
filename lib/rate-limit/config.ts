@@ -17,12 +17,7 @@
  * got wrong later, so it is documented per bucket rather than left implied.
  */
 
-export type RateLimitBucket =
-  | 'login'
-  | 'login_reset'
-  | 'webhook'
-  | 'checkout'
-  | 'unauth_audit'
+export type RateLimitBucket = 'login' | 'login_reset' | 'webhook' | 'checkout' | 'unauth_audit'
 
 export interface RateLimitRule {
   /** Maximum calls permitted inside the window. */

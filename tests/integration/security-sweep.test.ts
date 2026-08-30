@@ -128,14 +128,17 @@ describe('security sweep — row level security', () => {
     // Guards the allow-list from the other direction. If a table listed above
     // later gains a policy, the entry is stale and its stated reason is no
     // longer the reason — that should be noticed, not silently tolerated.
-    const { rows } = await pool.query<{ tablename: string }>(`
+    const { rows } = await pool.query<{ tablename: string }>(
+      `
       select c.relname as tablename
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public'
         and c.relname = any($1::text[])
         and exists (select 1 from pg_policy pol where pol.polrelid = c.oid)
-    `, [Object.keys(POLICYLESS_TABLES_ALLOWED)])
+    `,
+      [Object.keys(POLICYLESS_TABLES_ALLOWED)],
+    )
 
     expect(rows.map((row) => row.tablename)).toEqual([])
   })
