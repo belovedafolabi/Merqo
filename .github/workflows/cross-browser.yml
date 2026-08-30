@@ -1,0 +1,116 @@
+name: Cross-browser E2E
+
+# Milestone 15's cross-browser matrix. The milestone's CI/CD Requirements
+# allow this to be "required, or nightly if execution time is a concern for
+# the free-tier CI minutes budget" — nightly is chosen. `ci.yml`'s `e2e` job
+# stays Chromium-only so every PR is fast; this runs the full
+# chromium + firefox + webkit matrix once a day against `main`.
+#
+# Switching to per-PR later is a one-line change: set
+# `PLAYWRIGHT_BROWSERS: chromium,firefox,webkit` in `ci.yml`'s `e2e` job env
+# and add the browser names to its `playwright install` step. The cost of
+# doing so is the whole reason it is not the default — the extra installs are
+# ~2-3 min and the run is roughly 3x wall-clock.
+
+on:
+  schedule:
+    # 03:00 UTC daily. GitHub disables scheduled workflows after 60 days with
+    # no repo activity — a note for whoever inherits this.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cross-browser
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Needed by the failure-reporting step below: a nightly run nobody watches
+  # is decorative.
+  issues: write
+
+jobs:
+  cross-browser:
+    name: E2E (chromium + firefox + webkit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Start local Supabase (applies migrations + seed)
+        run: pnpm exec supabase start
+
+      - name: Export local Supabase URL/anon key for the E2E run
+        run: |
+          status=$(pnpm exec supabase status -o json)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(echo "$status" | jq -r '.API_URL')" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(echo "$status" | jq -r '.ANON_KEY')" >> "$GITHUB_ENV"
+
+      - name: Check required Supabase env is present (values never printed)
+        run: |
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is not set for the cross-browser run"
+              exit 1
+            fi
+          done
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-xbrowser-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium, Firefox and WebKit
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      - name: Run the full browser matrix
+        env:
+          # playwright.config.ts reads this to generate desktop/tablet(/phone)
+          # projects per browser. Unset (the ci.yml default) means chromium only.
+          PLAYWRIGHT_BROWSERS: chromium,firefox,webkit
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-cross-browser
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Open an issue on failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Nightly cross-browser E2E failed ($(date -u +%Y-%m-%d))" \
+            --body "The scheduled cross-browser matrix failed on \`main\`. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. The Playwright HTML report is attached to that run as \`playwright-report-cross-browser\`." \
+            --label "needs-triage" \
+            || echo "::warning::could not open an issue (missing label or permissions) — check the run directly"
+
+      - name: Stop Supabase
+        if: always()
+        run: pnpm exec supabase stop
