@@ -8,6 +8,8 @@ import { SAMPLE_SALE } from '@/lib/receipts/sample'
 import {
   DEFAULT_RECEIPT_TEMPLATE_ID,
   RECEIPT_TEMPLATE_IDS,
+  RECEIPT_TEMPLATES,
+  findReceiptPaperWidth,
   type ReceiptTemplateId,
 } from '@/lib/receipts/templates'
 import { getSale } from '@/lib/sales/queries'
@@ -35,11 +37,21 @@ import { ReceiptPrintFrame } from '@/components/receipts/receipt-print-frame'
  *
  * `?templateId=` lets the template picker preview a layout that is not yet
  * saved — falls back to the organization's saved setting.
+ *
+ * `?paper=58|80` (Milestone 14) overrides the physical paper width the print
+ * stylesheet targets, for a shop whose thermal printer disagrees with the
+ * width its chosen template implies. Whitelist-validated exactly like
+ * `?templateId=`, and falls back to the template's own `paperWidthMm`.
  */
 export default async function ReceiptPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saleId?: string; templateId?: string; print?: string }>
+  searchParams: Promise<{
+    saleId?: string
+    templateId?: string
+    print?: string
+    paper?: string
+  }>
 }) {
   const onboardingState = await getOnboardingState()
   const organizationId = onboardingState.organizationId
@@ -55,6 +67,9 @@ export default async function ReceiptPreviewPage({
   )
     ? (requestedTemplateId as ReceiptTemplateId)
     : (settings.templateId ?? DEFAULT_RECEIPT_TEMPLATE_ID)
+
+  const paperWidthMm =
+    findReceiptPaperWidth(resolvedSearchParams.paper) ?? RECEIPT_TEMPLATES[templateId].paperWidthMm
 
   let sale = SAMPLE_SALE
   let branchName: string | null = null
@@ -79,6 +94,7 @@ export default async function ReceiptPreviewPage({
       settings={settings}
       branchName={branchName}
       autoPrint={resolvedSearchParams.print === '1'}
+      paperWidthMm={paperWidthMm}
     />
   )
 }

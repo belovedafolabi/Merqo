@@ -3,6 +3,7 @@ import { Menu, RotateCcw, User, Wifi } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { OpenCustomerDisplayButton } from '@/components/pos/open-customer-display-button'
 
 /**
  * POS shell header — kept extremely compact per
@@ -32,18 +33,22 @@ export function PosHeader({
         </span>
         <Button
           variant="outline"
-          size="sm"
+          size="touch"
           className="hidden gap-1.5 rounded-full sm:inline-flex"
           asChild
         >
           <Link href="/pos/returns">
-            <RotateCcw className="size-3.5" /> Returns
+            <RotateCcw className="size-4" /> Returns
           </Link>
         </Button>
-        <Button variant="outline" size="sm" className="rounded-full">
+        <OpenCustomerDisplayButton />
+        {/* Hidden below `sm`: an inert placeholder until real customer
+            selection lands here, and on a 375px header it was crowding out
+            the controls that do something. */}
+        <Button variant="outline" size="touch" className="hidden rounded-full sm:inline-flex">
           Walk-in customer
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Menu">
+        <Button variant="ghost" size="icon-touch" aria-label="Menu">
           <Menu />
         </Button>
       </div>

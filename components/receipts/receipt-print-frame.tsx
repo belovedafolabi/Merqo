@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { ReceiptDocument } from '@/components/receipts/receipt-document'
 import type { OrganizationBranding } from '@/lib/branding/queries'
 import type { ReceiptSettings } from '@/lib/receipts/settings'
-import type { ReceiptTemplateId } from '@/lib/receipts/templates'
+import type { ReceiptPaperWidthMm, ReceiptTemplateId } from '@/lib/receipts/templates'
 import type { Sale } from '@/lib/sales/queries'
 
 /**
@@ -21,6 +21,7 @@ export function ReceiptPrintFrame({
   settings,
   branchName,
   autoPrint,
+  paperWidthMm,
 }: {
   sale: Sale
   templateId: ReceiptTemplateId
@@ -28,6 +29,7 @@ export function ReceiptPrintFrame({
   settings: ReceiptSettings
   branchName?: string | null
   autoPrint: boolean
+  paperWidthMm: ReceiptPaperWidthMm
 }) {
   useEffect(() => {
     if (!autoPrint) return
@@ -37,10 +39,21 @@ export function ReceiptPrintFrame({
 
   return (
     <div className="flex min-h-screen flex-col items-center gap-6 bg-muted/30 p-8 print:bg-white print:p-0">
+      {/*
+        `size: <width>mm auto` is the rule that makes this work on a thermal
+        printer: a receipt roll is continuous, so the width is fixed and the
+        length is whatever the content needs. Milestone 14's Technical
+        Requirement is explicit that printing reuses this existing view via a
+        print stylesheet rather than a second rendering implementation.
+
+        The 3mm margin replaces an 8mm one that predated any paper-width
+        awareness — on a 58mm roll that was giving away more than a quarter of
+        the usable width to whitespace.
+      */}
       <style>{`
         @media print {
-          @page { margin: 8mm; }
-          body { background: white; }
+          @page { size: ${paperWidthMm}mm auto; margin: 3mm; }
+          html, body { background: white; margin: 0; }
         }
       `}</style>
       <ReceiptDocument

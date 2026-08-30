@@ -39,37 +39,37 @@ export function CartLines() {
               each
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 lg:gap-1">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-11 active:bg-accent lg:size-8"
               aria-label={`Decrease quantity of ${line.name}`}
               onClick={() => updateQuantity(line.productId, line.variantId, line.quantity - 1)}
             >
-              <Minus className="size-3" />
+              <Minus className="size-4 lg:size-3" />
             </Button>
             <span className="w-6 text-center text-body-sm tabular-nums">{line.quantity}</span>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-7"
+              className="size-11 active:bg-accent lg:size-8"
               aria-label={`Increase quantity of ${line.name}`}
               onClick={() => updateQuantity(line.productId, line.variantId, line.quantity + 1)}
             >
-              <Plus className="size-3" />
+              <Plus className="size-4 lg:size-3" />
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 text-muted-foreground"
+              className="size-11 text-muted-foreground active:bg-accent lg:size-8"
               aria-label={`Remove ${line.name} from cart`}
               onClick={() => removeItem(line.productId, line.variantId)}
             >
-              <X className="size-3" />
+              <X className="size-4 lg:size-3" />
             </Button>
           </div>
         </li>

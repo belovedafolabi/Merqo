@@ -29,6 +29,29 @@ export interface ReceiptTemplateDef {
   showPaymentDetail: boolean
   /** Tailwind max-width class for the printed/previewed document. */
   widthClass: string
+  /**
+   * Physical paper width the printed `@page` rule targets, in millimetres —
+   * 58mm and 80mm being the two thermal receipt-roll sizes in general use.
+   *
+   * Deliberately derived from the template rather than stored as its own
+   * organization setting: the choice is already made when an org picks a
+   * template (Compact exists precisely because it is "narrower... for
+   * thermal-printer widths"), and a second, independent width field would let
+   * the two disagree. The preview route still accepts a `?paper=` override
+   * for a shop whose printer disagrees with its template.
+   */
+  paperWidthMm: 58 | 80
+}
+
+/** Paper widths the `?paper=` override accepts — the whitelist it validates against. */
+export const RECEIPT_PAPER_WIDTHS_MM = [58, 80] as const
+export type ReceiptPaperWidthMm = (typeof RECEIPT_PAPER_WIDTHS_MM)[number]
+
+export function findReceiptPaperWidth(value: string | undefined): ReceiptPaperWidthMm | null {
+  const parsed = Number(value)
+  return (RECEIPT_PAPER_WIDTHS_MM as readonly number[]).includes(parsed)
+    ? (parsed as ReceiptPaperWidthMm)
+    : null
 }
 
 export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = {
@@ -42,6 +65,7 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showTaxBreakdown: true,
     showPaymentDetail: true,
     widthClass: 'max-w-sm',
+    paperWidthMm: 80,
   },
   compact: {
     id: 'compact',
@@ -53,6 +77,7 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showTaxBreakdown: true,
     showPaymentDetail: true,
     widthClass: 'max-w-xs',
+    paperWidthMm: 58,
   },
   detailed: {
     id: 'detailed',
@@ -64,6 +89,7 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showTaxBreakdown: true,
     showPaymentDetail: true,
     widthClass: 'max-w-md',
+    paperWidthMm: 80,
   },
 }
 

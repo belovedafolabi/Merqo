@@ -28,7 +28,7 @@ export function ProductTile({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex min-h-28 flex-col items-start justify-between gap-2 rounded-xl border bg-card p-3 text-left shadow-card transition-colors',
+        'flex min-h-28 touch-manipulation flex-col items-start justify-between gap-2 rounded-xl border bg-card p-3 text-left shadow-card transition-[colors,transform] duration-100 active:scale-[0.98] active:bg-accent',
         'hover:border-primary/50 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
       )}
     >

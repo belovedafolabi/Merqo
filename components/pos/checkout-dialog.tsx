@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { TriangleAlert } from 'lucide-react'
+import { Printer, TriangleAlert } from 'lucide-react'
 
 import { checkoutAction, type PosActionState } from '@/app/(pos)/pos/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -38,6 +38,28 @@ const initialState: PosActionState = { error: null }
 
 function currency(value: number): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
+}
+
+/**
+ * Milestone 14's browser-based receipt printing. Opens the existing
+ * /receipts/preview route — which already renders the receipt alone, already
+ * auto-prints on `?print=1`, and already gates on `sales.view` — in a small
+ * named popup.
+ *
+ * Not window.print() on this dialog: ReceiptView renders inside a portalled
+ * DialogContent with the entire POS screen still in the DOM behind it, so
+ * printing in place would need a `body > * { display: none }` cascade to
+ * suppress the shell — the fragile pattern the dedicated print route exists
+ * to avoid. The window NAME matters too: clicking Print twice focuses the one
+ * popup instead of spawning a second.
+ */
+function printReceipt(saleId: string): void {
+  const popup = window.open(
+    `/receipts/preview?saleId=${encodeURIComponent(saleId)}&print=1`,
+    'merqo-receipt',
+    'popup=yes,width=420,height=760',
+  )
+  popup?.focus()
 }
 
 /**
@@ -143,7 +165,7 @@ export function CheckoutDialog({
           onOpenChange(next)
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Sale complete</DialogTitle>
             <DialogDescription>
@@ -152,8 +174,13 @@ export function CheckoutDialog({
             </DialogDescription>
           </DialogHeader>
           <ReceiptView saleId={state.saleId} />
-          <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" size="touch" onClick={() => printReceipt(state.saleId!)}>
+              <Printer /> Print receipt
+            </Button>
+            <Button size="touch" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -163,7 +190,11 @@ export function CheckoutDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg">
+        {/* max-h + scroll (Milestone 14): on a 375x812 phone with the
+            keyboard up there is ~400px of usable height, and this form is a
+            customer picker + discount pair + payment select + reference
+            textarea + submit. Unbounded, it simply overflowed. */}
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Checkout</DialogTitle>
             <DialogDescription>Select a payment method to complete this sale.</DialogDescription>
@@ -271,6 +302,7 @@ export function CheckoutDialog({
                     min={0}
                     max={100}
                     step="0.01"
+                    inputMode="decimal"
                     value={discountInput}
                     onChange={(event) => setDiscountInput(event.target.value)}
                     placeholder="0"
@@ -296,7 +328,7 @@ export function CheckoutDialog({
                 onValueChange={setPaymentMethod}
                 required
               >
-                <SelectTrigger id="checkout-payment-method" className="w-full">
+                <SelectTrigger id="checkout-payment-method" className="h-11 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -336,7 +368,10 @@ export function CheckoutDialog({
               />
             </div>
 
-            <DialogFooter>
+            {/* Sticky so "Complete sale" stays reachable at any scroll
+                position — the acceptance criterion is "no obscured buttons,
+                no unreachable controls". */}
+            <DialogFooter className="sticky bottom-0 -mx-6 bg-background px-6 pt-3 pb-safe-b">
               <Button
                 type="submit"
                 size="lg"
