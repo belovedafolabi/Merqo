@@ -3,10 +3,11 @@
 import { redirect } from 'next/navigation'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { recordAuditEvent } from '@/lib/auth/audit'
+import { recordAuditEvent, recordUnauthenticatedAuditEvent } from '@/lib/auth/audit'
 import { isLoginThrottled, recordLoginAttempt } from '@/lib/auth/login-throttle'
 import { getRequestMeta } from '@/lib/auth/request-context'
 import { ensureOrganizationBootstrapped } from '@/lib/organization/mutations'
+import { consumeRateLimit } from '@/lib/rate-limit/limiter'
 import { getSubscriptionAccessState } from '@/lib/subscription/queries'
 import { logger } from '@/lib/logger'
 import { slugify } from '@/lib/utils'
@@ -113,7 +114,7 @@ export async function signIn(
 
   const identifier = email.toLowerCase()
   const supabase = await createServerSupabaseClient()
-  const { ipAddress } = await getRequestMeta()
+  const { ipAddress, userAgent } = await getRequestMeta()
 
   const throttled = await isLoginThrottled(supabase, identifier)
   if (throttled) {
@@ -121,18 +122,30 @@ export async function signIn(
     return { error: 'Too many failed attempts. Please try again in a few minutes.' }
   }
 
+  // Sits beside the per-identifier throttle above, and catches what that one
+  // structurally cannot see: password spraying, where a single source tries
+  // one common password against many different accounts. No individual
+  // identifier ever accumulates enough failures to trip check_login_throttle,
+  // so only a per-source limit stops it (Milestone 15 Acceptance Criteria:
+  // "Rate limiting is in place on login, webhook, and checkout endpoints").
+  //
+  // Same message as the throttle above on purpose — telling an attacker
+  // which of the two limits they hit tells them how the defence is shaped.
+  if (!(await consumeRateLimit(supabase, 'login', ipAddress))) {
+    return { error: 'Too many failed attempts. Please try again in a few minutes.' }
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   await recordLoginAttempt(supabase, identifier, ipAddress, !error)
 
   if (error) {
-    await recordAuditEvent(
-      {
-        organizationId: null,
-        userId: null,
-        action: 'auth.sign_in_failed',
-        resourceType: 'user',
-        metadata: { identifier },
-      },
+    // One of only two sessionless audit writes in the app (the other is the
+    // rejected-webhook path), and therefore one of the only two reasons
+    // `anon` needs any audit RPC at all. Uses the narrowed
+    // record_unauthenticated_audit_event() rather than the general helper —
+    // see lib/auth/audit.ts and Milestone 15's finding 1.
+    await recordUnauthenticatedAuditEvent(
+      { action: 'auth.sign_in_failed', identifier, ipAddress, userAgent },
       supabase,
     )
     return { error: 'Invalid email or password.' }
@@ -168,7 +181,13 @@ export async function signIn(
     if (!accessState.canRenew) {
       // Genuinely disabled: sign out and bounce to /sign-in with a reason,
       // same shape as the deactivation redirect proxy.ts issues.
-      await supabase.auth.signOut()
+      //
+      // The audit write deliberately comes BEFORE signOut(), not after.
+      // Recording it afterwards meant this ran with no session, which is the
+      // only reason it needed record_audit_event()'s anon grant — the grant
+      // Milestone 15's finding 1 revoked. Auditing first is also simply
+      // better evidence: the row keeps the real organizationId and userId
+      // that a post-signOut call could only pass in as unverified arguments.
       await recordAuditEvent(
         {
           organizationId: accessState.organizationId,
@@ -179,6 +198,7 @@ export async function signIn(
         },
         supabase,
       )
+      await supabase.auth.signOut()
       redirect('/sign-in?reason=subscription_expired')
     }
 
@@ -222,15 +242,28 @@ export async function requestPasswordReset(
 
   const supabase = await createServerSupabaseClient()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const { ipAddress } = await getRequestMeta()
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appUrl}/auth/confirm?type=recovery`,
-  })
+  // Tighter than the sign-in bucket because every call here sends an email:
+  // unthrottled, this is a free way to bomb somebody's inbox and to burn the
+  // deployment's Resend quota at the same time.
+  //
+  // On trip we return the SAME notice as the success path and simply skip
+  // sending. Returning a distinct "rate limited" message would hand an
+  // attacker the account-existence oracle the generic notice below exists to
+  // deny — the limit must not become the side channel.
+  const withinLimit = await consumeRateLimit(supabase, 'login_reset', ipAddress)
 
-  // Never reveal whether the email exists — the response is identical
-  // either way, only the outcome (an email sent, or nothing) differs.
-  if (error) {
-    logger.warn('auth.password_reset_request_failed', { error: error.message })
+  if (withinLimit) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appUrl}/auth/confirm?type=recovery`,
+    })
+
+    // Never reveal whether the email exists — the response is identical
+    // either way, only the outcome (an email sent, or nothing) differs.
+    if (error) {
+      logger.warn('auth.password_reset_request_failed', { error: error.message })
+    }
   }
 
   return { error: null, notice: 'If an account exists for that email, a reset link is on its way.' }

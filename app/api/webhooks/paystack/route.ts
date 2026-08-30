@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { logger } from '@/lib/logger'
-import { recordAuditEvent } from '@/lib/auth/audit'
+import { recordUnauthenticatedAuditEvent } from '@/lib/auth/audit'
+import { consumeRateLimit } from '@/lib/rate-limit/limiter'
 import { verifyPaystackSignature } from '@/lib/paystack/signature'
 import { resolvePaystackWebhookSecret } from '@/lib/paystack/service'
 import { settlePaystackPayment } from '@/lib/subscription/settlement'
@@ -34,6 +35,9 @@ export const dynamic = 'force-dynamic'
  *   2. Verify the signature against those raw bytes. A payload that fails
  *      verification is rejected outright — 401, logged, audited — never
  *      parsed or trusted for anything.
+ *   2a. Rate-limit (Milestone 15). AFTER the signature check by design, so
+ *      the bucket governs signed retry storms rather than anonymous floods —
+ *      see the comment at the call site.
  *   3. Record the delivery in webhook_events for idempotency (the cheap,
  *      second guard — see that table's comment). A duplicate short-circuits
  *      here with 200, no further processing.
@@ -53,23 +57,45 @@ export async function POST(request: NextRequest) {
   const signatureHeader = request.headers.get('x-paystack-signature')
   const secret = resolvePaystackWebhookSecret()
 
+  const clientIp = (request.headers.get('x-forwarded-for')?.split(',')[0] ?? '').trim() || null
+
   if (!secret || !verifyPaystackSignature(raw, signatureHeader, secret)) {
     logger.error('paystack.webhook_rejected', { reason: 'invalid_signature' })
-    // record_audit_event is granted to anon (20260822093500) precisely so
-    // this path — which has no session at all, not even a cookie to read —
-    // can still write an audit row. createAnonSupabaseClient() avoids
-    // createServerSupabaseClient()'s next/headers cookies() call, which this
-    // caller has no use for (see that function's own doc).
-    await recordAuditEvent(
+    // This path has no session at all, not even a cookie to read, so it uses
+    // the narrow record_unauthenticated_audit_event() RPC. Until Milestone
+    // 15 it called the general record_audit_event(), which was granted to
+    // anon (20260822093500) — a grant that also let anyone holding the
+    // public anon key forge audit rows for any organization. That grant is
+    // revoked; see supabase/migrations/20260826090200.
+    //
+    // createAnonSupabaseClient() avoids createServerSupabaseClient()'s
+    // next/headers cookies() call, which this caller has no use for (see
+    // that function's own doc). The RPC rate-limits itself in SQL, so an
+    // unsigned flood cannot use this branch to fill audit_logs.
+    await recordUnauthenticatedAuditEvent(
       {
-        organizationId: null,
-        userId: null,
         action: 'subscription.webhook_rejected',
-        resourceType: 'webhook_event',
+        ipAddress: clientIp,
+        userAgent: request.headers.get('user-agent'),
       },
       createAnonSupabaseClient(),
     )
     return NextResponse.json({ received: false }, { status: 401 })
+  }
+
+  // Deliberately AFTER signature verification, not before. An unsigned flood
+  // is already rejected above having cost nothing but an HMAC, so limiting
+  // it here would only add a database round trip to the cheapest branch.
+  // What this bucket actually governs is a legitimately-signed retry storm —
+  // Paystack redelivering faster than settlement can keep up — and 429 with
+  // Retry-After is the correct answer to that. The webhook_events
+  // idempotency ledger below makes the eventual retry safe to replay.
+  if (!(await consumeRateLimit(createAnonSupabaseClient(), 'webhook', clientIp))) {
+    logger.warn('paystack.webhook_rate_limited', { ip: clientIp })
+    return NextResponse.json(
+      { received: false },
+      { status: 429, headers: { 'Retry-After': '60' } },
+    )
   }
 
   let payload: { event?: string; data?: { reference?: string; id?: number } }

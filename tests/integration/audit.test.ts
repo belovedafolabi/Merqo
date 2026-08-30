@@ -14,20 +14,54 @@ describe('audit log — write path and append-only enforcement', () => {
     await pool.end()
   })
 
-  it('record_audit_event() is the only insert path and is reachable pre-session (anon)', async () => {
+  /**
+   * REWRITTEN BY MILESTONE 15 (finding 1). This test originally asserted that
+   * record_audit_event() was "reachable pre-session (anon)" — which was true,
+   * and was the vulnerability: every argument of that function is
+   * caller-supplied, so the same grant that let a failed sign-in record itself
+   * also let anyone holding the public anon key forge audit rows for any
+   * organization.
+   *
+   * The pre-session capability is still required and still tested — it just
+   * goes through record_unauthenticated_audit_event() now, which allow-lists
+   * the action and derives everything else itself. See
+   * supabase/migrations/20260826090200 and
+   * tests/integration/hardening.test.ts for the full adversarial coverage.
+   */
+  it('record_audit_event() is no longer reachable by anon', async () => {
     const anon = createAnonClient()
-    const { data, error } = await anon.rpc('record_audit_event', {
+    const { error } = await anon.rpc('record_audit_event', {
       p_organization_id: null,
       p_user_id: null,
       p_action: 'auth.sign_in_failed',
       p_resource_type: 'user',
       p_metadata: { identifier: 'nobody@example.com' },
     })
-    expect(error).toBeNull()
-    expect(data).toBeTruthy()
 
-    const result = await pool.query('select action from public.audit_logs where id = $1', [data])
+    expect(error?.code).toBe('42501')
+  })
+
+  it('the narrowed pre-session RPC is reachable by anon and writes a real row', async () => {
+    const anon = createAnonClient()
+    const identifier = `audit-${randomUUID()}@example.com`
+
+    const { error } = await anon.rpc('record_unauthenticated_audit_event', {
+      p_action: 'auth.sign_in_failed',
+      p_identifier: identifier,
+      p_ip_address: null,
+      p_user_agent: null,
+    })
+    expect(error).toBeNull()
+
+    const result = await pool.query(
+      `select action from public.audit_logs where metadata->>'identifier' = $1`,
+      [identifier],
+    )
     expect(result.rows[0]?.action).toBe('auth.sign_in_failed')
+
+    await pool.query(`delete from public.audit_logs where metadata->>'identifier' = $1`, [
+      identifier,
+    ])
   })
 
   it('bootstrapping an organization records organization.created and user_role.assigned', async () => {
