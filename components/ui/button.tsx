@@ -5,7 +5,11 @@ import { Slot } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // `touch-manipulation` on the base: it opts every button out of the ~300ms
+  // double-tap-to-zoom delay mobile browsers otherwise impose before
+  // dispatching a click. One utility, no layout effect, and it makes the
+  // whole app feel responsive to touch rather than only the POS.
+  "inline-flex shrink-0 touch-manipulation items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -23,10 +27,16 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: 'h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5',
         lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
+        // 44px exactly (h-11 = 2.75rem), the Apple HIG / WCAG minimum touch
+        // target. Added as new sizes rather than by growing `default` and
+        // `lg`, which would resize every button in the admin shell — this is
+        // opt-in for the touch surfaces Milestone 14 tunes.
+        touch: 'h-11 min-w-11 rounded-lg px-5 has-[>svg]:px-4',
         icon: 'size-9',
         'icon-xs': "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
         'icon-sm': 'size-8',
         'icon-lg': 'size-10',
+        'icon-touch': 'size-11',
       },
     },
     defaultVariants: {

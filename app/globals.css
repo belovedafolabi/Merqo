@@ -206,6 +206,13 @@
      (docs/UXUI_Design_System_Specification.md §9). Two levels only. */
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-elevated: 0 16px 40px oklch(0 0 0 / 0.2), 0 2px 8px oklch(0 0 0 / 0.08);
+
+  /* Bottom inset that clears a phone's home-indicator / gesture bar, falling
+     back to ordinary padding everywhere else. A token rather than a repeated
+     arbitrary `pb-[max(...)]`, so `pb-safe-b` reads like the rest of the
+     spacing scale. Used by the POS's mobile cart bar and sticky checkout
+     footer (Milestone 14). */
+  --spacing-safe-b: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 @layer base {
@@ -214,6 +221,25 @@
   }
   body {
     @apply bg-background font-sans text-foreground;
+  }
+}
+
+/* The only genuinely global print rules (Milestone 14). Everything
+   page-specific stays with its page — components/receipts/receipt-print-frame.tsx
+   and components/reports/print-report.tsx each own their own @page sizing,
+   which is the established pattern here. These two are different: they are
+   about the root layout, so no single page can fix them. */
+@media print {
+  /* Sonner's toaster is portalled to <body> from app/layout.tsx, so a toast
+     that happens to be visible would print on top of a receipt. */
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+  /* Browsers omit background colours from printouts by default, which would
+     drop a receipt's brand header and its totals band. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

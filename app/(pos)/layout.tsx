@@ -9,6 +9,7 @@ import { PosSessionProvider } from '@/lib/pos/session-context'
 import { CartProvider } from '@/lib/pos/cart-context'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { PosHeader } from '@/components/pos/pos-header'
+import { CustomerDisplayPublisher } from '@/components/pos/customer-display-publisher'
 
 /**
  * POS shell — structurally separate route tree from app/(app), per
@@ -55,7 +56,13 @@ export default async function PosLayout({ children }: { children: React.ReactNod
       >
         <CartProvider>
           <BrandStyle />
-          <div className="flex min-h-svh flex-col bg-background">
+          {/* Mirrors the cart to any open customer-facing display. Renders
+              nothing; must sit inside CartProvider to read it. */}
+          <CustomerDisplayPublisher />
+          {/* dvh, not svh: on mobile Safari svh is the SMALLEST viewport
+              (URL bar expanded), which left a gap under the till whenever
+              the bar was collapsed. */}
+          <div className="flex min-h-dvh flex-col bg-background">
             <PosHeader cashierName={cashierName} branchName={onboardingState.branch.name} />
             <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
           </div>

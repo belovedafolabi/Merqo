@@ -12,6 +12,12 @@ import { Input } from '@/components/ui/input'
  * real search/barcode lookup — a barcode scanner types the code followed by
  * Enter, so `onScan` fires on Enter and the grid decides whether it was a
  * fast exact barcode match or a normal search-as-you-type result.
+ *
+ * No `autoFocus` since Milestone 14: on a phone it raised the on-screen
+ * keyboard the moment /pos loaded, before the cashier had done anything.
+ * product-grid.tsx now focuses this programmatically, and only on a device
+ * with a real pointer. Scanning is unaffected — useBarcodeScanner catches a
+ * burst regardless of where focus sits.
  */
 export function PosSearch({
   value,
@@ -38,9 +44,22 @@ export function PosSearch({
           }
         }}
         placeholder="Search products or scan a barcode…"
-        className="h-12 rounded-xl pl-11 text-body"
+        // `md:text-body` is not redundant with `text-body`. components/ui/
+        // input.tsx's base class carries `md:text-sm`, and tailwind-merge
+        // treats a bare utility and its `md:` variant as different keys, so
+        // both survive — the box silently dropped to 14px at ≥768px, i.e. on
+        // every tablet, which is under the 16px iOS needs to avoid zooming
+        // the whole page on focus. The explicit variant is what overrides it.
+        className="h-12 rounded-xl pl-11 text-body md:text-body"
         aria-label="Search products or scan a barcode"
-        autoFocus
+        // A scanned code must reach the field verbatim; mobile autocorrect
+        // and auto-capitalisation would otherwise mangle it.
+        inputMode="search"
+        enterKeyHint="search"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
       />
       <ScanLine className="absolute top-1/2 right-4 size-5 -translate-y-1/2 text-muted-foreground" />
     </div>

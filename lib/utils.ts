@@ -23,8 +23,8 @@ export function slugify(name: string): string {
 }
 
 /**
- * Date/time rendering with the locale pinned explicitly, for anything that
- * renders during SSR.
+ * Date/time rendering with the locale AND time zone pinned explicitly, for
+ * anything that renders during SSR.
  *
  * A bare `new Date(x).toLocaleDateString()` resolves its locale from the
  * runtime, which is the Node server on the first pass and the browser on
@@ -34,6 +34,15 @@ export function slugify(name: string): string {
  * locale makes both passes produce the same string, which is the actual fix
  * rather than suppressing the warning.
  *
+ * The time zone needs pinning for the identical reason, not just the locale:
+ * two machines in different zones format the same instant differently even
+ * with locale agreed (confirmed in practice — Milestone 14's receipt
+ * snapshot test passed on a Windows dev machine and failed on the Ubuntu CI
+ * runner purely from this). 'Africa/Lagos' (WAT, UTC+1, no DST) rather than
+ * UTC: this is a Nigerian POS, so a printed sale time should read as the
+ * business's own local time regardless of which server or time zone actually
+ * renders it, not as a UTC offset a cashier would have to mentally convert.
+ *
  * 'en-NG' matches the currency formatting already used across the POS and
  * admin screens.
  */
@@ -41,6 +50,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('en-NG', {
   year: 'numeric',
   month: 'short',
   day: 'numeric',
+  timeZone: 'Africa/Lagos',
 })
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-NG', {
@@ -49,6 +59,7 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-NG', {
   day: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
+  timeZone: 'Africa/Lagos',
 })
 
 export function formatDate(value: string | Date): string {

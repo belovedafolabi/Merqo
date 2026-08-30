@@ -4,8 +4,16 @@ import type { ReceiptSettings } from '@/lib/receipts/settings'
 import { RECEIPT_TEMPLATES } from '@/lib/receipts/templates'
 import type { Sale } from '@/lib/sales/queries'
 
+// 'en-NG' explicit, not `undefined`: this is a printed/reprinted receipt, and
+// `undefined` resolves the RUNTIME's default ICU locale, which differs by
+// platform (confirmed: it silently diverged between a Windows dev machine and
+// the Ubuntu CI runner, failing tests/unit/receipts/receipt-print.test.tsx's
+// snapshots even though nothing about the sale had changed). The same
+// reasoning that made lib/utils.ts's formatDateTime pin its locale explicitly
+// applies here — a receipt must render identically wherever it's printed
+// from.
 function money(value: number): string {
-  return value.toLocaleString(undefined, { style: 'currency', currency: 'NGN' })
+  return value.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
 }
 
 /**
