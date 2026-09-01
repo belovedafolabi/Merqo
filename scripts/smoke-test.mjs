@@ -43,30 +43,31 @@ const checks = [
     },
   },
   {
-    name: 'GET /login renders',
+    name: 'GET /sign-in renders',
     async run() {
-      const res = await get('/login')
+      const res = await get('/sign-in')
       if (res.status !== 200) throw new Error(`status ${res.status}`)
       const html = await res.text()
       if (!/sign in|log ?in|password/i.test(html)) {
-        throw new Error('response does not look like the login page')
+        throw new Error('response does not look like the sign-in page')
       }
     },
   },
   {
-    name: 'GET / unauthenticated redirects to login (middleware is live)',
+    name: 'GET /dashboard unauthenticated redirects to /sign-in (middleware is live)',
     async run() {
-      const res = await get('/', { redirect: 'manual' })
+      const res = await get('/dashboard', { redirect: 'manual' })
       const location = res.headers.get('location') ?? ''
-      const redirected = res.status >= 300 && res.status < 400 && /login/.test(location)
-      // Some hosts resolve the redirect server-side; accept landing on /login too.
+      const redirected = res.status >= 300 && res.status < 400 && /\/sign-in/.test(location)
       if (!redirected) {
-        const followed = await get('/')
-        if (!/\/login(\?|$)/.test(new URL(followed.url).pathname + new URL(followed.url).search)) {
-          throw new Error(`no redirect to login (status ${res.status}, location "${location}")`)
+        // Some hosts resolve the redirect server-side; accept landing on /sign-in.
+        const followed = await get('/dashboard')
+        const url = new URL(followed.url)
+        if (!/\/sign-in/.test(url.pathname)) {
+          throw new Error(`no redirect to /sign-in (status ${res.status}, location "${location}")`)
         }
       }
-      return redirected ? `-> ${location}` : '-> /login (followed)'
+      return redirected ? `-> ${location}` : '-> /sign-in (followed)'
     },
   },
   {

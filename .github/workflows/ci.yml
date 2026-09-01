@@ -136,9 +136,13 @@ jobs:
         run: pnpm exec supabase start
 
       - name: Verify migrations + seed are idempotent
-        run: |
-          pnpm exec supabase db reset
-          pnpm exec supabase db reset
+        # `supabase start` already applied migrations + seed once; one more
+        # `db reset` applies them a second time. Two applications is the whole
+        # proof that seed.sql's `on conflict do nothing` is genuinely
+        # idempotent — a third full apply (the previous double reset) cost
+        # ~1-2 min and proved nothing extra. See
+        # docs/architecture/database-conventions.md.
+        run: pnpm exec supabase db reset
 
       - name: Export local Supabase URL/keys for the integration tests
         # `-o env` writes dotenv-quoted `KEY="value"` lines, which
