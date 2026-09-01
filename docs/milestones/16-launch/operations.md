@@ -24,6 +24,7 @@ Vercel logs.
 | Symptom | Where | What to grep / look at |
 |---------|-------|------------------------|
 | Site returns 500s | Vercel → Logs, `level:error` | `route.render_error`, the failing route's path |
+| **Every authenticated route shows "Something went wrong" right after a deploy** | `supabase migration list --linked` (or `--db-url`) against the client | The deployed code is ahead of the client's schema — a missing table/column/RPC throws in a layout and the error boundary takes over. Compare the local column with the remote column; if they differ, the migrations were never applied. Fix: back up, then `supabase db push --linked --include-seed` (seed too — the permission catalog drifts the same way), then `scripts/verify-client-db.sql`. Nothing in CI/CD applies prod migrations — this is checklist item 1.15, done by hand. |
 | Sign-in failing for everyone | Vercel → Logs | `auth.supabase_not_configured` (env missing), `auth.organization_bootstrap_failed` |
 | Sign-in failing / slow for some | Vercel → Logs | `auth.sign_in_throttled` (rate limiter), `auth.organization_bootstrap_deferred` |
 | A sale wouldn't save | Vercel → Logs; then Supabase SQL: `select * from sales where idempotency_key = '<key>'` | `sale.rejected` — its `errcode` is the Postgres SQLSTATE: `P0001` insufficient stock, `P0002` product/BU mismatch, `P0004` bad quantity. `sale.created` confirms the ones that worked. |
@@ -34,7 +35,7 @@ Vercel logs.
 | Daily subscription cron didn't run | Vercel → Cron | `subscription.cron_misconfigured` (CRON_SECRET unset → 503), `subscription.cron_unauthorized`, `subscription.cron_failed`; `subscription.cron_completed` is the success line |
 | Expiry/lock emails not arriving | Resend dashboard → Logs | `email.send_failed`, `email.transport_fallback_log` / `email.sent_via_log` (Resend key unset → logged, not sent), `notification.email_failed` |
 | Rate limiting misfiring | Supabase SQL: `select * from rate_limits order by window_start desc limit 50` | `rate_limit.tripped`, `rate_limit.unavailable_failing_open` (the limiter's backing table was unreachable and it let the request through) |
-| Health check red | `GET https://<domain>/api/health` | `checks.supabase` = GoTrue, `checks.postgrest` = Data API. `health.auth_unreachable` / `health.postgrest_unreachable` in logs. |
+| Health check red | `GET https://<domain>/api/health` | `checks.supabase` = GoTrue `/auth/v1/health`; `checks.postgrest` = a real anon RPC round-trip (`check_login_throttle`) through PostgREST's schema cache. `health.auth_unreachable` / `health.postgrest_unreachable` in logs. |
 
 ### Worked example: a cashier reports "checkout is failing"
 

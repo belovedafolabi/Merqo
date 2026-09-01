@@ -16,7 +16,7 @@ async function checkAuth(url: string, anonKey: string): Promise<Check> {
   try {
     const response = await fetch(`${url}/auth/v1/health`, {
       headers: { apikey: anonKey },
-      signal: AbortSignal.timeout(2_000),
+      signal: AbortSignal.timeout(5_000),
       cache: 'no-store',
     })
     return response.ok ? 'ok' : 'unreachable'
@@ -32,17 +32,31 @@ async function checkAuth(url: string, anonKey: string): Promise<Check> {
 /**
  * Milestone 16: GoTrue being up does not mean the app is up. A broken grant, a
  * stale PostgREST schema cache, or a paused project leaves Auth answering while
- * every data read fails — the monitor stays green through a real outage. This
- * hits PostgREST's root, which returns the OpenAPI spec: no table grants, no
- * schema dependency, just "is the Data API serving".
+ * every data read fails — the monitor stays green through a real outage.
+ *
+ * This calls check_login_throttle(): a read-only, `stable`, SECURITY DEFINER
+ * function that `anon` holds EXECUTE on by an explicit grant
+ * (20260822093400_create_login_throttle_functions.sql), not by a platform
+ * default. It is a real Postgres round-trip through PostgREST's schema cache
+ * with no side effects and no dependency on any table's row-level grants — so
+ * a 200 means "the Data API is actually serving queries", not merely "the
+ * gateway answered".
+ *
+ * NOT `GET ${url}/rest/v1/` (the OpenAPI root this probe used originally):
+ * hosted Supabase now restricts that endpoint to the service_role key and
+ * returns 401 to an `anon` caller, so it can never report healthy from here —
+ * which silently 503'd /api/health on every hosted deployment.
  */
 async function checkPostgrest(url: string, anonKey: string): Promise<Check> {
   try {
-    const response = await fetch(`${url}/rest/v1/`, {
-      headers: { apikey: anonKey },
-      signal: AbortSignal.timeout(2_000),
-      cache: 'no-store',
-    })
+    const response = await fetch(
+      `${url}/rest/v1/rpc/check_login_throttle?p_identifier=healthcheck`,
+      {
+        headers: { apikey: anonKey },
+        signal: AbortSignal.timeout(5_000),
+        cache: 'no-store',
+      },
+    )
     return response.ok ? 'ok' : 'unreachable'
   } catch (error) {
     logger.warn('health.postgrest_unreachable', {
