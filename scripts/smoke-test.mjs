@@ -74,7 +74,8 @@ const checks = [
     name: 'GET /api/cron/subscriptions without auth is refused (never 200)',
     async run() {
       const res = await get('/api/cron/subscriptions')
-      if (res.status === 200) throw new Error('cron endpoint answered 200 with no Authorization header')
+      if (res.status === 200)
+        throw new Error('cron endpoint answered 200 with no Authorization header')
       if (![401, 403, 503].includes(res.status)) {
         throw new Error(`unexpected status ${res.status} (want 401/403/503)`)
       }
