@@ -2,7 +2,9 @@
 
 ## Status
 
-Planned
+Complete — see `docs/milestones/16-launch/` for the delivered artifacts
+(performance review, backup/restore, client provisioning, operations,
+cost model, launch checklist).
 
 ## Objective
 

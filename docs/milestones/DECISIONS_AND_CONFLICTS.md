@@ -85,36 +85,52 @@ role builder or any application code path.
 
 ## 7. Milestone 15 hand-offs to Milestone 16
 
-Two items surfaced during Milestone 15's audit that are deliberately not
+Two items surfaced during Milestone 15's audit that were deliberately not
 fixed there — one because the durable fix is a schema change with data-model
-implications, one because it costs money.
+implications, one because it (was thought to) cost money. **Both resolved in
+Milestone 16.**
 
-### 7a. `roles` needs an `organization_id` column
+### 7a. `roles` needs an `organization_id` column — RESOLVED (Milestone 16)
 
 Milestone 15 finding 2 scoped `roles_select` / `role_permissions_select` to
-the caller's organization. Because `roles` has no `organization_id`
-(`20260822090900` deliberately declined scope columns), the predicate goes
+the caller's organization. Because `roles` had no `organization_id`
+(`20260822090900` deliberately declined scope columns), the predicate went
 through `roles.created_by`, which is `ON DELETE SET NULL`. Deleting an
 author's auth identity would orphan their custom role into invisibility for
 every user in that organization.
 
-**Unreachable today:** Milestone 11 deactivates users (`deactivated_at`) and
-never deletes rows, and there is no application path that deletes an
-`auth.users` row. **Durable fix (Milestone 16):** add
-`roles.organization_id`, backfill it from `created_by`'s organization, make
-it `NOT NULL`, and re-point the two policies (and `role_is_visible()`) at it.
-Owner: Milestone 16 schema-optimization pass.
+**Unreachable in practice:** Milestone 11 deactivates users (`deactivated_at`)
+and never deletes rows, and there is no application path that deletes an
+`auth.users` row.
 
-### 7b. CodeQL / GitHub Advanced Security
+**Fix shipped:** `supabase/migrations/20260830090000_alter_roles_add_organization_id.sql`
+adds `roles.organization_id`, backfills custom roles from the creator's
+organization (via `user_roles`), and re-points `roles_select` / `roles_insert`
+/ `roles_update` and `role_is_visible()` at it via `user_has_org_access()`,
+replacing the `created_by` chain.
 
-Milestone 15 added `pnpm audit` (production, high) as a CI gate but did not
-add CodeQL. CodeQL is free on public repositories and requires paid GitHub
-Advanced Security on a private one; `belovedafolabi/Merqo` is private, and
-GHAS is a real line item against the $0–$10/month constraint. **Decision:**
-rely on `pnpm audit` + Dependabot + gitleaks +
-`tests/integration/security-sweep.test.ts` for now. **Revisit (Milestone
-16 or later):** if the repo is made public, or the budget changes, enable
-CodeQL (`javascript-typescript`, PR + weekly).
+**Correction to the original hand-off:** it prescribed `NOT NULL`. That cannot
+hold — `supabase/seed.sql` seeds eight system roles (Owner … Kitchen Staff,
+plus Super Admin) that `20260826090300` keeps deliberately global; they have
+no organization to belong to. The constraint that actually models the rule is
+a CHECK: `(is_system_role AND organization_id IS NULL) OR (NOT is_system_role
+AND organization_id IS NOT NULL)`. That is what shipped.
+
+### 7b. CodeQL / GitHub Advanced Security — RESOLVED (Milestone 16)
+
+Milestone 15 added `pnpm audit` (production, high) as a CI gate but not
+CodeQL, on the stated basis that `belovedafolabi/Merqo` was private and CodeQL
+requires paid GitHub Advanced Security on private repos.
+
+**That basis is stale: the repo is public** (made public during Milestone 01
+to unlock branch protection and native secret scanning at $0 — see
+`README.md` "Branching strategy"). CodeQL is free on public repositories, and
+§7b named Milestone 16 as the revisit point.
+
+**Fix shipped:** `.github/workflows/codeql.yml` — `javascript-typescript`,
+`security-extended` query pack, on PR + push to `main` + a weekly schedule.
+$0. `pnpm audit` + Dependabot + gitleaks +
+`tests/integration/security-sweep.test.ts` all remain.
 
 ---
 

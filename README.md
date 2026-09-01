@@ -137,8 +137,10 @@ logger.info('sale.created', { saleId, branchId })
 - Context keys matching `/key|token|secret|password|authorization|cookie|apikey/i` are
   automatically redacted before logging.
 - No external log aggregator — Vercel's free log retention plus this structured shape is the
-  whole observability story for now, per the project's cost constraint. Revisit at Milestone 16
-  if that stops being enough.
+  whole observability story, per the project's cost constraint. Milestone 16 reviewed this and
+  kept it: see [`docs/milestones/16-launch/operations.md`](docs/milestones/16-launch/operations.md)
+  for the symptom → destination table that maps these event names to where you look during an
+  incident.
 
 ## Deployment
 
@@ -173,17 +175,21 @@ function with no `EXECUTE` grant to any application role:
   no further wiring needed. Leaving it unset makes the endpoint refuse to run (503), never run
   unauthenticated.
 
-## Known constraints — revisit before Milestone 16 (production launch)
+## Known constraints
 
-- **Supabase free tier**: connection pool and storage limits apply. Not a concern at current
-  scale; worth re-checking before onboarding a real client.
+- **Supabase free tier**: connection pool and storage limits apply. Milestone 16 measured the
+  storage limit as the one that bites first — ~4.2 KB/sale, so ~1 year of single-branch volume
+  before Supabase Pro ($25/mo) is needed. See
+  [`docs/milestones/16-launch/cost-model.md`](docs/milestones/16-launch/cost-model.md).
 - **Vercel Hobby tier prohibits commercial use.** Merqo is a commercial subscription product,
-  so Vercel Pro ($20/month) will eventually be required — which alone exceeds this project's
-  stated $10/month infrastructure ceiling. This needs an explicit decision before a real
-  commercial launch; it does not block development.
+  so Vercel Pro ($20/month) is required for a real paying client — which alone exceeds this
+  project's stated $10/month infrastructure ceiling. Milestone 16 did **not** amend that
+  ceiling; it is an acknowledged open item on
+  [`docs/milestones/16-launch/launch-checklist.md`](docs/milestones/16-launch/launch-checklist.md)
+  §7, for a decision at launch. It does not block development.
 - **GitHub Free plan** has no branch protection or native secret scanning on _private_ repos.
-  Resolved here by making the repository public (see Branching strategy above); Gitleaks in CI
-  covers secret scanning either way.
+  Resolved by making the repository public (see Branching strategy above); Gitleaks in CI
+  covers secret scanning either way, and Milestone 16 added CodeQL (free on public repos).
 - **ESLint is pinned to 9.39.5, not the latest 10.x.** `eslint-config-next@16.3.2`'s bundled
   `eslint-plugin-react@7.37.5` crashes at runtime against ESLint 10's removed legacy Context
   API (`context.getFilename()`). Revisit once Next.js ships an `eslint-config-next` update
