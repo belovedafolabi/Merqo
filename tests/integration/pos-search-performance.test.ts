@@ -69,22 +69,23 @@ async function seedCatalog(client: PoolClient): Promise<PosPerfFixture> {
     [org.rows[0].id, `pos-perf-branch-${suffix}`],
   )
 
-  const units = await client.query<{ id: string }>(
+  const unitsResult = await client.query<{ id: string }>(
     `insert into public.business_units (branch_id, business_type_id, name, slug)
      select $1, $2, 'Perf Unit ' || u, $3 || '-unit-' || u
      from generate_series(1, $4) as u
      returning id`,
     [branch.rows[0].id, businessType.rows[0].id, suffix, BUSINESS_UNIT_COUNT],
   )
-  const businessUnitId = units.rows[0].id
+  const unitIds = unitsResult.rows.map((row) => row.id)
+  const businessUnitId = unitIds[0]!
 
   // Names deliberately varied so an ilike is doing real matching rather than
   // hitting every row or none. One in ten is a "Milk" variant, which is what
   // the search cases below query for. Products are spread evenly across all
   // five units; the barcode/sku carry the unit index so they stay unique
   // across the org (products_business_unit_barcode_key is per-unit, but the
-  // search cases only touch units.rows[0]).
-  for (let u = 0; u < units.rows.length; u += 1) {
+  // search cases only touch unitIds[0]).
+  for (let u = 0; u < unitIds.length; u += 1) {
     await client.query(
       `insert into public.products (business_unit_id, name, sku, barcode, base_price, cost_price)
        select
@@ -95,7 +96,7 @@ async function seedCatalog(client: PoolClient): Promise<PosPerfFixture> {
          100 + i,
          50 + i
        from generate_series(1, $3) as i`,
-      [units.rows[u].id, suffix, PRODUCTS_PER_UNIT, u],
+      [unitIds[u], suffix, PRODUCTS_PER_UNIT, u],
     )
   }
 

@@ -12,5 +12,9 @@ test('health endpoint reports the app is up', async ({ request }) => {
   await expect(response.json()).resolves.toMatchObject({
     status: 'ok',
     service: 'merqo',
+    // Milestone 16: GoTrue liveness alone is not enough — the probe also
+    // checks PostgREST, and the E2E job runs against a live local stack, so
+    // both must read 'ok'.
+    checks: { supabase: 'ok', postgrest: 'ok' },
   })
 })

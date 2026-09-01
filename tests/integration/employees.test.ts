@@ -72,8 +72,8 @@ beforeAll(async () => {
   const { organizationId } = await bootstrapOrganization(owner, `Invites${suffix}`)
 
   const roleResult = await pool.query(
-    `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
-    [`invitee-viewer-${suffix}`, `invitee-viewer-${suffix}`],
+    `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
+    [`invitee-viewer-${suffix}`, `invitee-viewer-${suffix}`, organizationId],
   )
   const permissionResult = await pool.query(
     `select id from public.permissions where key = 'branches.view'`,
@@ -234,8 +234,12 @@ describe('employee invitations — the escalation door is locked here too', () =
     // Holds employees.invite ONLY — no branches.view, so they cannot invite
     // as the viewerRoleId fixture (which grants branches.view).
     const inviterResult = await pool.query(
-      `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
-      [`inviter-only-${randomUUID().slice(0, 8)}`, `inviter-only-${randomUUID().slice(0, 8)}`],
+      `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
+      [
+        `inviter-only-${randomUUID().slice(0, 8)}`,
+        `inviter-only-${randomUUID().slice(0, 8)}`,
+        fixture.organizationId,
+      ],
     )
     const permissionResult = await pool.query(
       `select id from public.permissions where key = 'employees.invite'`,

@@ -39,8 +39,8 @@ describe('subscription audit coverage', () => {
     // Grant platform.manage_pricing via a fixture role, not Owner (who never
     // holds it by design — see seed.sql §6's platform.* exclusion).
     const roleResult = await pool.query(
-      `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
-      [`audit-admin-${suffix}`, `audit-admin-${suffix}`],
+      `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
+      [`audit-admin-${suffix}`, `audit-admin-${suffix}`, organizationId],
     )
     const permResult = await pool.query(
       `select id from public.permissions where key = 'platform.manage_pricing'`,

@@ -102,6 +102,50 @@ describe('RLS — cross-organization isolation', () => {
     expect(data).toHaveLength(0)
   })
 
+  it('a user cannot read a custom role belonging to another organization', async () => {
+    // 20260830090000 replaced the created_by-chain visibility predicate with
+    // roles.organization_id + user_has_org_access(). This is the property
+    // that change exists to guarantee: one tenant's custom role names and
+    // permission mappings are invisible to every other tenant.
+    const ownerA = await createTestUser()
+    const { organizationId: orgA } = await bootstrapOrganization(ownerA, 'Org RolesA')
+
+    const ownerB = await createTestUser()
+    await bootstrapOrganization(ownerB, 'Org RolesB')
+
+    const { data: role, error: roleError } = await ownerA.client
+      .from('roles')
+      .insert({
+        name: 'Secret Auditor',
+        slug: `secret-auditor-${crypto.randomUUID().slice(0, 8)}`,
+        is_system_role: false,
+        organization_id: orgA,
+        created_by: ownerA.userId,
+      })
+      .select('id')
+      .single()
+    expect(roleError).toBeNull()
+
+    // Org B's owner cannot see it...
+    const { data: crossOrg, error: crossErr } = await ownerB.client
+      .from('roles')
+      .select('id')
+      .eq('id', role!.id)
+    expect(crossErr).toBeNull()
+    expect(crossOrg).toHaveLength(0)
+
+    // ...its author still can.
+    const { data: ownRead } = await ownerA.client.from('roles').select('id').eq('id', role!.id)
+    expect(ownRead).toHaveLength(1)
+
+    // System roles stay globally visible to both.
+    const { data: systemRole } = await ownerB.client
+      .from('roles')
+      .select('id')
+      .eq('slug', 'cashier')
+    expect(systemRole).toHaveLength(1)
+  })
+
   // Regression coverage for a real bug found while building this suite:
   // user_has_branch_access()/user_has_business_unit_access() originally
   // re-queried their own target table (branches/business_units) to resolve

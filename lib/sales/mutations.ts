@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
+import { logger } from '@/lib/logger'
 import { notifyLowStock } from '@/lib/notifications/low-stock'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { consumeRateLimit, RateLimitError } from '@/lib/rate-limit/limiter'
@@ -172,8 +173,30 @@ export async function createSale(
     p_payment_reference: parsed.paymentReference ?? null,
     p_customer_id: parsed.customerId ?? null,
   })
-  if (error) throw error
+  if (error) {
+    // Milestone 16 observability spot-check: the single most important
+    // operation in the product emitted nothing on failure — a create_sale()
+    // rejection (insufficient stock P0001, product/BU mismatch P0002, bad
+    // quantity P0004) surfaced only as a thrown error with no log line. The
+    // Postgres errcode is enough to triage from Vercel logs; cart contents
+    // and customer identity are deliberately not logged.
+    logger.warn('sale.rejected', {
+      branchId: parsed.branchId,
+      businessUnitId: parsed.businessUnitId,
+      itemCount: parsed.items.length,
+      errcode: (error as { code?: string }).code ?? null,
+    })
+    throw error
+  }
   const sale = data as { id: string; total: string | number }
+
+  logger.info('sale.created', {
+    saleId: sale.id,
+    branchId: parsed.branchId,
+    businessUnitId: parsed.businessUnitId,
+    itemCount: parsed.items.length,
+    total: Number(sale.total),
+  })
 
   await recordAuditEvent(
     {
