@@ -143,7 +143,7 @@ describe('finding 2 — roles are not readable across organizations', () => {
   it('a custom role authored in one organization is invisible to another', async () => {
     const alice = await createTestUser()
     const bob = await createTestUser()
-    await bootstrapOrganization(alice, 'Sweep Org A')
+    const { organizationId: aliceOrgId } = await bootstrapOrganization(alice, 'Sweep Org A')
     await bootstrapOrganization(bob, 'Sweep Org B')
 
     const roleName = `Sweep Role ${randomUUID().slice(0, 8)}`
@@ -154,9 +154,10 @@ describe('finding 2 — roles are not readable across organizations', () => {
         slug: `sweep-role-${randomUUID().slice(0, 8)}`,
         description: 'Milestone 15 cross-tenant visibility check',
         // roles_insert (20260824090700) requires created_by = auth.uid():
-        // attribution cannot be forged. It is also the column the new
-        // roles_select predicate scopes on, so this is what makes the role
-        // Alice's rather than nobody's.
+        // attribution cannot be forged. Since Milestone 16 (20260830090000)
+        // roles_select scopes on organization_id via user_has_org_access(),
+        // and roles_insert requires it match an org the caller belongs to.
+        organization_id: aliceOrgId,
         created_by: alice.userId,
       })
       .select('id')

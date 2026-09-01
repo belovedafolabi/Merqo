@@ -7,8 +7,22 @@
  * stable across refactors.
  *
  * No external log aggregator is used (cost constraint) — Vercel's free log
- * retention plus this structured shape is the whole observability story for
- * now. See Milestone 16 for whether that needs to change before launch.
+ * retention plus this structured shape is the whole observability story.
+ * Milestone 16 reviewed this and confirmed it: at MVP client scale, these
+ * JSON lines + Vercel runtime logs + the audit_logs table cover the
+ * diagnosable failure modes, and an error-tracking service (even a free
+ * tier) would mean one DSN to provision and rotate per independently
+ * deployed client. Revisit past ~5 clients, or the first incident that
+ * genuinely cannot be diagnosed from logs. See
+ * docs/milestones/16-launch/operations.md.
+ *
+ * The dotted event-name convention is enforced by
+ * tests/unit/logging-conventions.test.ts, which re-derives every logger call
+ * site from source rather than trusting this comment.
+ *
+ * Known, deliberately un-deepened: redact() below inspects only top-level
+ * context keys. A secret nested inside an object value would pass through.
+ * No current call site does this; noted rather than fixed.
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'

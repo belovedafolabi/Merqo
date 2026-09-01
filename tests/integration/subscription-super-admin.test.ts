@@ -49,9 +49,9 @@ describe('Super Admin — no other role can carry platform.override', () => {
     // Owner (who would pass every check vacuously, per that file's own
     // warning) and not a Super Admin.
     const roleResult = await pool.query(
-      `insert into public.roles (name, slug, description, is_system_role)
-       values ($1, $2, 'test fixture role', false) returning id`,
-      [`role-author-${suffix}`, `role-author-${suffix}`],
+      `insert into public.roles (name, slug, description, is_system_role, organization_id)
+       values ($1, $2, 'test fixture role', false, $3) returning id`,
+      [`role-author-${suffix}`, `role-author-${suffix}`, organizationId],
     )
     const roleAuthor = await createTestUser()
     await pool.query(
@@ -73,6 +73,7 @@ describe('Super Admin — no other role can carry platform.override', () => {
         name: `escalation-attempt-${suffix}`,
         slug: `escalation-attempt-${suffix}`,
         is_system_role: false,
+        organization_id: organizationId,
         // roles_insert's WITH CHECK requires created_by = auth.uid()
         // (20260824090700) — attribution, not part of what this test exercises.
         created_by: roleAuthor.userId,

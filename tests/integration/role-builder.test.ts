@@ -58,10 +58,10 @@ async function grantPermission(
   permissionKeys: readonly string[],
 ): Promise<void> {
   const roleResult = await pool.query(
-    `insert into public.roles (name, slug, description, is_system_role)
-     values ($1, $2, 'test fixture role', false)
+    `insert into public.roles (name, slug, description, is_system_role, organization_id)
+     values ($1, $2, 'test fixture role', false, $3)
      returning id`,
-    [roleSlug, roleSlug],
+    [roleSlug, roleSlug, organizationId],
   )
   const roleId = roleResult.rows[0].id as string
 
@@ -123,6 +123,7 @@ describe('custom role builder — grants exactly what it says', () => {
         slug: `stock-auditor-${suffix}`,
         description: 'Read-only inventory and product visibility.',
         is_system_role: false,
+        organization_id: fixture.organizationId,
         created_by: fixture.owner.userId,
       })
       .select('id')
@@ -176,6 +177,7 @@ describe('custom role builder — grants exactly what it says', () => {
         name: `Expense Viewer ${suffix}`,
         slug: `expense-viewer-${suffix}`,
         is_system_role: false,
+        organization_id: fixture.organizationId,
         created_by: fixture.owner.userId,
       })
       .select('id')
@@ -221,6 +223,7 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
       name: `Empty Role ${suffix}`,
       slug: `empty-role-${suffix}`,
       is_system_role: false,
+      organization_id: fixture.organizationId,
       created_by: fixture.roleAuthor.userId,
     })
     expect(error).toBeNull()
@@ -229,11 +232,18 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
   it('(a) a user WITHOUT roles.create cannot insert into roles at all', async () => {
     const bystander = await createTestUser()
     const suffix = randomUUID().slice(0, 8)
+    // An org member — holds inventory.view, so user_has_org_access() is true
+    // and roles_insert fails on the roles.create check specifically, not on
+    // org membership.
+    await grantPermission(fixture.organizationId, bystander.userId, `bystander-${suffix}`, [
+      'inventory.view',
+    ])
 
     const { error } = await bystander.client.from('roles').insert({
       name: `Bystander Role ${suffix}`,
       slug: `bystander-role-${suffix}`,
       is_system_role: false,
+      organization_id: fixture.organizationId,
       created_by: bystander.userId,
     })
     expect(error).not.toBeNull()
@@ -247,6 +257,7 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
         name: `Escalation Attempt ${suffix}`,
         slug: `escalation-attempt-${suffix}`,
         is_system_role: false,
+        organization_id: fixture.organizationId,
         created_by: fixture.roleAuthor.userId,
       })
       .select('id')
@@ -294,6 +305,7 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
         name: `Inventory Viewer ${suffix}`,
         slug: `inventory-viewer-${suffix}`,
         is_system_role: false,
+        organization_id: fixture.organizationId,
         created_by: fixture.owner.userId,
       })
       .select('id')
@@ -334,6 +346,7 @@ describe('custom role builder — self-elevation is refused (RLS-level, curl-equ
         name: `Promotable ${suffix}`,
         slug: `promotable-${suffix}`,
         is_system_role: false,
+        organization_id: fixture.organizationId,
         created_by: fixture.owner.userId,
       })
       .select('id')

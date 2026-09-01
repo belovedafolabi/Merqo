@@ -1,0 +1,50 @@
+name: Post-deploy smoke
+
+# Milestone 16 CI/CD requirement: "add a deployment-verification step (smoke
+# test against the deployed environment post-deploy)".
+#
+# Vercel deploys through its own Git integration, not this pipeline, so there
+# is no "deploy then smoke" step to add to ci.yml. Instead this listens for
+# the deployment_status events Vercel sends to GitHub, and runs
+# scripts/smoke-test.mjs against the URL Vercel just published. It can also be
+# run by hand against any client with workflow_dispatch.
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Base URL to smoke-test (e.g. https://client.example.com)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    # Only real, successful production deploys — not preview deploys, not
+    # failed/pending states.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Resolve target URL
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "url=${{ inputs.url }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=${{ github.event.deployment_status.environment_url }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Smoke test
+        run: node scripts/smoke-test.mjs "${{ steps.target.outputs.url }}"

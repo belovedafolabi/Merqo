@@ -1,0 +1,45 @@
+name: CodeQL
+
+# Milestone 16 — DECISIONS_AND_CONFLICTS.md §7b's revisit condition is met:
+# the repo is public, so CodeQL is free (GitHub Advanced Security is only
+# paid on private repos). Milestone 15 relied on `pnpm audit` + Dependabot +
+# gitleaks + security-sweep.test.ts; this adds static analysis on top.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC — catches newly-published queries
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # 'security-and-quality' is noisier than the default; 'security-extended'
+          # is the middle ground — more security queries, no style noise.
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'

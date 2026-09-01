@@ -35,8 +35,12 @@ async function assignCashier(organizationId: string, userId: string): Promise<vo
     [userId, roleResult.rows[0].id, organizationId],
   )
   const grantRole = await pool.query(
-    `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
-    [`lock-fixture-${randomUUID().slice(0, 8)}`, `lock-fixture-${randomUUID().slice(0, 8)}`],
+    `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
+    [
+      `lock-fixture-${randomUUID().slice(0, 8)}`,
+      `lock-fixture-${randomUUID().slice(0, 8)}`,
+      organizationId,
+    ],
   )
   const permissionResult = await pool.query(
     `select id from public.permissions where key = 'branches.view'`,

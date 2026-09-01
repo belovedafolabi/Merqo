@@ -37,10 +37,11 @@ async function assignCashier(organizationId: string, userId: string): Promise<vo
   // to a fixture-only custom role rather than mutating the seeded Cashier
   // row, which every other test file also relies on being pristine.
   const grantRole = await pool.query(
-    `insert into public.roles (name, slug, is_system_role) values ($1, $2, false) returning id`,
+    `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
     [
       `deactivation-fixture-${randomUUID().slice(0, 8)}`,
       `deactivation-fixture-${randomUUID().slice(0, 8)}`,
+      organizationId,
     ],
   )
   const permissionResult = await pool.query(

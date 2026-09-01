@@ -72,6 +72,10 @@ export async function createRole(
       slug,
       description: input.description ?? null,
       is_system_role: false,
+      // Milestone 16: roles are organization-scoped (20260830090000). The
+      // roles_insert RLS policy enforces this matches a real org the caller
+      // belongs to; passing it here is what satisfies that check.
+      organization_id: organizationId,
       created_by: user.id,
     })
     .select('id')
