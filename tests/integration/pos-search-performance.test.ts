@@ -34,12 +34,23 @@ import { pool, withTransaction } from './helpers/db'
 const EXACT_LOOKUP_BUDGET_MS = 150
 const SEARCH_BUDGET_MS = 1_000
 
-/** A realistic supermarket catalog, and 2.5x the reports fixture's row count. */
-const PRODUCT_COUNT = 5_000
+/**
+ * Milestone 16 raised this from 5,000-in-one-unit to 25,000 across five
+ * business units. Five units matters: searchProducts() always filters
+ * `business_unit_id = $1`, so the realistic question is whether that predicate
+ * narrows 25,000 rows to 5,000 cheaply before the ilike runs — not whether an
+ * ilike over 5,000 rows is fast. §1.2 of the milestone plan gates a
+ * sku/barcode trigram migration on the leading-wildcard number this produces:
+ * add the index only if that case exceeds 400ms here.
+ */
+const PRODUCT_COUNT = 25_000
+const BUSINESS_UNIT_COUNT = 5
+const PRODUCTS_PER_UNIT = PRODUCT_COUNT / BUSINESS_UNIT_COUNT
 
 const KNOWN_BARCODE = 'PERF0000000042'
 
 interface PosPerfFixture {
+  /** The unit the search/lookup cases query — holds PRODUCTS_PER_UNIT rows. */
   businessUnitId: string
 }
 
@@ -57,28 +68,36 @@ async function seedCatalog(client: PoolClient): Promise<PosPerfFixture> {
     `insert into public.branches (organization_id, name, slug) values ($1, 'Perf Branch', $2) returning id`,
     [org.rows[0].id, `pos-perf-branch-${suffix}`],
   )
-  const unit = await client.query(
+
+  const units = await client.query<{ id: string }>(
     `insert into public.business_units (branch_id, business_type_id, name, slug)
-     values ($1, $2, 'Perf Unit', $3) returning id`,
-    [branch.rows[0].id, businessType.rows[0].id, `pos-perf-unit-${suffix}`],
+     select $1, $2, 'Perf Unit ' || u, $3 || '-unit-' || u
+     from generate_series(1, $4) as u
+     returning id`,
+    [branch.rows[0].id, businessType.rows[0].id, suffix, BUSINESS_UNIT_COUNT],
   )
-  const businessUnitId = unit.rows[0].id as string
+  const businessUnitId = units.rows[0].id
 
   // Names deliberately varied so an ilike is doing real matching rather than
   // hitting every row or none. One in ten is a "Milk" variant, which is what
-  // the search cases below query for.
-  await client.query(
-    `insert into public.products (business_unit_id, name, sku, barcode, base_price, cost_price)
-     select
-       $1,
-       case when i % 10 = 0 then 'Milk Carton ' || i else 'Grocery Item ' || i end,
-       $2 || '-SKU-' || i,
-       'PERF' || lpad(i::text, 10, '0'),
-       100 + i,
-       50 + i
-     from generate_series(1, $3) as i`,
-    [businessUnitId, suffix, PRODUCT_COUNT],
-  )
+  // the search cases below query for. Products are spread evenly across all
+  // five units; the barcode/sku carry the unit index so they stay unique
+  // across the org (products_business_unit_barcode_key is per-unit, but the
+  // search cases only touch units.rows[0]).
+  for (let u = 0; u < units.rows.length; u += 1) {
+    await client.query(
+      `insert into public.products (business_unit_id, name, sku, barcode, base_price, cost_price)
+       select
+         $1,
+         case when i % 10 = 0 then 'Milk Carton ' || i else 'Grocery Item ' || i end,
+         $2 || '-U' || $4 || '-SKU-' || i,
+         'PERF' || $4 || lpad(i::text, 9, '0'),
+         100 + i,
+         50 + i
+       from generate_series(1, $3) as i`,
+      [units.rows[u].id, suffix, PRODUCTS_PER_UNIT, u],
+    )
+  }
 
   // Without this the planner works from empty-table statistics and picks a
   // sequential scan no matter what indexes exist — which would make this
@@ -164,22 +183,36 @@ describe(`POS search/scan performance against a ${PRODUCT_COUNT}-product catalog
     })
   }, 120_000)
 
-  it('the barcode lookup uses an index rather than scanning the catalog', async () => {
-    // Deterministic where the timings above are not. products_business_unit_
-    // barcode_key (20260823100100) is what makes a scan O(log n); if a future
-    // migration drops or narrows it, this fails on any machine, under any
-    // load, instead of only on a slow runner.
+  it('the hot reads use an index rather than scanning the catalog', async () => {
+    // Deterministic where the timings above are not.
     await withTransaction(async (client) => {
       const { businessUnitId } = await seedCatalog(client)
 
-      const plan = await client.query(`explain (format json) ${BARCODE_LOOKUP_SQL}`, [
+      // products_business_unit_barcode_key (20260823100100) is what makes a
+      // scan O(log n); if a future migration drops or narrows it, this fails
+      // on any machine, under any load, instead of only on a slow runner.
+      const barcodePlan = await client.query(`explain (format json) ${BARCODE_LOOKUP_SQL}`, [
         businessUnitId,
         KNOWN_BARCODE,
       ])
-      const planText = JSON.stringify(plan.rows[0])
+      const barcodePlanText = JSON.stringify(barcodePlan.rows[0])
+      expect(barcodePlanText).toContain('Index')
+      expect(barcodePlanText).not.toContain('Seq Scan')
 
-      expect(planText).toContain('Index')
-      expect(planText).not.toContain('Seq Scan')
+      // searchProducts()'s leading-wildcard ilike cannot use a btree, but the
+      // `business_unit_id = $1` predicate still must: it narrows 25,000 rows to
+      // one unit's ~5,000 before the ilike runs. A full `Seq Scan on products`
+      // here means that narrowing was lost — the regression §1.2 of the
+      // Milestone 16 plan is guarding against, and the trigger for adding a
+      // sku/barcode trigram index.
+      const searchPlan = await client.query(`explain (format json) ${SEARCH_SQL}`, [
+        businessUnitId,
+        '%ilk%',
+      ])
+      const searchPlanText = JSON.stringify(searchPlan.rows[0])
+      expect(searchPlanText).toContain('Index')
+      expect(searchPlanText).not.toContain('Seq Scan on public.products')
+      expect(searchPlanText).not.toContain('Seq Scan on products')
     })
   }, 120_000)
 })

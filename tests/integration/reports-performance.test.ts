@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { pool, withTransaction } from './helpers/db'
+import { pool } from './helpers/db'
 
 /**
  * Milestone 10's CI/CD requirement: "add a check that report query performance
@@ -18,15 +18,25 @@ import { pool, withTransaction } from './helpers/db'
  * into a multi-second one, not a 900ms one.
  *
  * Rows are inserted directly rather than through create_sale(): this measures
- * the *read* path, and driving 2,000 sales through the write path (with its
+ * the *read* path, and driving the sales through the write path (with its
  * row-locking inventory deduction) would spend the whole runtime seeding.
  * tests/integration/sales.test.ts already covers that create_sale writes these
  * rows correctly.
+ *
+ * Milestone 16 raised SALE_COUNT from 2,000 to 20,000 (its Functional
+ * Requirements ask for "a realistic data volume"), added the EXPLAIN guards
+ * below (a dropped index is caught deterministically, not just when a slow
+ * runner happens to blow the timing budget), and added the storage-footprint
+ * measurement that feeds docs/milestones/16-launch/cost-model.md's Supabase
+ * free-tier threshold. Because the fixture is now ~20s to build, it is seeded
+ * once in beforeAll and every test shares it, inside a transaction rolled back
+ * in afterAll — the same cleanup guarantee withTransaction gave per-test, held
+ * across the file.
  */
 
 /** Generous on purpose — see this file's header. */
 const BUDGET_MS = 1_500
-const SALE_COUNT = 2_000
+const SALE_COUNT = 20_000
 const ITEMS_PER_SALE = 4
 
 interface PerfFixture {
@@ -69,9 +79,11 @@ async function seedVolume(client: PoolClient): Promise<PerfFixture> {
     [businessUnitId, `PERF-${suffix}`],
   )
 
-  // Sales spread over a year, so date-range predicates have something to
-  // narrow — a report over rows that all share one timestamp would make any
-  // index look good.
+  // Sales spread over ~14 months (30 minutes apart), so a 30-day report window
+  // is genuinely selective — it captures roughly 7% of the rows. This matters
+  // for the EXPLAIN guards below: when a window covers 100% of a single org's
+  // sales, a Seq Scan is the *correct* plan and an index check would be
+  // asserting the wrong thing.
   await client.query(
     `insert into public.sales
        (organization_id, branch_id, business_unit_id, idempotency_key,
@@ -80,7 +92,7 @@ async function seedVolume(client: PoolClient): Promise<PerfFixture> {
        $1, $2, $3, $4 || '-' || i,
        1000, case when i % 5 = 0 then 100 else 0 end, 75, 0,
        1075 - case when i % 5 = 0 then 100 else 0 end,
-       now() - (i || ' minutes')::interval
+       now() - ((i * 30) || ' minutes')::interval
      from generate_series(1, $5) as i`,
     [organizationId, branchId, businessUnitId, suffix, SALE_COUNT],
   )
@@ -106,6 +118,27 @@ async function seedVolume(client: PoolClient): Promise<PerfFixture> {
     [organizationId],
   )
 
+  // report_inventory_movements has an EXPLAIN guard and a timing case, so this
+  // branch needs a ledger at a volume that matches the sales — a real sale of
+  // ITEMS_PER_SALE lines writes that many SALE movements, so this mirrors
+  // sale_items row-for-row, plus the created_at spread the guard needs to make
+  // the date predicate selective.
+  await client.query(
+    `insert into public.inventory_movements
+       (branch_id, business_unit_id, product_id, variant_id, movement_type,
+        quantity_delta, quantity_after, reason, created_at)
+     select $1, $2, p.id, null, 'SALE', -2, 100, 'reports-perf seed', s.created_at
+     from public.sales s
+     cross join lateral (
+       select id from public.products
+       where business_unit_id = $2
+       order by id
+       limit $3
+     ) p
+     where s.organization_id = $4`,
+    [branchId, businessUnitId, ITEMS_PER_SALE, organizationId],
+  )
+
   await client.query(
     `insert into public.expenses
        (organization_id, branch_id, business_unit_id, category, amount, payment_method, expense_date, status)
@@ -121,6 +154,7 @@ async function seedVolume(client: PoolClient): Promise<PerfFixture> {
   await client.query('analyze public.sale_items')
   await client.query('analyze public.payments')
   await client.query('analyze public.expenses')
+  await client.query('analyze public.inventory_movements')
 
   return { organizationId, branchId, businessUnitId }
 }
@@ -131,14 +165,27 @@ async function timed(client: PoolClient, sql: string, params: unknown[]): Promis
   return performance.now() - startedAt
 }
 
+let client: PoolClient
+let fixture: PerfFixture
+
+beforeAll(async () => {
+  client = await pool.connect()
+  await client.query('BEGIN')
+  fixture = await seedVolume(client)
+}, 120_000)
+
 afterAll(async () => {
+  if (client) {
+    await client.query('ROLLBACK')
+    client.release()
+  }
   await pool.end()
 })
 
 describe(`report performance against ${SALE_COUNT} sales / ${SALE_COUNT * ITEMS_PER_SALE} line items`, () => {
   it('every standard report and the custom engine stay within budget', async () => {
-    await withTransaction(async (client) => {
-      const { organizationId, branchId } = await seedVolume(client)
+    {
+      const { organizationId, branchId } = fixture
 
       const from = new Date(Date.now() - 30 * 86_400_000).toISOString()
       const to = new Date(Date.now() + 86_400_000).toISOString()
@@ -202,8 +249,86 @@ describe(`report performance against ${SALE_COUNT} sales / ${SALE_COUNT * ITEMS_
 
       const overBudget = Object.entries(timings).filter(([, ms]) => ms > BUDGET_MS)
       expect(overBudget).toEqual([])
-    })
+    }
   }, 120_000)
+
+  it('the highest-volume report predicates use an index rather than scanning', async () => {
+    // Deterministic where the timings above are not. You cannot EXPLAIN a
+    // plpgsql function body (`explain select * from report_x(...)` yields only
+    // "Function Scan"), so each predicate is copied inline from its source
+    // migration with a line reference — the same division
+    // tests/integration/pos-search-performance.test.ts already uses. A drift
+    // between the copy and the function is visible in review; a dropped index
+    // fails this test on any machine.
+    const { organizationId, branchId } = fixture
+    const from = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    const to = new Date(Date.now() + 86_400_000).toISOString()
+
+    // 20260823141000_create_report_functions.sql — report_sales_by_scope, the
+    // date-bucketed sales aggregate. Served by sales_organization_created_at_idx
+    // (20260823140800).
+    const salesByScope = `
+      select date_trunc('day', s.created_at) bucket, count(*), sum(s.total)
+      from public.sales s
+      where s.organization_id = $1
+        and s.created_at >= $2 and s.created_at < $3
+      group by 1`
+
+    // report_sales_by_item — the same date/org narrowing, then a join to
+    // sale_items. sale_items_sale_id_idx carries the join.
+    const salesByItem = `
+      select si.product_id, sum(si.quantity), sum(si.line_total)
+      from public.sales s
+      join public.sale_items si on si.sale_id = s.id
+      where s.organization_id = $1
+        and s.created_at >= $2 and s.created_at < $3
+      group by si.product_id`
+
+    // report_sales_by_payment_method AFTER the Milestone 16 re-date
+    // (20260830090100): the range predicate moves from payments.created_at
+    // (unindexed) to sales.created_at, so sales_organization_created_at_idx
+    // drives it and payments is reached only by sale_id.
+    const salesByPayment = `
+      select pay.method, count(*), sum(pay.amount)
+      from public.payments pay
+      join public.sales s on s.id = pay.sale_id
+      where s.organization_id = $1
+        and s.created_at >= $2 and s.created_at < $3
+      group by pay.method`
+
+    // report_inventory_movements — branch + date scoped. Served by
+    // inventory_movements_branch_created_at_idx (20260823140900).
+    const inventoryMovements = `
+      select im.movement_type, count(*), sum(im.quantity_delta)
+      from public.inventory_movements im
+      where im.branch_id = $1
+        and im.created_at >= $2 and im.created_at < $3
+      group by im.movement_type`
+
+    const guards: Array<[string, string, unknown[]]> = [
+      ['sales by scope', salesByScope, [organizationId, from, to]],
+      ['sales by item', salesByItem, [organizationId, from, to]],
+      ['sales by payment method', salesByPayment, [organizationId, from, to]],
+      ['inventory movements', inventoryMovements, [branchId, from, to]],
+    ]
+
+    const scanning: string[] = []
+    for (const [label, sql, params] of guards) {
+      const plan = await client.query(`explain (format json) ${sql}`, params)
+      const planText = JSON.stringify(plan.rows[0])
+      // A Seq Scan on the big transactional tables is the regression. A Seq
+      // Scan on a tiny lookup (business_types, a single-row subquery) is not,
+      // so match the table name.
+      if (
+        /Seq Scan.{0,40}"?(sales|sale_items|payments|inventory_movements)"?/.test(planText) ||
+        !planText.includes('Index')
+      ) {
+        scanning.push(`${label}: ${planText}`)
+      }
+    }
+
+    expect(scanning).toEqual([])
+  }, 60_000)
 
   it('a grouped report stays far under the 1000-row PostgREST cap', async () => {
     // The reason aggregation happens in SQL at all
@@ -211,20 +336,48 @@ describe(`report performance against ${SALE_COUNT} sales / ${SALE_COUNT * ITEMS_
     // more rows than that, PostgREST would silently truncate the response and
     // the report would be quietly wrong — so the shapes offered must group
     // into far fewer rows than the cap, not merely fewer.
-    await withTransaction(async (client) => {
-      const { organizationId } = await seedVolume(client)
+    const { organizationId } = fixture
 
-      const byDay = await client.query(
-        `select * from public.report_sales_by_scope($1, null, null, null, null, 'day', 1000)`,
-        [organizationId],
-      )
-      const byProduct = await client.query(
-        `select * from public.report_sales_by_item($1, null, null, null, null, 'product', 1000)`,
-        [organizationId],
-      )
+    const byDay = await client.query(
+      `select * from public.report_sales_by_scope($1, null, null, null, null, 'day', 1000)`,
+      [organizationId],
+    )
+    const byProduct = await client.query(
+      `select * from public.report_sales_by_item($1, null, null, null, null, 'product', 1000)`,
+      [organizationId],
+    )
 
-      expect(byDay.rows.length).toBeLessThan(500)
-      expect(byProduct.rows.length).toBeLessThan(500)
+    expect(byDay.rows.length).toBeLessThan(500)
+    expect(byProduct.rows.length).toBeLessThan(500)
+  }, 60_000)
+
+  it('per-sale storage footprint stays within the model cost-model.md assumes', async () => {
+    // The input to docs/milestones/16-launch/cost-model.md's Supabase
+    // free-tier (500 MB) threshold row. Measured, not guessed: total on-disk
+    // bytes (heap + indexes + toast) for the four tables a sale writes,
+    // divided by the seeded sale count. Logged for the doc; asserted only
+    // loosely, as a tripwire against a new index or column silently doubling
+    // the per-sale cost.
+    const { rows } = await client.query<{ table_name: string; bytes: string }>(
+      `select relname as table_name, pg_total_relation_size(oid) as bytes
+       from pg_class
+       where relname in ('sales', 'sale_items', 'payments', 'inventory_movements')
+         and relkind = 'r'`,
+    )
+    const totalBytes = rows.reduce((sum, r) => sum + Number(r.bytes), 0)
+    const bytesPerSale = Math.round(totalBytes / SALE_COUNT)
+
+    console.log('storage footprint:', {
+      perTable: Object.fromEntries(rows.map((r) => [r.table_name, Number(r.bytes)])),
+      totalBytes,
+      bytesPerSale,
+      // Rows from the whole local DB, not just this fixture, so this is an
+      // upper bound — every other test's leftovers inflate it. The doc records
+      // the fixture-only figure derived from a fresh `db reset`.
     })
-  }, 120_000)
+
+    // ~5 KB/sale would already be generous for four narrow rows plus indexes;
+    // 20 KB means something structural changed.
+    expect(bytesPerSale).toBeLessThan(20_000)
+  }, 30_000)
 })
