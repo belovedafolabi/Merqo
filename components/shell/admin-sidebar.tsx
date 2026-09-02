@@ -5,7 +5,6 @@ import { signOut } from '@/app/(auth)/actions'
 import { primaryNavItems, secondaryNavItems } from '@/lib/shell/nav-items'
 import { NavList } from '@/components/shell/nav-list'
 import { BusinessUnitSwitcher } from '@/components/shell/business-unit-switcher'
-import { SidebarCloseOnNavigate } from '@/components/shell/sidebar-close-on-navigate'
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +45,6 @@ export function AdminSidebar({
 }) {
   return (
     <Sidebar collapsible="icon" data-tour="app-sidebar">
-      <SidebarCloseOnNavigate />
       <SidebarHeader className="gap-3 p-3">
         <div className="flex items-center gap-2 px-1 py-1">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">

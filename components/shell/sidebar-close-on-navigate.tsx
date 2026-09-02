@@ -15,6 +15,11 @@ import { useSidebar } from '@/components/ui/sidebar'
  * rather than wiring an onClick into each `<Link>`. No-op on desktop
  * (`setOpenMobile` only drives the mobile state) and on first mount
  * (`openMobile` starts false).
+ *
+ * MUST be mounted OUTSIDE `<Sidebar>` — app/(app)/layout.tsx renders it as a
+ * sibling under `<SidebarProvider>`. Inside `<Sidebar>` it lands in the
+ * mobile Sheet's children, which Radix only mounts while the Sheet is open,
+ * so the mount effect below fired on open and slammed the menu shut again.
  */
 export function SidebarCloseOnNavigate() {
   const pathname = usePathname()

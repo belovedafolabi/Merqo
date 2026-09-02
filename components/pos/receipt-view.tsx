@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { getReceiptContextAction, getSaleAction } from '@/app/(pos)/pos/actions'
 import { ReceiptDocument } from '@/components/receipts/receipt-document'
+import { ReceiptPrintPortal } from '@/components/receipts/receipt-print-portal'
 import { DEFAULT_RECEIPT_TEMPLATE_ID } from '@/lib/receipts/templates'
 import type { OrganizationBranding } from '@/lib/branding/queries'
 import type { ReceiptSettings } from '@/lib/receipts/settings'
@@ -42,14 +43,31 @@ export function ReceiptView({ saleId }: { saleId: string }) {
     return <p className="text-body-sm text-muted-foreground">Loading receipt…</p>
   }
 
+  const templateId = settings?.templateId ?? DEFAULT_RECEIPT_TEMPLATE_ID
+  const resolvedSettings = settings ?? {
+    headerText: null,
+    footerText: null,
+    showLogo: true,
+    showCashier: true,
+  }
+
   return (
-    <ReceiptDocument
-      sale={sale}
-      templateId={settings?.templateId ?? DEFAULT_RECEIPT_TEMPLATE_ID}
-      branding={branding}
-      settings={
-        settings ?? { headerText: null, footerText: null, showLogo: true, showCashier: true }
-      }
-    />
+    <>
+      <ReceiptDocument
+        sale={sale}
+        templateId={templateId}
+        branding={branding}
+        settings={resolvedSettings}
+      />
+      {/* The print target. Rendering it here rather than in the drawer keeps
+          the fetched sale in one place — printReceiptInPlace() only has to
+          toggle a class, with nothing left to load at print time. */}
+      <ReceiptPrintPortal
+        sale={sale}
+        templateId={templateId}
+        branding={branding}
+        settings={resolvedSettings}
+      />
+    </>
   )
 }

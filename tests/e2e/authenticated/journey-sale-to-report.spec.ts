@@ -93,15 +93,59 @@ test('a product flows from catalog through a sale and return into the sales repo
   await page.getByRole('button', { name: /complete sale/i }).click()
   await expect(page.getByText('Sale complete')).toBeVisible({ timeout: ACTION_TIMEOUT })
 
-  // The return flow needs the full sale UUID. The success dialog only prints
-  // the 8-char receipt prefix, but "Print receipt" opens
-  // /receipts/preview?saleId=<full uuid> in a popup — capture it there.
-  const [receiptPopup] = await Promise.all([
-    page.waitForEvent('popup'),
-    page.getByRole('button', { name: /print receipt/i }).click(),
-  ])
-  const saleId = new URL(receiptPopup.url()).searchParams.get('saleId')
-  await receiptPopup.close()
+  // The receipt renders inside the success drawer itself. .and(':visible')
+  // because ReceiptView also renders a print-only copy portalled to <body>.
+  await expect(page.getByText(/Receipt #/).and(page.locator(':visible'))).toBeVisible()
+
+  // Done closes the drawer, which is also what clears the cart.
+  await page.getByRole('button', { name: /^done$/i }).click()
+  await expect(page.getByText('Sale complete')).toBeHidden()
+
+  // The return flow needs the full sale UUID, and the success drawer only
+  // prints the 8-char receipt prefix. This used to be captured from the URL of
+  // the popup "Print receipt" opened; printing now happens in place, with no
+  // popup and no navigation, so the id comes from the sales list instead.
+  //
+  // That is the better source anyway: reaching it at all proves the sale was
+  // committed to the record by CHECKOUT, before anyone touched Print or Done.
+  // The list's View button opens /receipts/preview?saleId=<full uuid>. Rather
+  // than racing a real popup window — which is flaky under test and leaves a
+  // stray page to clean up — window.open is stubbed to record its URL and
+  // open nothing. The assertion is about what the app ASKS for, which is the
+  // part that carries the id.
+  await page.addInitScript(() => {
+    ;(window as unknown as { __openedUrl?: string }).__openedUrl = undefined
+    window.open = ((url?: string | URL) => {
+      ;(window as unknown as { __openedUrl?: string }).__openedUrl = String(url)
+      return null
+    }) as typeof window.open
+  })
+  await page.goto('/sales')
+
+  const viewReceipt = page.getByRole('button', { name: /^view receipt/i }).first()
+  await expect(viewReceipt).toBeVisible()
+
+  // Polled rather than clicked once: SalesView is a client component, so the
+  // button is present in the server HTML before React has attached its
+  // onClick. A single click can land in that gap and do nothing at all —
+  // silently, since the button looks identical either way. Re-clicking is
+  // harmless; it only ever asks to open the same receipt.
+  await expect
+    .poll(
+      async () => {
+        await viewReceipt.click()
+        return page.evaluate(() => (window as unknown as { __openedUrl?: string }).__openedUrl)
+      },
+      { timeout: 20_000 },
+    )
+    .toBeTruthy()
+
+  const openedUrl = await page.evaluate(
+    () => (window as unknown as { __openedUrl?: string }).__openedUrl,
+  )
+  const saleId = openedUrl
+    ? new URL(openedUrl, 'http://localhost').searchParams.get('saleId')
+    : null
   expect(saleId).toBeTruthy()
 
   // --- POS Returns: return the unit (Milestone 08) --------------------

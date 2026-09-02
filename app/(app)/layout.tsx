@@ -7,6 +7,7 @@ import { getOrganizationBranding } from '@/lib/branding/queries'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
+import { SidebarCloseOnNavigate } from '@/components/shell/sidebar-close-on-navigate'
 import { SubscriptionExpiryBanner } from '@/components/subscription/expiry-banner'
 import { ProductTour } from '@/components/tour/product-tour'
 import { hasCompletedTour } from '@/lib/tour/queries'
@@ -49,6 +50,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BrandStyle />
       <div className="bg-admin-canvas min-h-svh p-2 sm:p-3">
         <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
+          {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
+              On mobile <Sidebar> renders its children inside a Radix Sheet,
+              which only mounts them while the Sheet is open — so mounting
+              this there made its "close on navigate" effect fire the instant
+              the menu opened, closing it again in the same commit. Out here
+              it stays mounted for the life of the shell and only reacts to a
+              real pathname change. */}
+          <SidebarCloseOnNavigate />
           <AdminSidebar
             organizationName={branding?.displayName ?? 'Merqo'}
             userName={userName}

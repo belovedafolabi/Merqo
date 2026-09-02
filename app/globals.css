@@ -243,6 +243,28 @@
   }
 }
 
+/* In-place receipt printing (components/receipts/receipt-print-portal.tsx).
+   Printing the receipt from the page it was rung up on, rather than opening
+   /receipts/preview in a popup, means the entire POS is still in the document
+   when the print dialog opens — so the printout has to be narrowed to the
+   portalled receipt copy by hand.
+
+   Portalled to <body> and hidden off-print, so it costs a hidden div and
+   nothing else until someone actually prints. */
+.receipt-print-portal {
+  display: none;
+}
+
+@media print {
+  body.printing-receipt > *:not(.receipt-print-portal) {
+    display: none !important;
+  }
+
+  body.printing-receipt .receipt-print-portal {
+    display: block;
+  }
+}
+
 @layer utilities {
   /* Admin/auth shell backdrop — see file header. Applied to the outermost
      wrapper of app/(app) and app/(auth); content sits in `bg-card` panels

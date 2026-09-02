@@ -37,6 +37,7 @@ import { usePermission } from '@/lib/auth/permissions-context'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { usePendingToast } from '@/hooks/use-pending-toast'
 import { ReceiptView } from '@/components/pos/receipt-view'
+import { printReceiptInPlace } from '@/components/receipts/receipt-print-portal'
 import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
 import { CustomerPicker } from '@/components/customers/customer-picker'
 import { canCoverAmount } from '@/lib/customers/ledger'
@@ -55,21 +56,6 @@ const PAYMENT_METHODS = [
 
 function currency(value: number): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
-}
-
-/**
- * Milestone 14's browser-based receipt printing — opens the existing
- * /receipts/preview route (renders the receipt alone, auto-prints on
- * `?print=1`, gates on `sales.view`) in a small named popup. See the
- * previous checkout-dialog.tsx for why this isn't window.print() in place.
- */
-function printReceipt(saleId: string): void {
-  const popup = window.open(
-    `/receipts/preview?saleId=${encodeURIComponent(saleId)}&print=1`,
-    'merqo-receipt',
-    'popup=yes,width=420,height=760',
-  )
-  popup?.focus()
 }
 
 /**
@@ -108,6 +94,7 @@ export function CheckoutDrawer({
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   usePendingToast(pending, 'Completing sale…')
 
@@ -189,10 +176,25 @@ export function CheckoutDrawer({
             <ReceiptView saleId={state.saleId} />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
-            <Button variant="outline" size="touch" onClick={() => printReceipt(state.saleId!)}>
-              <Printer /> Print receipt
+            <Button
+              variant="outline"
+              size="touch"
+              disabled={printing}
+              onClick={() => {
+                setPrinting(true)
+                // Closing the drawer is what runs resetAfterSale(), so
+                // finishing the print clears the cart and dismisses the
+                // receipt in one step — the cashier is back at an empty till
+                // ready for the next customer without touching Done.
+                printReceiptInPlace(() => {
+                  setPrinting(false)
+                  onOpenChange(false)
+                })
+              }}
+            >
+              <Printer /> {printing ? 'Printing…' : 'Print receipt'}
             </Button>
-            <Button size="touch" onClick={() => onOpenChange(false)}>
+            <Button size="touch" disabled={printing} onClick={() => onOpenChange(false)}>
               Done
             </Button>
           </DrawerFooter>
