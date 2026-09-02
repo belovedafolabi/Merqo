@@ -82,6 +82,16 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthScreen = ['/sign-in', '/sign-up', '/forgot-password'].includes(pathname)
 
+  // RSC prefetches fire on every link hover. They are speculative — the real
+  // navigation re-runs this proxy without the prefetch header — so the two
+  // gating RPCs below (both documented as UX-only, never the security
+  // boundary; RLS denies a deactivated/locked user regardless) are pure
+  // waste on a prefetch. Session refresh (getUser above) and the cheap
+  // unauthenticated redirect still run.
+  const isPrefetch =
+    request.headers.get('next-router-prefetch') === '1' ||
+    request.headers.get('purpose') === 'prefetch'
+
   if (!user && !isPublicPath(pathname)) {
     const redirectUrl = new URL('/sign-in', request.url)
     redirectUrl.searchParams.set('next', pathname)
@@ -101,34 +111,34 @@ export async function proxy(request: NextRequest) {
   // rendering empty, which would look like a bug rather than a revoked
   // account. Scoped to a signed-in user on a private path — no session, no
   // RPC to make.
-  if (user && !isPublicPath(pathname)) {
-    const { data: active } = await supabase.rpc('user_is_active')
+  //
+  // The subscription-lock check (Milestone 13) shares this block. Its real
+  // boundary is organization_access_permitted() (20260825100500); this only
+  // routes a locked-out user to an explicit "renew to continue" screen
+  // instead of every page rendering empty. Deliberately NO signOut() for a
+  // lock, unlike deactivation: an Owner needs a live session to pay.
+  //
+  // Both RPCs are independent, so they are dispatched together (before the
+  // first await) and resolve concurrently rather than serially.
+  if (user && !isPublicPath(pathname) && !isPrefetch) {
+    const activePromise = supabase.rpc('user_is_active')
+    const accessPromise = LOCK_EXEMPT_PATHS.includes(pathname)
+      ? null
+      : supabase.rpc('subscription_access_state').maybeSingle<{ locked: boolean }>()
+
+    const { data: active } = await activePromise
     if (active === false) {
       await supabase.auth.signOut()
       const redirectUrl = new URL('/sign-in', request.url)
       redirectUrl.searchParams.set('reason', 'deactivated')
       return NextResponse.redirect(redirectUrl)
     }
-  }
 
-  // Milestone 13's subscription lock. The real boundary is
-  // organization_access_permitted() (20260825100500) — every RLS-protected
-  // query already denies a locked-out user regardless of this check. This
-  // exists only so they see an explicit "renew to continue" screen instead
-  // of every page silently rendering empty, the same UX-only role the
-  // deactivation check above plays.
-  //
-  // Deliberately NO signOut() here, unlike deactivation: an Owner needs a
-  // live session to pay. Locked users are quarantined to
-  // /subscription-locked, not signed out — app/(auth)/actions.ts's signIn()
-  // is where full lockout for a non-Owner actually happens (on their next
-  // sign-in), not here on every request.
-  if (user && !isPublicPath(pathname) && !LOCK_EXEMPT_PATHS.includes(pathname)) {
-    const { data: accessState } = await supabase
-      .rpc('subscription_access_state')
-      .maybeSingle<{ locked: boolean }>()
-    if (accessState?.locked) {
-      return NextResponse.redirect(new URL('/subscription-locked', request.url))
+    if (accessPromise) {
+      const { data: accessState } = await accessPromise
+      if (accessState?.locked) {
+        return NextResponse.redirect(new URL('/subscription-locked', request.url))
+      }
     }
   }
 

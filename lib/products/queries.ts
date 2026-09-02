@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 import { getCurrentUserContext } from '@/lib/auth/context'
 import { resolvePermission } from '@/lib/auth/permissions'
 import { logger } from '@/lib/logger'
@@ -91,6 +93,28 @@ export async function getBusinessUnitBranch(
   if (error) throw error
   return data?.branches ?? null
 }
+
+/**
+ * Suggested starter category names for a Business Type
+ * (business_type_category_suggestions, seeded reference data). Ordered by
+ * `sort_order`. cache()-wrapped like the other reference-data reads — the
+ * list is identical for every request with the same type id.
+ *
+ * The category manager filters these against the categories that already
+ * exist and renders the remainder as one-tap "add" chips.
+ */
+export const listCategorySuggestions = cache(async (businessTypeId: string): Promise<string[]> => {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('business_type_category_suggestions')
+    .select('name')
+    .eq('business_type_id', businessTypeId)
+    .order('sort_order')
+    .order('name')
+
+  if (error) throw error
+  return (data ?? []).map((row) => row.name as string)
+})
 
 export async function listCategories(businessUnitId: string): Promise<Category[]> {
   const supabase = await createServerSupabaseClient()

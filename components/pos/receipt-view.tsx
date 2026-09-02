@@ -22,7 +22,7 @@ import type { Sale } from '@/lib/sales/queries'
  * preview route and template picker use — this file's only remaining job is
  * fetching the sale plus the organization's branding/receipt-settings
  * (via getReceiptContextAction(), a Server Action — this component is a
- * client leaf inside checkout-dialog.tsx, which cannot reach next/headers
+ * client leaf inside checkout-drawer.tsx, which cannot reach next/headers
  * directly).
  */
 export function ReceiptView({ saleId }: { saleId: string }) {

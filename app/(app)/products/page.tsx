@@ -3,7 +3,7 @@ import { Package } from 'lucide-react'
 
 import { requirePermission } from '@/lib/auth/guard'
 import { getOnboardingState } from '@/lib/business-structure/queries'
-import { listCategories, listProducts } from '@/lib/products/queries'
+import { listCategories, listCategorySuggestions, listProducts } from '@/lib/products/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { EmptyState } from '@/components/states/empty-state'
 import { ProductsView } from '@/components/products/products-view'
@@ -42,7 +42,11 @@ export default async function ProductsPage() {
       <AdminTopbar title="Products" />
       <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
         {businessUnit ? (
-          <ProductsPageContent organizationId={organizationId} businessUnitId={businessUnit.id} />
+          <ProductsPageContent
+            organizationId={organizationId}
+            businessUnitId={businessUnit.id}
+            businessTypeId={businessUnit.businessTypeId}
+          />
         ) : (
           <EmptyState
             icon={Package}
@@ -58,13 +62,16 @@ export default async function ProductsPage() {
 async function ProductsPageContent({
   organizationId,
   businessUnitId,
+  businessTypeId,
 }: {
   organizationId: string
   businessUnitId: string
+  businessTypeId: string
 }) {
-  const [products, categories] = await Promise.all([
+  const [products, categories, categorySuggestions] = await Promise.all([
     listProducts(organizationId, businessUnitId),
     listCategories(businessUnitId),
+    listCategorySuggestions(businessTypeId),
   ])
 
   return (
@@ -73,6 +80,7 @@ async function ProductsPageContent({
       businessUnitId={businessUnitId}
       products={products}
       categories={categories}
+      categorySuggestions={categorySuggestions}
     />
   )
 }

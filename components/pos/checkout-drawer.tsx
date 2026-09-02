@@ -1,0 +1,402 @@
+'use client'
+
+import { useActionState, useEffect, useState } from 'react'
+import {
+  ChevronDown,
+  CreditCard,
+  Landmark,
+  Printer,
+  TriangleAlert,
+  Wallet,
+  Banknote,
+} from 'lucide-react'
+
+import {
+  checkoutAction,
+  getStoreCreditBalanceAction,
+  type PosActionState,
+} from '@/app/(pos)/pos/actions'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
+import { useCart, useCartTotals } from '@/lib/pos/cart-context'
+import { usePosSession } from '@/lib/pos/session-context'
+import { usePermission } from '@/lib/auth/permissions-context'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { usePendingToast } from '@/hooks/use-pending-toast'
+import { ReceiptView } from '@/components/pos/receipt-view'
+import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
+import { CustomerPicker } from '@/components/customers/customer-picker'
+import { canCoverAmount } from '@/lib/customers/ledger'
+import type { Customer } from '@/lib/customers/queries'
+
+const initialState: PosActionState = { error: null }
+
+const PAYMENT_METHODS = [
+  { value: 'cash', label: 'Cash', icon: Banknote },
+  { value: 'card', label: 'Card', icon: CreditCard },
+  { value: 'transfer', label: 'Transfer', icon: Landmark },
+  { value: 'store_credit', label: 'Store credit', icon: Wallet },
+] as const
+
+function currency(value: number): string {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
+}
+
+/**
+ * Milestone 14's browser-based receipt printing — opens the existing
+ * /receipts/preview route (renders the receipt alone, auto-prints on
+ * `?print=1`, gates on `sales.view`) in a small named popup. See the
+ * previous checkout-dialog.tsx for why this isn't window.print() in place.
+ */
+function printReceipt(saleId: string): void {
+  const popup = window.open(
+    `/receipts/preview?saleId=${encodeURIComponent(saleId)}&print=1`,
+    'merqo-receipt',
+    'popup=yes,width=420,height=760',
+  )
+  popup?.focus()
+}
+
+/**
+ * Checkout in a drawer — bottom sheet on mobile, side drawer on desktop —
+ * replacing the old modal dialog. The common path (Cash, walk-in customer)
+ * is one tap: payment method is a button row (not a Select), and everything
+ * optional — customer, discount, payment note — is folded behind a single
+ * "Add customer, discount or note" disclosure that only auto-opens when it
+ * has to (store-credit needs a customer).
+ *
+ * All the server-facing logic is unchanged from checkout-dialog.tsx: same
+ * `<form action>` payload, the once-per-open idempotency key, the discount
+ * sync effect that keeps the cart panel's live totals in step, the advisory
+ * store-credit balance fetch, and the `state.saleId` success screen with
+ * ReceiptView + Print. Amounts shown are a client preview; createSale()
+ * re-derives the authoritative total server-side.
+ */
+export function CheckoutDrawer({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const { organizationId, branchId, businessUnitId } = usePosSession()
+  const { lines, discount, discountReason, setDiscount, clear } = useCart()
+  const totals = useCartTotals()
+  const canApplyDiscount = usePermission('discount.apply', { organizationId, branchId })
+  const isMobile = useIsMobile()
+
+  const [state, formAction, pending] = useActionState(checkoutAction, initialState)
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const [discountInput, setDiscountInput] = useState('')
+  const [discountReasonInput, setDiscountReasonInput] = useState('')
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
+  usePendingToast(pending, 'Completing sale…')
+
+  // Fresh idempotency key per checkout *attempt*, derived during render (the
+  // "adjust state when a prop changes" pattern) — see checkout-dialog.tsx's
+  // module doc for why this isn't a useEffect.
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) setIdempotencyKey(crypto.randomUUID())
+  }
+
+  useEffect(() => {
+    setDiscount(
+      discountInput ? { percentage: Number(discountInput) } : {},
+      discountReasonInput || undefined,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discountInput, discountReasonInput])
+
+  // Advisory balance for the attached customer — createSale() re-reads and
+  // locks the real balance server-side, so a stale value here is safe. The
+  // stale value is cleared in handleSelectCustomer (an event), not here.
+  useEffect(() => {
+    if (!customer) return
+    let cancelled = false
+    getStoreCreditBalanceAction(customer.id).then((balance) => {
+      if (!cancelled) setCreditBalance(balance)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [customer])
+
+  const payingWithCredit = paymentMethod === 'store_credit'
+
+  // Picking store credit needs a customer attached — open the details
+  // section in the same click so the picker is visible, rather than
+  // syncing it in an effect (an event, not a synchronization).
+  function selectPaymentMethod(value: string) {
+    setPaymentMethod(value)
+    if (value === 'store_credit') setDetailsOpen(true)
+  }
+
+  function handleSelectCustomer(next: Customer | null) {
+    setCustomer(next)
+    setCreditBalance(null)
+  }
+
+  function resetAfterSale() {
+    clear()
+    setDiscountInput('')
+    setDiscountReasonInput('')
+    handleSelectCustomer(null)
+    setPaymentMethod('cash')
+    setDetailsOpen(false)
+  }
+
+  const creditShortfall =
+    payingWithCredit && creditBalance !== null && !canCoverAmount(creditBalance, totals.total)
+  const blockedByCredit = payingWithCredit && (!customer || creditShortfall)
+
+  const direction = isMobile ? 'bottom' : 'right'
+
+  if (state.saleId) {
+    return (
+      <Drawer
+        open={open}
+        direction={direction}
+        onOpenChange={(next) => {
+          if (!next) resetAfterSale()
+          onOpenChange(next)
+        }}
+      >
+        <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
+          <DrawerHeader>
+            <DrawerTitle>Sale complete</DrawerTitle>
+            <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4">
+            <ReceiptView saleId={state.saleId} />
+          </div>
+          <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
+            <Button variant="outline" size="touch" onClick={() => printReceipt(state.saleId!)}>
+              <Printer /> Print receipt
+            </Button>
+            <Button size="touch" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    )
+  }
+
+  return (
+    <>
+      <Drawer open={open} direction={direction} onOpenChange={onOpenChange}>
+        <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
+          <DrawerHeader>
+            <DrawerTitle>Checkout</DrawerTitle>
+            <DrawerDescription>
+              {lines.reduce((sum, line) => sum + line.quantity, 0)} item
+              {lines.reduce((sum, line) => sum + line.quantity, 0) === 1 ? '' : 's'} ·{' '}
+              {currency(totals.total)}
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <form
+            action={(formData) => {
+              formData.set('organizationId', organizationId)
+              formData.set('branchId', branchId)
+              formData.set('businessUnitId', businessUnitId)
+              formData.set('idempotencyKey', idempotencyKey)
+              formData.set('paymentMethod', paymentMethod)
+              if (customer) formData.set('customerId', customer.id)
+              formData.set(
+                'items',
+                JSON.stringify(
+                  lines.map((line) => ({
+                    productId: line.productId,
+                    variantId: line.variantId,
+                    quantity: line.quantity,
+                  })),
+                ),
+              )
+              if (discount.percentage)
+                formData.set('discountPercentage', String(discount.percentage))
+              if (discountReason) formData.set('discountReason', discountReason)
+              formAction(formData)
+            }}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-2">
+              {state.error && (
+                <Alert variant="destructive" role="alert">
+                  <TriangleAlert />
+                  <AlertDescription>{state.error}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/40 p-3 text-body-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{currency(totals.subtotal)}</span>
+                </div>
+                {totals.discountAmount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Discount</span>
+                    <span className="tabular-nums">−{currency(totals.discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax</span>
+                  <span className="tabular-nums">{currency(totals.taxAmount)}</span>
+                </div>
+                {totals.serviceChargeAmount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Service charge</span>
+                    <span className="tabular-nums">{currency(totals.serviceChargeAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-1.5 font-semibold">
+                  <span>Total</span>
+                  <span className="tabular-nums">{currency(totals.total)}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>Payment method</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => {
+                    const active = paymentMethod === value
+                    return (
+                      <Button
+                        key={value}
+                        type="button"
+                        variant={active ? 'default' : 'outline'}
+                        size="touch"
+                        className="justify-start gap-2"
+                        aria-pressed={active}
+                        onClick={() => selectPaymentMethod(value)}
+                      >
+                        <Icon className="size-4" /> {label}
+                      </Button>
+                    )
+                  })}
+                </div>
+
+                {payingWithCredit && !customer && (
+                  <p className="text-body-sm text-destructive" role="alert">
+                    Attach a customer below to pay with store credit.
+                  </p>
+                )}
+                {creditShortfall && creditBalance !== null && (
+                  <p className="text-body-sm text-destructive" role="alert">
+                    {customer?.name} has {currency(creditBalance)} in credit — not enough to cover{' '}
+                    {currency(totals.total)}. Store credit can&rsquo;t be combined with another
+                    payment method.
+                  </p>
+                )}
+              </div>
+
+              <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 w-full justify-between px-3 text-body-sm"
+                  >
+                    Add customer, discount or note
+                    <ChevronDown
+                      className={cn('size-4 transition-transform', detailsOpen && 'rotate-180')}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="flex flex-col gap-4 pt-3">
+                  <CustomerPicker
+                    organizationId={organizationId}
+                    selected={customer}
+                    onSelect={handleSelectCustomer}
+                    onQuickAdd={() => setQuickAddOpen(true)}
+                    label="Customer (optional)"
+                    helperText={
+                      creditBalance === null
+                        ? 'Attach a customer to record this sale against them, or to pay with store credit.'
+                        : `Store credit available: ${currency(creditBalance)}`
+                    }
+                  />
+
+                  {canApplyDiscount && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="checkout-discount">Discount (%)</Label>
+                        <Input
+                          id="checkout-discount"
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.01"
+                          inputMode="decimal"
+                          value={discountInput}
+                          onChange={(event) => setDiscountInput(event.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="checkout-discount-reason">Discount reason</Label>
+                        <Input
+                          id="checkout-discount-reason"
+                          value={discountReasonInput}
+                          onChange={(event) => setDiscountReasonInput(event.target.value)}
+                          placeholder="e.g. Loyalty customer"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="checkout-payment-reference">Payment reference (optional)</Label>
+                    <Textarea
+                      id="checkout-payment-reference"
+                      name="paymentReference"
+                      placeholder="e.g. transfer reference or card auth code"
+                      rows={2}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            <DrawerFooter className="border-t pb-safe-b">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={pending || lines.length === 0 || blockedByCredit}
+                className={cn('h-12 w-full', !pending && lines.length > 0 && 'glow-brand')}
+              >
+                {pending ? 'Processing…' : `Complete sale · ${currency(totals.total)}`}
+              </Button>
+            </DrawerFooter>
+          </form>
+        </DrawerContent>
+      </Drawer>
+
+      <CustomerFormDialog
+        organizationId={organizationId}
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+      />
+    </>
+  )
+}

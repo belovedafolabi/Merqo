@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/drawer'
 import { CartLines } from '@/components/pos/cart-lines'
 import { CartSummary } from '@/components/pos/cart-summary'
+import { HeldSalesTabs } from '@/components/pos/held-sales-tabs'
 import { useCart, useCartTotals } from '@/lib/pos/cart-context'
 
 /**
@@ -52,6 +53,7 @@ export function MobileCartBar() {
             <DrawerTitle>Cart</DrawerTitle>
           </DrawerHeader>
           <div className="flex max-h-[70dvh] flex-col gap-4 overflow-y-auto px-4 pb-safe-b">
+            <HeldSalesTabs />
             <CartLines />
             <CartSummary />
           </div>

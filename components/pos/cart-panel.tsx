@@ -1,6 +1,6 @@
 import { CartLines } from '@/components/pos/cart-lines'
 import { CartSummary } from '@/components/pos/cart-summary'
-import { HeldSalesSheet } from '@/components/pos/held-sales-sheet'
+import { HeldSalesTabs } from '@/components/pos/held-sales-tabs'
 
 /**
  * Desktop cart panel — search+grid on the left, cart+total on the right,
@@ -13,10 +13,8 @@ import { HeldSalesSheet } from '@/components/pos/held-sales-sheet'
 export function CartPanel() {
   return (
     <aside className="hidden w-80 shrink-0 flex-col gap-4 border-l bg-card p-4 lg:flex xl:w-96">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-body font-semibold">Cart</h2>
-        <HeldSalesSheet />
-      </div>
+      <h2 className="text-body font-semibold">Cart</h2>
+      <HeldSalesTabs />
       <div className="flex flex-1 flex-col overflow-y-auto">
         <CartLines />
       </div>

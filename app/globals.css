@@ -255,4 +255,90 @@
       var(--admin-canvas-to) 100%
     );
   }
+
+  /*
+   * Brand glow — a soft, slow-pulsing halo around a key element (POS
+   * CHECKOUT button, onboarding Finish card, the auth card). Deliberately
+   * restrained per docs/UXUI_Design_System_Specification.md §57 ("not a
+   * flashy fintech dashboard"): low opacity, one element per view,
+   * `prefers-reduced-motion` aware.
+   *
+   * Implemented as an animated `box-shadow`, NOT a bleeding `::before`
+   * pseudo-element — a negatively-inset absolute child extends the
+   * scrollable area and tripped the "no horizontal overflow" responsive
+   * tests on narrow viewports. `box-shadow` never adds scrollbars.
+   *
+   * Colour is `--brand-primary` (green by default, per-org overridable at
+   * runtime by components/branding/brand-style.tsx) mixed toward
+   * transparent — never a literal green — so a branding change recolours
+   * the glow with everything else. The composited dark drop shadow keeps
+   * depth on the auth card, which no longer also carries `shadow-elevated`.
+   */
+  .glow-brand {
+    animation: glow-brand-pulse 3.4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .glow-brand {
+      animation: none;
+      box-shadow:
+        0 0 26px -6px color-mix(in oklch, var(--brand-primary) 42%, transparent),
+        0 8px 24px oklch(0 0 0 / 0.14);
+    }
+  }
+
+  /*
+   * Text shimmer for loading toasts (sonner's `loading` classNames slot →
+   * `.merqo-toast-loading`, wired in components/ui/sonner.tsx). Signals
+   * "work in progress" on the toast title. Reduced-motion falls back to
+   * plain muted text — no gradient, no animation.
+   */
+  .merqo-toast-loading [data-title] {
+    background: linear-gradient(
+      110deg,
+      color-mix(in oklch, var(--popover-foreground) 40%, transparent) 35%,
+      var(--popover-foreground) 50%,
+      color-mix(in oklch, var(--popover-foreground) 40%, transparent) 65%
+    );
+    background-size: 220% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: text-shimmer 2.4s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .merqo-toast-loading [data-title] {
+      animation: none;
+      background: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: var(--muted-foreground);
+    }
+  }
+}
+
+/* Keyframes for the utilities above. Kept at the top level (not inside a
+   layer) so they are always available regardless of layer ordering. */
+@keyframes glow-brand-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px -6px color-mix(in oklch, var(--brand-primary) 38%, transparent),
+      0 0 6px -2px color-mix(in oklch, var(--brand-primary) 30%, transparent),
+      0 8px 24px oklch(0 0 0 / 0.14);
+  }
+  50% {
+    box-shadow:
+      0 0 40px 0 color-mix(in oklch, var(--brand-primary) 55%, transparent),
+      0 0 14px 0 color-mix(in oklch, var(--brand-primary) 40%, transparent),
+      0 8px 24px oklch(0 0 0 / 0.14);
+  }
+}
+
+@keyframes text-shimmer {
+  0% {
+    background-position: 220% center;
+  }
+  100% {
+    background-position: -220% center;
+  }
 }

@@ -52,3 +52,35 @@ export function ListSkeleton({ items = 4 }: { items?: number }) {
     </div>
   )
 }
+
+/**
+ * Static stand-in for <AdminTopbar> in a route's `loading.tsx`. Matches its
+ * `h-16 border-b px-4 sm:px-6` frame but pulls in no data-fetching children
+ * (the real bell / trigger), so the loading fallback stays cheap.
+ */
+export function PageHeaderSkeleton() {
+  return (
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b px-4 sm:px-6">
+      <Skeleton className="size-7 rounded-md" />
+      <div className="mr-2 h-5 w-px bg-border" />
+      <Skeleton className="h-6 w-40" />
+    </header>
+  )
+}
+
+/**
+ * Whole-page loading frame for an admin list screen — header + a table
+ * placeholder in the same `flex flex-1 flex-col … p-4 sm:p-6` shell every
+ * app/(app) page renders. Used by the co-located `loading.tsx` files so a
+ * route transition shows structure instead of a blank inset.
+ */
+export function TablePageSkeleton({ columns = 5, rows = 8 }: { columns?: number; rows?: number }) {
+  return (
+    <div className="flex flex-1 flex-col">
+      <PageHeaderSkeleton />
+      <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+        <TableSkeleton rows={rows} columns={columns} />
+      </div>
+    </div>
+  )
+}

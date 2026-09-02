@@ -16,8 +16,10 @@
  * the seeded catalog (supabase/seed.sql) — "Business Structure"
  * (`branches.view`), since Milestone 06 "Products" (`products.view`), since
  * Milestone 07 "Inventory" (`inventory.view`), since Milestone 09
- * "Customers" (`customers.view`) and "Layaways" (`layaway.view`), and since
- * Milestone 10 "Reports" (`reports.view`) and "Expenses" (`expense.view`).
+ * "Customers" (`customers.view`) and "Layaways" (`layaway.view`), since
+ * Milestone 10 "Reports" (`reports.view`) and "Expenses" (`expense.view`),
+ * and — once the /sales list screen finally shipped — "Sales" (`sales.view`,
+ * seeded since Milestone 08 but UI-less until now).
  * Items whose domain permission doesn't exist yet are intentionally left
  * ungated (`permission: null`): gating them on a
  * *different* module's permission, or hiding them for everyone, would be
@@ -59,7 +61,7 @@ export interface NavItem {
 export const primaryNavItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard', icon: 'LayoutDashboard', permission: null },
   { label: 'POS', href: '/pos', icon: 'ShoppingCart', permission: null },
-  { label: 'Sales', href: '/sales', icon: 'Receipt', permission: null },
+  { label: 'Sales', href: '/sales', icon: 'Receipt', permission: { key: 'sales.view' } },
   { label: 'Products', href: '/products', icon: 'Package', permission: { key: 'products.view' } },
   {
     label: 'Inventory',
