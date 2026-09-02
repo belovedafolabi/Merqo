@@ -4,7 +4,8 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { CheckoutDialog } from '@/components/pos/checkout-dialog'
+import { CheckoutDrawer } from '@/components/pos/checkout-drawer'
+import { cn } from '@/lib/utils'
 import { useCart, useCartTotals } from '@/lib/pos/cart-context'
 
 function money(value: number): string {
@@ -22,9 +23,9 @@ export function CartSummary() {
   const { lines } = useCart()
   const totals = useCartTotals()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
-  // Forces CheckoutDialog to fully remount on each new attempt — otherwise
+  // Forces CheckoutDrawer to fully remount on each new attempt — otherwise
   // useActionState's result from a *previous* completed sale would still be
-  // sitting in the component instance's state the next time the dialog
+  // sitting in the component instance's state the next time the drawer
   // opens, showing a stale "Sale complete" receipt before the new checkout
   // ever submits.
   const [attempt, setAttempt] = useState(0)
@@ -53,7 +54,10 @@ export function CartSummary() {
       <Button
         size="lg"
         disabled={lines.length === 0}
-        className="h-14 rounded-xl text-body font-semibold"
+        className={cn(
+          'h-14 rounded-xl text-body font-semibold',
+          lines.length > 0 && 'glow-brand',
+        )}
         onClick={() => {
           setAttempt((n) => n + 1)
           setCheckoutOpen(true)
@@ -61,7 +65,7 @@ export function CartSummary() {
       >
         Checkout
       </Button>
-      <CheckoutDialog key={attempt} open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      <CheckoutDrawer key={attempt} open={checkoutOpen} onOpenChange={setCheckoutOpen} />
     </div>
   )
 }

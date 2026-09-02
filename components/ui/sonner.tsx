@@ -32,6 +32,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--border-radius': 'var(--radius)',
         } as React.CSSProperties
       }
+      toastOptions={{
+        // Loading toasts (background work — "Signing you in…", "Uploading
+        // logo…") get a shimmering title via `.merqo-toast-loading` in
+        // app/globals.css. Falls back to plain text under prefers-reduced-motion.
+        classNames: { loading: 'merqo-toast-loading' },
+      }}
       {...props}
     />
   )

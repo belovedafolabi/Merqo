@@ -9,6 +9,7 @@ import {
 } from '@/app/(onboarding)/onboarding/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 
 const initialState: OnboardingActionState = { error: null }
 
@@ -22,6 +23,7 @@ export function FinishStep({
   businessUnitName: string
 }) {
   const [state, formAction, pending] = useActionState(finishOnboardingAction, initialState)
+  usePendingToast(pending, 'Setting up your workspace…')
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -34,7 +36,7 @@ export function FinishStep({
         </Alert>
       )}
 
-      <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 text-center">
+      <div className="glow-brand flex flex-col items-center gap-3 rounded-lg border bg-card p-6 text-center">
         <CheckCircle2 className="size-10 text-success" />
         <p className="font-medium">{businessUnitName} is ready</p>
         <p className="text-sm text-muted-foreground">

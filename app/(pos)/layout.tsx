@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation'
 
-import { requireUser } from '@/lib/auth/guard'
-import { fetchPermissionGrants } from '@/lib/auth/context'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getCurrentUserContext } from '@/lib/auth/context'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
 import { getOnboardingState, getBusinessUnitPosConfig } from '@/lib/business-structure/queries'
 import { PosSessionProvider } from '@/lib/pos/session-context'
@@ -21,7 +19,11 @@ import { CustomerDisplayPublisher } from '@/components/pos/customer-display-publ
  * just a different composition on top of it.
  */
 export default async function PosLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser()
+  // getCurrentUserContext() already fetches + cache()-memoizes the user and
+  // the permission grants for this request — read `grants` off it instead of
+  // a second un-cached fetchPermissionGrants() round trip.
+  const { user, grants } = await getCurrentUserContext()
+  if (!user) redirect('/sign-in')
 
   const onboardingState = await getOnboardingState()
   if (
@@ -32,9 +34,6 @@ export default async function PosLayout({ children }: { children: React.ReactNod
   ) {
     redirect('/onboarding')
   }
-
-  const supabase = await createServerSupabaseClient()
-  const grants = await fetchPermissionGrants(supabase)
 
   const posConfig = await getBusinessUnitPosConfig(onboardingState.businessUnit.id)
   if (!posConfig) {

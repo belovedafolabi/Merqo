@@ -25,7 +25,7 @@ export async function getSaleAction(saleId: string): Promise<Sale | null> {
 /**
  * Milestone 11: the branding + receipt-settings ReceiptView needs to render
  * via ReceiptDocument. A Server Action, not a prop threaded down from a
- * Server Component ancestor, because checkout-dialog.tsx (and everything
+ * Server Component ancestor, because checkout-drawer.tsx (and everything
  * above it in the POS tree — PosSessionProvider, CartProvider) is
  * 'use client': getOrganizationBranding()/getReceiptSettings() reach
  * next/headers and cannot run there directly.

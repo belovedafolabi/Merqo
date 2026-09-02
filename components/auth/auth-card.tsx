@@ -29,7 +29,7 @@ export function AuthCard({
   footer?: React.ReactNode
 }) {
   return (
-    <Card className="w-full max-w-sm gap-6 shadow-elevated">
+    <Card className="glow-brand w-full max-w-sm gap-6 shadow-elevated">
       <CardHeader className="items-center gap-3 text-center">
         <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Bolt className="size-5" />

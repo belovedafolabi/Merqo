@@ -52,11 +52,13 @@ export function ProductsView({
   businessUnitId,
   products,
   categories,
+  categorySuggestions,
 }: {
   organizationId: string
   businessUnitId: string
   products: Product[]
   categories: Category[]
+  categorySuggestions: string[]
 }) {
   const [dialog, setDialog] = useState<DialogState>(null)
   const closeDialog = () => setDialog(null)
@@ -223,6 +225,7 @@ export function ProductsView({
           organizationId={organizationId}
           businessUnitId={businessUnitId}
           categories={categories}
+          suggestions={categorySuggestions}
           open
           onOpenChange={(open) => !open && closeDialog()}
         />

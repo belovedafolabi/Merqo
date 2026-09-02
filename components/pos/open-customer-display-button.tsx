@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
  *
  * The window NAME is what makes repeat clicks harmless: the browser reuses
  * the existing window and focuses it rather than spawning another. Same
- * technique as the receipt print popup in checkout-dialog.tsx.
+ * technique as the receipt print popup in checkout-drawer.tsx.
  *
  * Hidden below `sm` — a phone has no second screen to put this on.
  */

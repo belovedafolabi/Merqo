@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { FolderCog, Pencil, TriangleAlert, X } from 'lucide-react'
+import { FolderCog, Pencil, Plus, TriangleAlert, X } from 'lucide-react'
 
 import {
   archiveCategoryAction,
@@ -40,12 +40,16 @@ export function CategoryManagerDialog({
   organizationId,
   businessUnitId,
   categories,
+  suggestions,
   open,
   onOpenChange,
 }: {
   organizationId: string
   businessUnitId: string
   categories: Category[]
+  /** Seeded starter category names for this Business Type — see
+   *  lib/products/queries.ts's listCategorySuggestions(). */
+  suggestions: string[]
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -55,6 +59,25 @@ export function CategoryManagerDialog({
   )
   const [archiving, setArchiving] = useState<Category | null>(null)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+
+  // Suggestions the owner hasn't added yet (case-insensitive, ignoring
+  // archived rows so a re-suggest is possible after archiving).
+  const existingNames = new Set(
+    categories
+      .filter((category) => category.archivedAt === null)
+      .map((category) => category.name.trim().toLowerCase()),
+  )
+  const openSuggestions = suggestions.filter(
+    (name) => !existingNames.has(name.trim().toLowerCase()),
+  )
+
+  function addSuggestion(name: string) {
+    const formData = new FormData()
+    formData.set('organizationId', organizationId)
+    formData.set('businessUnitId', businessUnitId)
+    formData.set('name', name)
+    createAction(formData)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,6 +112,28 @@ export function CategoryManagerDialog({
             <TriangleAlert />
             <AlertDescription>{createState.error}</AlertDescription>
           </Alert>
+        )}
+
+        {openSuggestions.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-caption text-muted-foreground">
+              Suggested for your business type
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {openSuggestions.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  disabled={createPending}
+                  onClick={() => addSuggestion(name)}
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-body-sm text-muted-foreground transition-colors hover:border-solid hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Plus className="size-3.5" />
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         <Separator />

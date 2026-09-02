@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import type { SaleListEntry } from '@/lib/sales/sale-list'
 
 /**
  * Read-side queries for this milestone's domain (docs/milestones/
@@ -184,6 +185,73 @@ export async function getSale(saleId: string): Promise<Sale | null> {
       createdAt: row.created_at,
     })),
   }
+}
+
+/**
+ * Completed sales for a branch, newest first — backs the /sales list screen
+ * (the `sales.view` permission has been seeded since Milestone 08 but never
+ * had a UI). Keeps to the same "separate queries, no fragile embed
+ * disambiguation" shape as getSale(): the list is fetched with cheap
+ * aggregate embeds (`sale_items(count)`, `payments(method)`, `returns(id)`),
+ * then cashier display names are resolved in one batched `users` lookup
+ * rather than an embed or an N+1.
+ *
+ * `before` is a simple keyset cursor (pass the last row's `createdAt`) for a
+ * "Load more" button — DataTable has no built-in pagination.
+ */
+export async function listSales(
+  branchId: string,
+  options: { limit?: number; before?: string } = {},
+): Promise<SaleListEntry[]> {
+  const limit = Math.min(Math.max(options.limit ?? 50, 1), 200)
+  const supabase = await createServerSupabaseClient()
+
+  let query = supabase
+    .from('sales')
+    .select('id, total, created_at, created_by, sale_items(count), payments(method), returns(id)')
+    .eq('branch_id', branchId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (options.before) query = query.lt('created_at', options.before)
+
+  const { data, error } = await query
+  if (error) throw error
+
+  const rows = (data ?? []) as unknown as Array<{
+    id: string
+    total: string | number
+    created_at: string
+    created_by: string | null
+    sale_items: Array<{ count: number }>
+    payments: Array<{ method: string }>
+    returns: Array<{ id: string }> | null
+  }>
+
+  const creatorIds = [
+    ...new Set(rows.map((row) => row.created_by).filter((value): value is string => Boolean(value))),
+  ]
+  const nameById = new Map<string, string>()
+  if (creatorIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', creatorIds)
+    if (usersError) throw usersError
+    for (const user of (users ?? []) as Array<{ id: string; full_name: string | null }>) {
+      if (user.full_name) nameById.set(user.id, user.full_name)
+    }
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    itemCount: row.sale_items?.[0]?.count ?? 0,
+    total: Number(row.total),
+    paymentMethods: [...new Set((row.payments ?? []).map((payment) => payment.method))],
+    cashierName: row.created_by ? (nameById.get(row.created_by) ?? null) : null,
+    returnCount: (row.returns ?? []).length,
+  }))
 }
 
 export interface HeldSale {

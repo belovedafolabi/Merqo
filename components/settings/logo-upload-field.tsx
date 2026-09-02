@@ -11,6 +11,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { LOGO_MAX_BYTES, LOGO_MIME_TYPES } from '@/lib/branding/schemas'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 
 const initialState: SettingsActionState = { error: null }
 
@@ -35,6 +36,9 @@ export function LogoUploadField({
 
   const logoUrl = uploadState.logoUrl ?? currentLogoUrl
   const error = clientError ?? uploadState.error ?? removeState.error
+
+  usePendingToast(uploadPending, 'Uploading logo…')
+  usePendingToast(removePending, 'Removing logo…')
 
   function validateAndSubmit(file: File) {
     setClientError(null)

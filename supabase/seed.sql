@@ -638,3 +638,66 @@ insert into public.subscription_pricing (billing_period, price_minor, currency) 
   ('SEMI_ANNUAL', 2500000, 'NGN'),
   ('ANNUAL', 4500000, 'NGN')
 on conflict (billing_period) do nothing;
+
+-- =============================================================================
+-- 9. Suggested starter product categories per Business Type
+--    (business_type_category_suggestions, 20260830090200). Surfaced as
+--    one-tap chips in the category manager after onboarding. INFERRED best-
+--    effort lists — a pure data change (edit here, `pnpm db:reset`), no
+--    migration needed. `other` intentionally has none.
+-- =============================================================================
+with suggestions (business_type_slug, name, sort_order) as (
+  values
+    ('supermarket', 'Produce', 1), ('supermarket', 'Dairy & Eggs', 2), ('supermarket', 'Bakery', 3),
+    ('supermarket', 'Beverages', 4), ('supermarket', 'Snacks', 5), ('supermarket', 'Frozen', 6),
+    ('supermarket', 'Household', 7), ('supermarket', 'Personal Care', 8),
+
+    ('convenience_store', 'Beverages', 1), ('convenience_store', 'Snacks', 2),
+    ('convenience_store', 'Confectionery', 3), ('convenience_store', 'Tobacco', 4),
+    ('convenience_store', 'Household', 5), ('convenience_store', 'Personal Care', 6),
+
+    ('restaurant', 'Starters', 1), ('restaurant', 'Mains', 2), ('restaurant', 'Sides', 3),
+    ('restaurant', 'Desserts', 4), ('restaurant', 'Soft Drinks', 5), ('restaurant', 'Hot Drinks', 6),
+    ('restaurant', 'Alcohol', 7),
+
+    ('pharmacy', 'Prescription', 1), ('pharmacy', 'Over-the-Counter', 2),
+    ('pharmacy', 'Vitamins & Supplements', 3), ('pharmacy', 'Personal Care', 4),
+    ('pharmacy', 'First Aid', 5), ('pharmacy', 'Baby & Child', 6), ('pharmacy', 'Medical Devices', 7),
+
+    ('clothing_fashion', 'Menswear', 1), ('clothing_fashion', 'Womenswear', 2),
+    ('clothing_fashion', 'Kidswear', 3), ('clothing_fashion', 'Footwear', 4),
+    ('clothing_fashion', 'Accessories', 5), ('clothing_fashion', 'Bags', 6),
+
+    ('electronics', 'Phones & Tablets', 1), ('electronics', 'Computers', 2),
+    ('electronics', 'Audio', 3), ('electronics', 'TV & Video', 4),
+    ('electronics', 'Accessories', 5), ('electronics', 'Cables & Chargers', 6),
+    ('electronics', 'Home Appliances', 7),
+
+    ('hardware_building_materials', 'Tools', 1), ('hardware_building_materials', 'Fasteners', 2),
+    ('hardware_building_materials', 'Plumbing', 3), ('hardware_building_materials', 'Electrical', 4),
+    ('hardware_building_materials', 'Paint & Sundries', 5),
+    ('hardware_building_materials', 'Timber & Boards', 6),
+    ('hardware_building_materials', 'Cement & Aggregates', 7),
+
+    ('beauty_salons_barbers', 'Hair Care', 1), ('beauty_salons_barbers', 'Skin Care', 2),
+    ('beauty_salons_barbers', 'Styling Products', 3), ('beauty_salons_barbers', 'Tools & Equipment', 4),
+    ('beauty_salons_barbers', 'Nail Care', 5), ('beauty_salons_barbers', 'Retail Products', 6),
+
+    ('hotels', 'Room Service', 1), ('hotels', 'Restaurant', 2), ('hotels', 'Bar', 3),
+    ('hotels', 'Minibar', 4), ('hotels', 'Spa & Wellness', 5), ('hotels', 'Gift Shop', 6),
+
+    ('bakeries', 'Bread', 1), ('bakeries', 'Pastries', 2), ('bakeries', 'Cakes', 3),
+    ('bakeries', 'Cookies & Biscuits', 4), ('bakeries', 'Savoury', 5), ('bakeries', 'Beverages', 6),
+
+    ('wholesalers', 'Beverages', 1), ('wholesalers', 'Dry Goods', 2), ('wholesalers', 'Household', 3),
+    ('wholesalers', 'Personal Care', 4), ('wholesalers', 'Confectionery', 5), ('wholesalers', 'Packaging', 6),
+
+    ('general_retail', 'General Merchandise', 1), ('general_retail', 'Household', 2),
+    ('general_retail', 'Stationery', 3), ('general_retail', 'Electronics', 4),
+    ('general_retail', 'Personal Care', 5), ('general_retail', 'Seasonal', 6)
+)
+insert into public.business_type_category_suggestions (business_type_id, name, sort_order)
+select bt.id, s.name, s.sort_order
+from suggestions s
+join public.business_types bt on bt.slug = s.business_type_slug
+on conflict (business_type_id, name) do nothing;

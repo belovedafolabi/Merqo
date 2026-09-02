@@ -8,11 +8,13 @@ import { AuthCard } from '@/components/auth/auth-card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 
 const initialState: AuthActionState = { error: null }
 
 export default function SignUpPage() {
   const [state, formAction, pending] = useActionState(signUp, initialState)
+  usePendingToast(pending, 'Creating your organization…')
 
   return (
     <AuthCard
