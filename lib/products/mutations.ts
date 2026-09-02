@@ -1,6 +1,7 @@
 import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { generateSku } from '@/lib/products/sku'
 import {
   branchPriceOverrideInputSchema,
   categoryInputSchema,
@@ -122,27 +123,55 @@ export async function createProduct(
   const parsed = productInputSchema.parse(input)
   const supabase = await createServerSupabaseClient()
 
-  const { data, error } = await supabase
-    .from('products')
-    .insert({
-      business_unit_id: businessUnitId,
-      category_id: parsed.categoryId ?? null,
-      name: parsed.name,
-      description: parsed.description ?? null,
-      sku: parsed.sku,
-      barcode: parsed.barcode ?? null,
-      unit_of_measurement: parsed.unitOfMeasurement,
-      // Absent (rather than 0) means "caller can't see/set cost price" —
-      // defaults to 0 at creation in that case; only a caller with
-      // products.view_cost_price ever sets a nonzero value (this
-      // milestone's Security Requirements).
-      cost_price: parsed.costPrice ?? 0,
-      base_price: parsed.basePrice,
-      created_by: user.id,
-    })
-    .select('id')
-    .single()
-  if (error) throw error
+  // SKU is optional on the form: a blank one is generated here from the
+  // name. On the (business_unit_id, sku) partial-unique collision (23505)
+  // we retry once with a fresh suffix when we generated it; a user-typed
+  // duplicate surfaces as a friendly error instead.
+  const skuWasSupplied = parsed.sku !== undefined
+  let attempt = 0
+  let resolvedSku = ''
+  let data: { id: string } | null = null
+  while (data === null) {
+    resolvedSku = skuWasSupplied ? parsed.sku! : generateSku(parsed.name)
+    const sku = resolvedSku
+    const result = await supabase
+      .from('products')
+      .insert({
+        business_unit_id: businessUnitId,
+        category_id: parsed.categoryId ?? null,
+        name: parsed.name,
+        description: parsed.description ?? null,
+        sku,
+        barcode: parsed.barcode ?? null,
+        unit_of_measurement: parsed.unitOfMeasurement,
+        // Absent (rather than 0) means "caller can't see/set cost price" —
+        // defaults to 0 at creation in that case; only a caller with
+        // products.view_cost_price ever sets a nonzero value (this
+        // milestone's Security Requirements).
+        cost_price: parsed.costPrice ?? 0,
+        base_price: parsed.basePrice,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (result.error) {
+      const code = (result.error as { code?: string }).code
+      if (code === '23505') {
+        if (!skuWasSupplied && attempt < 3) {
+          attempt += 1
+          continue
+        }
+        throw new Error(
+          skuWasSupplied
+            ? 'That SKU or barcode is already in use by another product in this business unit.'
+            : 'Could not generate a unique SKU — please enter one manually.',
+        )
+      }
+      throw result.error
+    }
+    data = result.data as { id: string }
+  }
 
   const { error: priceHistoryError } = await supabase.rpc('record_product_price', {
     p_product_id: data.id,
@@ -159,7 +188,7 @@ export async function createProduct(
       action: 'product.created',
       resourceType: 'product',
       resourceId: data.id,
-      metadata: { name: parsed.name, sku: parsed.sku, basePrice: parsed.basePrice },
+      metadata: { name: parsed.name, sku: resolvedSku, basePrice: parsed.basePrice },
     },
     supabase,
   )
@@ -193,17 +222,27 @@ export async function updateProduct(
     category_id: parsed.categoryId ?? null,
     name: parsed.name,
     description: parsed.description ?? null,
-    sku: parsed.sku,
     barcode: parsed.barcode ?? null,
     unit_of_measurement: parsed.unitOfMeasurement,
     base_price: parsed.basePrice,
+  }
+  // A blank SKU on edit means "keep the current one" — never null it out.
+  if (parsed.sku !== undefined) {
+    updatePayload.sku = parsed.sku
   }
   if (parsed.costPrice !== undefined) {
     updatePayload.cost_price = parsed.costPrice
   }
 
   const { error } = await supabase.from('products').update(updatePayload).eq('id', productId)
-  if (error) throw error
+  if (error) {
+    if ((error as { code?: string }).code === '23505') {
+      throw new Error(
+        'That SKU or barcode is already in use by another product in this business unit.',
+      )
+    }
+    throw error
+  }
 
   // Only append a price-history row when the base price actually changed —
   // an edit that leaves price untouched shouldn't manufacture a spurious

@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: OnboardingActionState = { error: null }
 
@@ -34,7 +36,10 @@ export function OrganizationStep() {
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Organization name</Label>
+        <Label htmlFor="name">
+          Organization name
+          <InfoHint text={FORM_HINTS.onboarding.organizationName} />
+        </Label>
         <Input id="name" name="name" placeholder="Acme Retail" autoFocus required />
       </div>
 

@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { PosConfig } from '@/lib/business-structure/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const DEFAULT_CONFIG: Pick<
   PosConfig,
@@ -58,7 +60,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="taxRate">Tax rate (%)</Label>
+        <Label htmlFor="taxRate">
+          Tax rate (%)
+          <InfoHint text={FORM_HINTS.posConfig.taxRatePercentage} />
+        </Label>
         <Input
           id="taxRate"
           name="taxRate"
@@ -91,7 +96,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
         {serviceChargeEnabled && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="serviceChargeType">Type</Label>
+              <Label htmlFor="serviceChargeType">
+                Type
+                <InfoHint text={FORM_HINTS.posConfig.serviceChargeType} />
+              </Label>
               <Select
                 name="serviceChargeType"
                 value={serviceChargeType}
@@ -109,6 +117,7 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
             <div className="flex flex-col gap-2">
               <Label htmlFor="serviceChargeValue">
                 Value {serviceChargeType === 'percentage' ? '(%)' : '(₦)'}
+                <InfoHint text={FORM_HINTS.posConfig.serviceChargeValue} />
               </Label>
               <Input
                 id="serviceChargeValue"
@@ -128,7 +137,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
         <p className="font-medium">Discount policy</p>
 
         <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="discountRequiresAuthorization">Require authorization to discount</Label>
+          <Label htmlFor="discountRequiresAuthorization">
+            Require authorization to discount
+            <InfoHint text={FORM_HINTS.posConfig.discountRequiresAuthorization} />
+          </Label>
           <Switch
             id="discountRequiresAuthorization"
             name="discountRequiresAuthorization"
@@ -137,7 +149,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="discountReasonRequired">Require a reason for a discount</Label>
+          <Label htmlFor="discountReasonRequired">
+            Require a reason for a discount
+            <InfoHint text={FORM_HINTS.posConfig.discountReasonRequired} />
+          </Label>
           <Switch
             id="discountReasonRequired"
             name="discountReasonRequired"
@@ -147,7 +162,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="discountMaxPercentage">Max discount (%)</Label>
+            <Label htmlFor="discountMaxPercentage">
+              Max discount (%)
+              <InfoHint text={FORM_HINTS.posConfig.discountMaxPercentage} />
+            </Label>
             <Input
               id="discountMaxPercentage"
               name="discountMaxPercentage"
@@ -159,7 +177,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="discountMaxAmount">Max discount amount (₦, optional)</Label>
+            <Label htmlFor="discountMaxAmount">
+              Max discount amount (₦, optional)
+              <InfoHint text={FORM_HINTS.posConfig.discountMaxAmount} />
+            </Label>
             <Input
               id="discountMaxAmount"
               name="discountMaxAmount"
@@ -174,7 +195,10 @@ export function PosConfigForm({ initialConfig }: { initialConfig?: PosConfig | n
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="defaultPaymentMethod">Default payment method</Label>
+        <Label htmlFor="defaultPaymentMethod">
+          Default payment method
+          <InfoHint text={FORM_HINTS.posConfig.defaultPaymentMethod} />
+        </Label>
         <Select name="defaultPaymentMethod" defaultValue={config.defaultPaymentMethod}>
           <SelectTrigger id="defaultPaymentMethod" className="w-full sm:w-64">
             <SelectValue />

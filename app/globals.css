@@ -316,8 +316,221 @@
   }
 }
 
+/*
+ * "Pop-out" entrance/exit for overlay surfaces — dialogs, sheets, popovers,
+ * dropdowns, selects, tooltips and toasts. A short scale-up with a slight
+ * overshoot on enter, a quick scale-down on exit. Replaces the flat
+ * `animate-in fade-in-0 zoom-in-95` cluster on those components.
+ *
+ * Defined with `@utility` (not a plain `.class` in `@layer utilities`) so
+ * Tailwind variants can target them — components apply
+ * `data-[state=open]:merqo-pop-in` / `data-[state=closed]:merqo-pop-out`,
+ * and Radix's Presence waits on the exit animation before unmounting.
+ *
+ * `transform-origin` is left to the component: Radix pop/dropdown/select set
+ * `origin-(--radix-*-content-transform-origin)` so the pop grows from the
+ * trigger; dialogs/sheets pop from their own centre.
+ *
+ * Reduced motion: both collapse to a 120ms opacity fade. The exit keyframe
+ * is kept (not `animation: none`) so Presence still has something to wait on.
+ */
+@utility merqo-pop-in {
+  animation: merqo-pop-in 0.22s cubic-bezier(0.34, 1.52, 0.64, 1) both;
+}
+@utility merqo-pop-out {
+  animation: merqo-pop-out 0.14s ease-in both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .merqo-pop-in {
+    animation: merqo-fade-in 0.12s linear both;
+  }
+  .merqo-pop-out {
+    animation: merqo-fade-out 0.12s linear both;
+  }
+}
+
+/*
+ * Sonner toasts get the same pop on mount. Sonner runs its own
+ * transform/opacity transition for stacking; this only adds a brief
+ * scale/opacity pop while the toast first appears (`data-mounted`), then
+ * hands back to sonner. Reduced motion falls back to a plain fade.
+ */
+.toaster [data-sonner-toast][data-mounted='true'] {
+  animation: merqo-pop-in 0.24s cubic-bezier(0.34, 1.52, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .toaster [data-sonner-toast][data-mounted='true'] {
+    animation: merqo-fade-in 0.12s linear;
+  }
+}
+
+/*
+ * Shimmer — a moving light sweep (motion-primitives style).
+ *
+ * `.shimmer-skeleton` replaces `animate-pulse` on skeletons: a travelling
+ * gradient band instead of a whole-block opacity throb.
+ *
+ * `.shimmer-sheen` is for real, loaded surfaces (cards): a diagonal
+ * highlight that sweeps once when the element mounts and again on
+ * hover/focus. Implemented as an `inset: 0` `::after` (never
+ * negatively-inset — see `.glow-brand` note), so it exactly covers the
+ * host and never extends the scroll area; no `overflow-hidden` needed on
+ * the host, so nothing legitimately overflowing a card gets clipped.
+ *
+ * Reduced motion: skeletons become a static tint, the sheen is suppressed.
+ */
+@utility shimmer-skeleton {
+  background-color: var(--accent);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklch, var(--card) 70%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: merqo-shimmer 1.6s linear infinite;
+}
+
+@utility shimmer-sheen {
+  position: relative;
+  isolation: isolate;
+}
+.shimmer-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    color-mix(in oklch, var(--foreground) 8%, transparent) 50%,
+    transparent 60%
+  );
+  background-size: 260% 100%;
+  background-position: 180% 0;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* One sweep when the card first mounts. */
+  .shimmer-sheen::after {
+    animation: merqo-sheen-sweep 1s ease-out 0.05s;
+  }
+  /* And again on hover / keyboard focus within the card. */
+  .shimmer-sheen:hover::after,
+  .shimmer-sheen:focus-within::after {
+    animation: merqo-sheen-sweep 0.9s ease-out;
+  }
+}
+
+/*
+ * Product-tour (driver.js) popover — themed to match the app: card
+ * surface, app radius, and a brand-coloured primary button. Scoped to the
+ * `merqo-tour` popoverClass set in components/tour/product-tour.tsx.
+ */
+.driver-popover.merqo-tour {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 12px 40px -8px oklch(0 0 0 / 0.28);
+}
+.driver-popover.merqo-tour .driver-popover-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.driver-popover.merqo-tour .driver-popover-description {
+  color: color-mix(in oklch, var(--popover-foreground) 78%, transparent);
+}
+.driver-popover.merqo-tour .driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+.driver-popover.merqo-tour .driver-popover-arrow {
+  color: var(--popover);
+}
+.driver-popover.merqo-tour button.driver-popover-next-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  text-shadow: none;
+}
+.driver-popover.merqo-tour button.driver-popover-prev-btn {
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: calc(var(--radius) - 4px);
+  text-shadow: none;
+}
+
 /* Keyframes for the utilities above. Kept at the top level (not inside a
    layer) so they are always available regardless of layer ordering. */
+@keyframes merqo-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  55% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes merqo-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes merqo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes merqo-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes merqo-shimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -80% 0;
+  }
+}
+
+@keyframes merqo-sheen-sweep {
+  0% {
+    background-position: 180% 0;
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    background-position: -60% 0;
+    opacity: 0;
+  }
+}
+
 @keyframes glow-brand-pulse {
   0%,
   100% {

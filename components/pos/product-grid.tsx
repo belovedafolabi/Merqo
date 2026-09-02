@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { PosSearch } from '@/components/pos/pos-search'
 import { ProductTile } from '@/components/pos/product-tile'
 import { EmptyState } from '@/components/states/empty-state'
-import { useBarcodeScanner } from '@/hooks/use-barcode-scanner'
+import { useBarcodeScanner, isScanCaptureBlocked } from '@/hooks/use-barcode-scanner'
 import { logger } from '@/lib/logger'
 import { useCart } from '@/lib/pos/cart-context'
 import { usePosSession } from '@/lib/pos/session-context'
@@ -137,6 +137,35 @@ export function ProductGrid() {
   // and raised the on-screen keyboard the instant /pos loaded on a phone.
   useEffect(() => {
     focusSearchIfKeyboardDevice(inputRef.current)
+  }, [])
+
+  // "Type anywhere to search": on a keyboard device, a printable keystroke
+  // while nothing else is focused (a product tile, the cart, the page body)
+  // pulls focus into the search box so the cashier never has to click it
+  // first. Deliberately narrow — isScanCaptureBlocked() already excludes
+  // inputs/textareas/selects/contenteditable and anything inside a
+  // [role="dialog"] (the checkout drawer, customer picker), so this never
+  // fights a field the user is actually typing in, and never fires while a
+  // modal is open. No preventDefault, so the character that triggered it
+  // still lands in the newly-focused input. Bubble phase and a focus guard
+  // keep it composable with useBarcodeScanner (document-level, same phase).
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key.length !== 1) return
+      const input = inputRef.current
+      if (!input || document.activeElement === input) return
+      if (isScanCaptureBlocked(event.target)) return
+      if (
+        typeof window.matchMedia === 'function' &&
+        !window.matchMedia('(pointer: fine)').matches
+      ) {
+        return
+      }
+      input.focus()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   return (

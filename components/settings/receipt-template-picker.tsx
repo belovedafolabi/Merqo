@@ -32,7 +32,7 @@ export function ReceiptTemplatePicker({
   footerText: string
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-3">
       {RECEIPT_TEMPLATE_IDS.map((id) => {
         const template = RECEIPT_TEMPLATES[id]
         const selected = value === id
@@ -52,18 +52,30 @@ export function ReceiptTemplatePicker({
               {selected && <span className="size-2 rounded-full bg-primary" />}
             </div>
             <p className="text-xs text-muted-foreground">{template.description}</p>
-            <div className="pointer-events-none origin-top scale-90">
-              <ReceiptDocument
-                sale={SAMPLE_SALE}
-                templateId={id}
-                branding={branding}
-                settings={{
-                  headerText: headerText || null,
-                  footerText: footerText || null,
-                  showLogo,
-                  showCashier: true,
-                }}
-              />
+            {/*
+             * The preview renders at a fixed reference width and is scaled
+             * to fit the column, inside an `overflow-hidden` box with an
+             * explicit height so the scaled document neither overlaps the
+             * text above nor bleeds past the card. Without this the column
+             * (~1/3 of the settings card) was narrower than every template's
+             * max-width, so all three collapsed to the same `w-full` size.
+             */}
+            <div className="relative h-64 overflow-hidden rounded-md border bg-muted/30">
+              <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+                <div className="origin-top scale-[0.58]" style={{ width: 340 }}>
+                  <ReceiptDocument
+                    sale={SAMPLE_SALE}
+                    templateId={id}
+                    branding={branding}
+                    settings={{
+                      headerText: headerText || null,
+                      footerText: footerText || null,
+                      showLogo,
+                      showCashier: true,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </button>
         )

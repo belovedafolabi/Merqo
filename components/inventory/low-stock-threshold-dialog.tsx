@@ -20,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { InventoryBalance } from '@/lib/inventory/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: InventoryActionState = { error: null }
 
@@ -78,7 +80,10 @@ export function LowStockThresholdDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="threshold-value">Threshold</Label>
+            <Label htmlFor="threshold-value">
+              Threshold
+              <InfoHint text={FORM_HINTS.inventory.lowStockThreshold} />
+            </Label>
             <Input
               id="threshold-value"
               name="threshold"

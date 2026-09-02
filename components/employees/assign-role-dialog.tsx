@@ -25,6 +25,8 @@ import {
 import type { Branch, BusinessUnit } from '@/lib/business-structure/queries'
 import type { Employee } from '@/lib/employees/queries'
 import type { RoleSummary } from '@/lib/roles/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: RolesActionState = { error: null }
 
@@ -87,7 +89,10 @@ export function AssignRoleDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="assign-role">Role</Label>
+            <Label htmlFor="assign-role">
+              Role
+              <InfoHint text={FORM_HINTS.assignRole.role} />
+            </Label>
             <Select name="roleId" required>
               <SelectTrigger id="assign-role" className="w-full">
                 <SelectValue placeholder="Select a role" />
@@ -103,7 +108,10 @@ export function AssignRoleDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="assign-branch">Scope</Label>
+            <Label htmlFor="assign-branch">
+              Scope
+              <InfoHint text={FORM_HINTS.assignRole.scope} />
+            </Label>
             <Select name="branchId">
               <SelectTrigger id="assign-branch" className="w-full">
                 <SelectValue placeholder="Organization-wide" />
@@ -123,7 +131,10 @@ export function AssignRoleDialog({
 
           {businessUnits.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="assign-business-unit">Business unit (optional)</Label>
+              <Label htmlFor="assign-business-unit">
+                Business unit (optional)
+                <InfoHint text={FORM_HINTS.assignRole.businessUnit} />
+              </Label>
               <Select name="businessUnitId">
                 <SelectTrigger id="assign-business-unit" className="w-full">
                   <SelectValue placeholder="Every unit in the branch" />

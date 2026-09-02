@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/notifications/mutations'
@@ -20,7 +22,7 @@ export interface NotificationActionState {
 const initialState: NotificationActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 export async function markReadAction(

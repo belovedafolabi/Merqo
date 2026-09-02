@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { FolderCog, MoreHorizontal, Package, Plus, Search } from 'lucide-react'
+import { FolderCog, MoreHorizontal, Package, Plus, Ruler, Search } from 'lucide-react'
 
 import { archiveProductAction } from '@/app/(app)/products/actions'
 import { Badge } from '@/components/ui/badge'
@@ -25,14 +25,17 @@ import {
 import { EmptyState } from '@/components/states/empty-state'
 import { ArchiveConfirmDialog } from '@/components/products/archive-confirm-dialog'
 import { CategoryManagerDialog } from '@/components/products/category-manager-dialog'
+import { UnitManagerDialog } from '@/components/products/unit-manager-dialog'
 import { ProductFormDialog } from '@/components/products/product-form-dialog'
 import type { Category, Product } from '@/lib/products/queries'
+import type { UnitOfMeasure } from '@/lib/units/queries'
 
 type DialogState =
   | { kind: 'product-create' }
   | { kind: 'product-edit'; product: Product }
   | { kind: 'product-archive'; product: Product }
   | { kind: 'categories' }
+  | { kind: 'units' }
   | null
 
 /**
@@ -53,12 +56,14 @@ export function ProductsView({
   products,
   categories,
   categorySuggestions,
+  units,
 }: {
   organizationId: string
   businessUnitId: string
   products: Product[]
   categories: Category[]
   categorySuggestions: string[]
+  units: UnitOfMeasure[]
 }) {
   const [dialog, setDialog] = useState<DialogState>(null)
   const closeDialog = () => setDialog(null)
@@ -66,6 +71,7 @@ export function ProductsView({
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   const activeCategories = categories.filter((category) => category.archivedAt === null)
+  const activeUnitNames = units.filter((unit) => unit.archivedAt === null).map((unit) => unit.name)
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -170,6 +176,9 @@ export function ProductsView({
             <Button variant="outline" size="sm" onClick={() => setDialog({ kind: 'categories' })}>
               <FolderCog /> Categories
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setDialog({ kind: 'units' })}>
+              <Ruler /> Units
+            </Button>
             <Button size="sm" onClick={() => setDialog({ kind: 'product-create' })}>
               <Plus /> New product
             </Button>
@@ -198,6 +207,7 @@ export function ProductsView({
         organizationId={organizationId}
         businessUnitId={businessUnitId}
         categories={activeCategories}
+        unitNames={activeUnitNames}
         product={dialog?.kind === 'product-edit' ? dialog.product : null}
         open={dialog?.kind === 'product-create' || dialog?.kind === 'product-edit'}
         onOpenChange={(open) => !open && closeDialog()}
@@ -226,6 +236,15 @@ export function ProductsView({
           businessUnitId={businessUnitId}
           categories={categories}
           suggestions={categorySuggestions}
+          open
+          onOpenChange={(open) => !open && closeDialog()}
+        />
+      )}
+
+      {dialog?.kind === 'units' && (
+        <UnitManagerDialog
+          organizationId={organizationId}
+          units={units}
           open
           onOpenChange={(open) => !open && closeDialog()}
         />

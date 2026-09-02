@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InfoHint } from '@/components/ui/field-hint'
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { FORM_HINTS } from '@/lib/form-hints'
 import type { Category, Product } from '@/lib/products/queries'
 
 const initialState: ProductsActionState = { error: null }
@@ -51,6 +53,7 @@ export function ProductFormDialog({
   organizationId,
   businessUnitId,
   categories,
+  unitNames,
   product,
   open,
   onOpenChange,
@@ -58,10 +61,16 @@ export function ProductFormDialog({
   organizationId: string
   businessUnitId: string
   categories: Category[]
+  /** Active unit-of-measure names (system + this org's custom) for the Select. */
+  unitNames: string[]
   product?: Product | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const currentUnit = product?.unitOfMeasurement ?? 'Unit'
+  // Keep an existing product's unit selectable even if it was later archived
+  // or renamed (unit_of_measurement is free text, not an FK).
+  const unitOptions = unitNames.includes(currentUnit) ? unitNames : [currentUnit, ...unitNames]
   const action = product ? updateProductAction : createProductAction
   const [state, formAction, pending] = useActionState(action, initialState)
 
@@ -101,24 +110,41 @@ export function ProductFormDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="product-name">Name</Label>
+            <Label htmlFor="product-name">
+              Name
+              <InfoHint text={FORM_HINTS.product.name} />
+            </Label>
             <Input id="product-name" name="name" defaultValue={product?.name} required autoFocus />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="product-sku">SKU</Label>
-              <Input id="product-sku" name="sku" defaultValue={product?.sku} required />
+              <Label htmlFor="product-sku">
+                SKU
+                <InfoHint text={FORM_HINTS.product.sku} />
+              </Label>
+              <Input
+                id="product-sku"
+                name="sku"
+                defaultValue={product?.sku}
+                placeholder="Auto-generated if left blank"
+              />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="product-barcode">Barcode</Label>
+              <Label htmlFor="product-barcode">
+                Barcode
+                <InfoHint text={FORM_HINTS.product.barcode} />
+              </Label>
               <Input id="product-barcode" name="barcode" defaultValue={product?.barcode ?? ''} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="product-category">Category</Label>
+              <Label htmlFor="product-category">
+                Category
+                <InfoHint text={FORM_HINTS.product.category} />
+              </Label>
               <Select name="categoryId" defaultValue={product?.categoryId ?? undefined}>
                 <SelectTrigger id="product-category" className="w-full">
                   <SelectValue placeholder="No category" />
@@ -133,20 +159,32 @@ export function ProductFormDialog({
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="product-unit">Unit of measurement</Label>
-              <Input
-                id="product-unit"
-                name="unitOfMeasurement"
-                defaultValue={product?.unitOfMeasurement ?? 'unit'}
-                required
-              />
+              <Label htmlFor="product-unit">
+                Unit of measurement
+                <InfoHint text={FORM_HINTS.product.unitOfMeasurement} />
+              </Label>
+              <Select name="unitOfMeasurement" defaultValue={currentUnit}>
+                <SelectTrigger id="product-unit" className="w-full">
+                  <SelectValue placeholder="Select a unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unitOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Can permission="products.view_cost_price" scope={{ organizationId, businessUnitId }}>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="product-cost-price">Cost price</Label>
+                <Label htmlFor="product-cost-price">
+                  Cost price
+                  <InfoHint text={FORM_HINTS.product.costPrice} />
+                </Label>
                 <Input
                   id="product-cost-price"
                   name="costPrice"
@@ -159,7 +197,10 @@ export function ProductFormDialog({
               </div>
             </Can>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="product-base-price">Base price</Label>
+              <Label htmlFor="product-base-price">
+                Base price
+                <InfoHint text={FORM_HINTS.product.basePrice} />
+              </Label>
               <Input
                 id="product-base-price"
                 name="basePrice"
@@ -174,7 +215,10 @@ export function ProductFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="product-description">Description</Label>
+            <Label htmlFor="product-description">
+              Description
+              <InfoHint text={FORM_HINTS.product.description} />
+            </Label>
             <Textarea
               id="product-description"
               name="description"

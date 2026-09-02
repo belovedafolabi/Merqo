@@ -8,6 +8,8 @@ import { CartProvider } from '@/lib/pos/cart-context'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { PosHeader } from '@/components/pos/pos-header'
 import { CustomerDisplayPublisher } from '@/components/pos/customer-display-publisher'
+import { ProductTour } from '@/components/tour/product-tour'
+import { hasCompletedTour } from '@/lib/tour/queries'
 
 /**
  * POS shell — structurally separate route tree from app/(app), per
@@ -40,6 +42,8 @@ export default async function PosLayout({ children }: { children: React.ReactNod
     redirect('/onboarding')
   }
 
+  const tourCompleted = await hasCompletedTour()
+
   const cashierName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Cashier'
 
@@ -65,6 +69,7 @@ export default async function PosLayout({ children }: { children: React.ReactNod
             <PosHeader cashierName={cashierName} branchName={onboardingState.branch.name} />
             <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
           </div>
+          <ProductTour area="pos" autoStart={!tourCompleted} />
         </CartProvider>
       </PosSessionProvider>
     </PermissionsProvider>

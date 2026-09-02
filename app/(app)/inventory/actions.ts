@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import {
@@ -21,7 +23,7 @@ export interface InventoryActionState {
 const initialState: InventoryActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 function optionalStringField(formData: FormData, key: string): string | undefined {

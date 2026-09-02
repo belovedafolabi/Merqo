@@ -40,6 +40,7 @@ export function BusinessUnitSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          data-tour="business-unit-switcher"
           variant="outline"
           className="w-full justify-between border-sidebar-border bg-sidebar-accent/40 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >

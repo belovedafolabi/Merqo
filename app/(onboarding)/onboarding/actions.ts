@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { redirect } from 'next/navigation'
 
 import {
@@ -25,7 +27,7 @@ export interface OnboardingActionState {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 /**

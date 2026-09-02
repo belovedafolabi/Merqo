@@ -246,6 +246,13 @@ async function seedOrganization(params: {
     .eq('id', organizationId)
   assertOk('complete onboarding', completeError)
 
+  // This fixture represents an ESTABLISHED user, not a first-run one — mark
+  // the in-app product tour done so its driver.js overlay never auto-starts
+  // and intercepts pointer events mid-spec. mark_tour_completed()
+  // (20260902090100) stamps users.tour_completed_at for the calling user.
+  const { error: tourError } = await supabase.rpc('mark_tour_completed')
+  assertOk('mark tour completed', tourError)
+
   const { data: inserted, error: productsError } = await supabase
     .from('products')
     .insert(
@@ -394,6 +401,12 @@ export async function seedE2EFixture(): Promise<E2EFixture> {
     data: { user: limitedUser },
   } = await limitedClient.auth.getUser()
   if (!limitedUser) throw new Error('E2E seed failed: limited user has no session after signup')
+
+  // Same reason as the owner above — no auto-starting tour overlay for a
+  // fixture user. Runs on the limited user's own client so it stamps their
+  // row.
+  const { error: limitedTourError } = await limitedClient.rpc('mark_tour_completed')
+  assertOk('mark limited tour completed', limitedTourError)
 
   await grantCashierRole(primary.client, primary.organizationId, limitedUser.id)
 

@@ -43,6 +43,7 @@ export function ProductDetailView({
   organizationId,
   product,
   categories,
+  unitNames,
   variants,
   branch,
   branchPriceOverride,
@@ -51,6 +52,7 @@ export function ProductDetailView({
   organizationId: string
   product: Product
   categories: Category[]
+  unitNames: string[]
   variants: ProductVariant[]
   branch: { id: string; name: string } | null
   branchPriceOverride: BranchPriceOverride | null
@@ -239,6 +241,7 @@ export function ProductDetailView({
         organizationId={organizationId}
         businessUnitId={product.businessUnitId}
         categories={categories}
+        unitNames={unitNames}
         product={product}
         open={dialog?.kind === 'product-edit'}
         onOpenChange={(open) => !open && closeDialog()}

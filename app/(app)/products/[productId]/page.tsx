@@ -9,6 +9,7 @@ import {
   listPriceHistory,
   listProductVariants,
 } from '@/lib/products/queries'
+import { listUnitsOfMeasure } from '@/lib/units/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { ProductDetailView } from '@/components/products/product-detail-view'
 
@@ -31,13 +32,16 @@ export default async function ProductDetailPage({
   const product = await getProduct(organizationId, productId)
   if (!product) notFound()
 
-  const [categories, variants, branchPriceOverrides, priceHistory, branch] = await Promise.all([
-    listCategories(product.businessUnitId),
-    listProductVariants(productId),
-    listBranchPriceOverrides(productId),
-    listPriceHistory(productId),
-    getBusinessUnitBranch(product.businessUnitId),
-  ])
+  const [categories, variants, branchPriceOverrides, priceHistory, branch, units] =
+    await Promise.all([
+      listCategories(product.businessUnitId),
+      listProductVariants(productId),
+      listBranchPriceOverrides(productId),
+      listPriceHistory(productId),
+      getBusinessUnitBranch(product.businessUnitId),
+      listUnitsOfMeasure(organizationId),
+    ])
+  const activeUnitNames = units.filter((u) => u.archivedAt === null).map((u) => u.name)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -47,6 +51,7 @@ export default async function ProductDetailPage({
           organizationId={organizationId}
           product={product}
           categories={categories}
+          unitNames={activeUnitNames}
           variants={variants}
           branch={branch}
           branchPriceOverride={branchPriceOverrides.find((o) => o.branchId === branch?.id) ?? null}

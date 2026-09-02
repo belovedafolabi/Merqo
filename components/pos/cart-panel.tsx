@@ -12,7 +12,10 @@ import { HeldSalesTabs } from '@/components/pos/held-sales-tabs'
  */
 export function CartPanel() {
   return (
-    <aside className="hidden w-80 shrink-0 flex-col gap-4 border-l bg-card p-4 lg:flex xl:w-96">
+    <aside
+      data-tour="pos-cart"
+      className="hidden w-80 shrink-0 flex-col gap-4 border-l bg-card p-4 lg:flex xl:w-96"
+    >
       <h2 className="text-body font-semibold">Cart</h2>
       <HeldSalesTabs />
       <div className="flex flex-1 flex-col overflow-y-auto">

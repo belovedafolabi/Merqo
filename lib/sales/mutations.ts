@@ -35,6 +35,31 @@ import { getHeldSaleItems } from '@/lib/sales/queries'
  * around those RPCs, never a re-implementation of what they guarantee.
  */
 
+/**
+ * recordAuditEvent() throws on failure (a plain PostgrestError object) — the
+ * right behaviour for a pre-commit caller, but wrong here: every audit call
+ * in this file runs AFTER its RPC has already committed the sale / return /
+ * refund. A thrown audit error would make a completed sale report as failed,
+ * the cart never clears, and the cashier retries — creating a duplicate.
+ *
+ * So the post-commit audit write is best-effort, logged at error and
+ * swallowed, exactly like notifyLowStock()'s "never throws" contract
+ * (lib/notifications/low-stock.ts) and for the same reason.
+ */
+async function recordAuditEventPostCommit(
+  ...args: Parameters<typeof recordAuditEvent>
+): Promise<void> {
+  try {
+    await recordAuditEvent(...args)
+  } catch (error) {
+    logger.error('audit.write_failed_post_commit', {
+      action: args[0]?.action,
+      resourceId: args[0]?.resourceId ?? null,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
 async function resolveLinePrice(
   productId: string,
   variantId: string | null | undefined,
@@ -198,7 +223,7 @@ export async function createSale(
     total: Number(sale.total),
   })
 
-  await recordAuditEvent(
+  await recordAuditEventPostCommit(
     {
       organizationId,
       userId: user.id,
@@ -354,7 +379,7 @@ export async function createReturn(
   if (error) throw error
   const returnRecord = data as { id: string }
 
-  await recordAuditEvent(
+  await recordAuditEventPostCommit(
     {
       organizationId,
       userId: user.id,
@@ -388,7 +413,7 @@ export async function requestRefund(
   if (error) throw error
   const refund = data as { id: string }
 
-  await recordAuditEvent(
+  await recordAuditEventPostCommit(
     {
       organizationId,
       userId: user.id,
@@ -435,7 +460,7 @@ export async function approveRefund(
   if (error) throw error
   const refund = data as { id: string; status: string; amount: string | number }
 
-  await recordAuditEvent(
+  await recordAuditEventPostCommit(
     {
       organizationId,
       userId: user.id,

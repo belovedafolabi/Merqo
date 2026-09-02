@@ -32,6 +32,7 @@ export function PosHeader({
           <User className="size-4" /> {cashierName}
         </span>
         <Button
+          data-tour="pos-returns"
           variant="outline"
           size="touch"
           className="hidden gap-1.5 rounded-full sm:inline-flex"

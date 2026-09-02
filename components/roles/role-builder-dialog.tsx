@@ -23,6 +23,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PermissionChecklist } from '@/components/roles/permission-checklist'
 import type { PermissionGroup, RoleSummary } from '@/lib/roles/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: RolesActionState = { error: null }
 
@@ -105,7 +107,10 @@ export function RoleBuilderDialog({
           {!editingRole && (
             <>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="role-name">Name</Label>
+                <Label htmlFor="role-name">
+                  Name
+                  <InfoHint text={FORM_HINTS.role.name} />
+                </Label>
                 <Input
                   id="role-name"
                   name="name"
@@ -116,14 +121,20 @@ export function RoleBuilderDialog({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="role-description">Description (optional)</Label>
+                <Label htmlFor="role-description">
+                  Description (optional)
+                  <InfoHint text={FORM_HINTS.role.description} />
+                </Label>
                 <Textarea id="role-description" name="description" maxLength={500} rows={2} />
               </div>
             </>
           )}
 
           <div className="flex flex-col gap-2">
-            <Label>Permissions</Label>
+            <Label>
+              Permissions
+              <InfoHint text={FORM_HINTS.role.permissions} />
+            </Label>
             <PermissionChecklist
               groups={permissionGroups}
               selectedKeys={selectedKeys}

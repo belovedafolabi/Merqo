@@ -21,6 +21,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { BranchPriceOverride } from '@/lib/products/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: ProductsActionState = { error: null }
 
@@ -106,7 +108,10 @@ export function BranchPriceOverrideDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="override-price">Override price</Label>
+            <Label htmlFor="override-price">
+              Override price
+              <InfoHint text={FORM_HINTS.branchPriceOverride.price} />
+            </Label>
             <Input
               id="override-price"
               name="price"

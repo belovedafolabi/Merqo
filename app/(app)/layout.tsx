@@ -8,6 +8,8 @@ import { getOnboardingState } from '@/lib/business-structure/queries'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
 import { SubscriptionExpiryBanner } from '@/components/subscription/expiry-banner'
+import { ProductTour } from '@/components/tour/product-tour'
+import { hasCompletedTour } from '@/lib/tour/queries'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 /**
@@ -31,9 +33,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // this shell's nav to point at yet — send them to finish onboarding
   // first, same check app/(pos)/layout.tsx makes. Branding is fetched
   // alongside (independent) so the two don't serialize.
-  const [onboardingState, branding] = await Promise.all([
+  const [onboardingState, branding, tourCompleted] = await Promise.all([
     getOnboardingState(),
     getOrganizationBranding(),
+    hasCompletedTour(),
   ])
   if (!onboardingState.onboardingCompletedAt) {
     redirect('/onboarding')
@@ -64,6 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </SidebarInset>
         </SidebarProvider>
+        <ProductTour area="admin" autoStart={!tourCompleted} />
       </div>
     </PermissionsProvider>
   )

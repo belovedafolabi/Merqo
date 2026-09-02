@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import type { BranchProductOption } from '@/lib/inventory/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: InventoryActionState = { error: null }
 
@@ -108,7 +110,10 @@ export function StockAdjustmentDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="adjustment-quantity">Quantity change</Label>
+            <Label htmlFor="adjustment-quantity">
+              Quantity change
+              <InfoHint text={FORM_HINTS.inventory.quantity} />
+            </Label>
             <Input
               id="adjustment-quantity"
               name="quantityDelta"
@@ -137,7 +142,10 @@ export function StockAdjustmentDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="adjustment-reason">Reason</Label>
+            <Label htmlFor="adjustment-reason">
+              Reason
+              <InfoHint text={FORM_HINTS.inventory.reason} />
+            </Label>
             <Textarea
               id="adjustment-reason"
               name="reason"

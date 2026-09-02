@@ -15,6 +15,8 @@ import { ReceiptTemplatePicker } from '@/components/settings/receipt-template-pi
 import type { OrganizationBranding } from '@/lib/branding/queries'
 import type { ReceiptSettings } from '@/lib/receipts/settings'
 import type { ReceiptTemplateId } from '@/lib/receipts/templates'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: SettingsActionState = { error: null }
 
@@ -34,7 +36,7 @@ export function ReceiptSettingsForm({
   const [footerText, setFooterText] = useState(settings.footerText ?? '')
 
   return (
-    <Card className="max-w-2xl">
+    <Card className="max-w-4xl">
       <CardHeader>
         <CardTitle>Receipts</CardTitle>
         <CardDescription>
@@ -71,7 +73,10 @@ export function ReceiptSettingsForm({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label>Layout</Label>
+            <Label>
+              Layout
+              <InfoHint text={FORM_HINTS.receiptSettings.template} />
+            </Label>
             <ReceiptTemplatePicker
               value={templateId}
               onChange={setTemplateId}
@@ -84,7 +89,10 @@ export function ReceiptSettingsForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="receipt-header">Header text (optional)</Label>
+              <Label htmlFor="receipt-header">
+                Header text (optional)
+                <InfoHint text={FORM_HINTS.receiptSettings.headerText} />
+              </Label>
               <Input
                 id="receipt-header"
                 name="headerText"
@@ -95,7 +103,10 @@ export function ReceiptSettingsForm({
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="receipt-footer">Footer text (optional)</Label>
+              <Label htmlFor="receipt-footer">
+                Footer text (optional)
+                <InfoHint text={FORM_HINTS.receiptSettings.footerText} />
+              </Label>
               <Input
                 id="receipt-footer"
                 name="footerText"
@@ -109,7 +120,10 @@ export function ReceiptSettingsForm({
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="receipt-show-logo">Show logo</Label>
+              <Label htmlFor="receipt-show-logo">
+                Show logo
+                <InfoHint text={FORM_HINTS.receiptSettings.showLogo} />
+              </Label>
               <Switch
                 id="receipt-show-logo"
                 name="showLogo"
@@ -118,7 +132,10 @@ export function ReceiptSettingsForm({
               />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="receipt-show-cashier">Show cashier name</Label>
+              <Label htmlFor="receipt-show-cashier">
+                Show cashier name
+                <InfoHint text={FORM_HINTS.receiptSettings.showCashier} />
+              </Label>
               <Switch
                 id="receipt-show-cashier"
                 name="showCashier"

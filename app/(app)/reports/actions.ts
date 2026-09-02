@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import { runCustomReport } from '@/lib/reports/custom'
@@ -25,7 +27,7 @@ export interface ReportActionState {
 const initialState: ReportActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 export interface CustomReportPreview {

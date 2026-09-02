@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import { createReturn, requestRefund, approveRefund } from '@/lib/sales/mutations'
@@ -15,7 +17,7 @@ export interface ReturnsActionState {
 const initialState: ReturnsActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 export async function findSaleAction(saleId: string): Promise<Sale | null> {

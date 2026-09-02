@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
@@ -23,7 +25,7 @@ export interface SubscriptionActionState {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 export async function initiateCheckoutAction(

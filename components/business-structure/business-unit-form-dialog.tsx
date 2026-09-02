@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/select'
 import { BusinessTypePicker } from '@/components/business-structure/business-type-picker'
 import type { Branch, BusinessType, BusinessUnit } from '@/lib/business-structure/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: BusinessStructureActionState = { error: null }
 
@@ -98,7 +100,10 @@ export function BusinessUnitFormDialog({
 
           {!businessUnit && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="branchId">Branch</Label>
+              <Label htmlFor="branchId">
+                Branch
+                <InfoHint text={FORM_HINTS.businessUnit.branch} />
+              </Label>
               <Select name="branchId" required>
                 <SelectTrigger id="branchId" className="w-full">
                   <SelectValue placeholder="Select a branch" />
@@ -115,7 +120,10 @@ export function BusinessUnitFormDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="business-unit-name">Name</Label>
+            <Label htmlFor="business-unit-name">
+              Name
+              <InfoHint text={FORM_HINTS.businessUnit.name} />
+            </Label>
             <Input
               id="business-unit-name"
               name="name"
@@ -127,7 +135,10 @@ export function BusinessUnitFormDialog({
 
           {!businessUnit && (
             <div className="flex flex-col gap-2">
-              <Label>Business type</Label>
+              <Label>
+                Business type
+                <InfoHint text={FORM_HINTS.businessUnit.businessType} />
+              </Label>
               <BusinessTypePicker businessTypes={businessTypes} name="businessTypeId" />
             </div>
           )}
