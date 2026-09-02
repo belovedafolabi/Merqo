@@ -257,46 +257,32 @@
   }
 
   /*
-   * Brand glow — a soft, slow-pulsing halo behind a key element (POS
-   * CHECKOUT button, onboarding Finish, the auth card). Deliberately
+   * Brand glow — a soft, slow-pulsing halo around a key element (POS
+   * CHECKOUT button, onboarding Finish card, the auth card). Deliberately
    * restrained per docs/UXUI_Design_System_Specification.md §57 ("not a
-   * flashy fintech dashboard"): low opacity, one element per view.
+   * flashy fintech dashboard"): low opacity, one element per view,
+   * `prefers-reduced-motion` aware.
    *
-   * Colour comes from `--brand-primary` (green by default, per-org
-   * overridable at runtime by components/branding/brand-style.tsx) blended
-   * toward transparent — never a literal green — so a branding change
-   * recolours the glow with everything else. The green→black feel is the
-   * gradient falling off to transparent over the dark canvas.
+   * Implemented as an animated `box-shadow`, NOT a bleeding `::before`
+   * pseudo-element — a negatively-inset absolute child extends the
+   * scrollable area and tripped the "no horizontal overflow" responsive
+   * tests on narrow viewports. `box-shadow` never adds scrollbars.
    *
-   * `::before` sits behind the element (`z-index:-1` + `isolation:isolate`
-   * so it can't punch through to ancestors) and bleeds past its bounds
-   * (`inset:-40%`) so the halo shows around the edges.
+   * Colour is `--brand-primary` (green by default, per-org overridable at
+   * runtime by components/branding/brand-style.tsx) mixed toward
+   * transparent — never a literal green — so a branding change recolours
+   * the glow with everything else. The composited dark drop shadow keeps
+   * depth on the auth card, which no longer also carries `shadow-elevated`.
    */
   .glow-brand {
-    position: relative;
-    isolation: isolate;
-  }
-  .glow-brand::before {
-    content: '';
-    position: absolute;
-    inset: -40%;
-    z-index: -1;
-    border-radius: inherit;
-    background: radial-gradient(
-      55% 55% at 50% 50%,
-      color-mix(in oklch, var(--brand-primary) 60%, transparent) 0%,
-      color-mix(in oklch, var(--brand-primary) 20%, transparent) 45%,
-      transparent 75%
-    );
-    filter: blur(20px);
-    opacity: 0.5;
-    pointer-events: none;
-    animation: glow-brand-pulse 3.2s ease-in-out infinite;
+    animation: glow-brand-pulse 3.4s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .glow-brand::before {
+    .glow-brand {
       animation: none;
-      opacity: 0.35;
+      box-shadow:
+        0 0 26px -6px color-mix(in oklch, var(--brand-primary) 42%, transparent),
+        0 8px 24px oklch(0 0 0 / 0.14);
     }
   }
 
@@ -335,12 +321,16 @@
 @keyframes glow-brand-pulse {
   0%,
   100% {
-    opacity: 0.4;
-    transform: scale(0.98);
+    box-shadow:
+      0 0 20px -6px color-mix(in oklch, var(--brand-primary) 38%, transparent),
+      0 0 6px -2px color-mix(in oklch, var(--brand-primary) 30%, transparent),
+      0 8px 24px oklch(0 0 0 / 0.14);
   }
   50% {
-    opacity: 0.62;
-    transform: scale(1.02);
+    box-shadow:
+      0 0 40px 0 color-mix(in oklch, var(--brand-primary) 55%, transparent),
+      0 0 14px 0 color-mix(in oklch, var(--brand-primary) 40%, transparent),
+      0 8px 24px oklch(0 0 0 / 0.14);
   }
 }
 
