@@ -35,7 +35,9 @@ describe('toErrorMessage', () => {
   })
 
   it('uses the first issue of a ZodError', () => {
-    const parsed = z.object({ name: z.string().min(1, 'Name is required.') }).safeParse({ name: '' })
+    const parsed = z
+      .object({ name: z.string().min(1, 'Name is required.') })
+      .safeParse({ name: '' })
     expect(parsed.success).toBe(false)
     if (!parsed.success) expect(toErrorMessage(parsed.error)).toBe('Name is required.')
   })

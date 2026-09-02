@@ -18,11 +18,11 @@ describe('unitInputSchema', () => {
   })
 
   it('enforces length caps', () => {
-    expect(
-      unitInputSchema.safeParse({ name: 'x'.repeat(41), abbreviation: 'x' }).success,
-    ).toBe(false)
-    expect(
-      unitInputSchema.safeParse({ name: 'Box', abbreviation: 'x'.repeat(13) }).success,
-    ).toBe(false)
+    expect(unitInputSchema.safeParse({ name: 'x'.repeat(41), abbreviation: 'x' }).success).toBe(
+      false,
+    )
+    expect(unitInputSchema.safeParse({ name: 'Box', abbreviation: 'x'.repeat(13) }).success).toBe(
+      false,
+    )
   })
 })
