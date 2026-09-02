@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomInt } from 'node:crypto'
 
 /**
  * Server-side SKU generator, used by lib/products/mutations.ts when a
@@ -29,11 +29,14 @@ function slugFromName(name: string): string {
 }
 
 function randomSuffix(): string {
-  // base36, uppercased, ambiguity-free enough for hand entry.
-  return Array.from(randomBytes(SUFFIX_LEN))
-    .map((b) => (b % 36).toString(36))
-    .join('')
-    .toUpperCase()
+  // base36, uppercased, ambiguity-free enough for hand entry. randomInt()
+  // draws each digit uniformly from [0, 36) — `randomBytes() % 36` would be
+  // biased toward the low digits (256 isn't a multiple of 36).
+  let out = ''
+  for (let i = 0; i < SUFFIX_LEN; i += 1) {
+    out += randomInt(36).toString(36)
+  }
+  return out.toUpperCase()
 }
 
 export function generateSku(name: string): string {
