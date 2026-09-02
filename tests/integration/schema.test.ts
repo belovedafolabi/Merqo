@@ -110,6 +110,10 @@ describe('core hierarchy schema', () => {
     // with. Milestone 10's `expenses` is deliberately NOT here: an expense is
     // withdrawn via `voided_at` with a mandatory reason, which is a financial
     // event on the record rather than a soft delete of it.
+    //
+    // `units_of_measure` (custom units an admin adds for their org) carries
+    // archived_at for the same reason categories does — a unit an existing
+    // product still names by string must be retired, not deleted.
     expect(tables).toEqual([
       'branches',
       'business_units',
@@ -119,6 +123,7 @@ describe('core hierarchy schema', () => {
       'product_variants',
       'products',
       'saved_reports',
+      'units_of_measure',
     ])
   })
 

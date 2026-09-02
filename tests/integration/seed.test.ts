@@ -102,16 +102,17 @@ describe('seed data (supabase/seed.sql)', () => {
   // view_all_branches/save, expense.view/create/approve/delete) + 3 from
   // Milestone 11 (roles.create, employees.invite, employees.deactivate) + 4
   // from Milestone 13 (subscription.view, subscription.renew,
-  // platform.override, platform.manage_pricing).
-  it('loads exactly 59 permissions', async () => {
+  // platform.override, platform.manage_pricing) + 1 units.manage
+  // (20260902090000).
+  it('loads exactly 60 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(59)
+    expect(result.rows[0].count).toBe(60)
   })
 
-  // 55 (every pre-Milestone-13 permission) + subscription.view +
-  // subscription.renew — NOT the two platform.* keys, which seed.sql's §6
-  // cross-join deliberately excludes from Owner (Super Admin only, per
-  // DECISIONS_AND_CONFLICTS.md §5).
+  // 56 (every pre-Milestone-13 permission incl. units.manage) +
+  // subscription.view + subscription.renew — NOT the two platform.* keys,
+  // which seed.sql's §6 cross-join deliberately excludes from Owner (Super
+  // Admin only, per DECISIONS_AND_CONFLICTS.md §5).
   it('the Owner role holds every seeded permission except platform.*', async () => {
     const result = await pool.query(
       `select count(*)::int as count
@@ -119,7 +120,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(57)
+    expect(result.rows[0].count).toBe(58)
   })
 
   it('the super_admin role holds every seeded permission, including platform.*', async () => {
@@ -129,7 +130,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'super_admin'`,
     )
-    expect(result.rows[0].count).toBe(59)
+    expect(result.rows[0].count).toBe(60)
   })
 
   // Waiter/Kitchen Staff are still bare (the base till set is scoped to
