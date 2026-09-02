@@ -74,13 +74,7 @@ export function PageHeaderSkeleton() {
  * app/(app) page renders. Used by the co-located `loading.tsx` files so a
  * route transition shows structure instead of a blank inset.
  */
-export function TablePageSkeleton({
-  columns = 5,
-  rows = 8,
-}: {
-  columns?: number
-  rows?: number
-}) {
+export function TablePageSkeleton({ columns = 5, rows = 8 }: { columns?: number; rows?: number }) {
   return (
     <div className="flex flex-1 flex-col">
       <PageHeaderSkeleton />

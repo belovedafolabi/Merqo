@@ -168,7 +168,7 @@ export function HeldSalesTabs() {
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
-                <span className="text-caption tabular-nums text-muted-foreground">
+                <span className="text-caption text-muted-foreground tabular-nums">
                   {clampedPage + 1}/{pageCount}
                 </span>
                 <Button

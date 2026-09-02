@@ -103,20 +103,18 @@ export async function getBusinessUnitBranch(
  * The category manager filters these against the categories that already
  * exist and renders the remainder as one-tap "add" chips.
  */
-export const listCategorySuggestions = cache(
-  async (businessTypeId: string): Promise<string[]> => {
-    const supabase = await createServerSupabaseClient()
-    const { data, error } = await supabase
-      .from('business_type_category_suggestions')
-      .select('name')
-      .eq('business_type_id', businessTypeId)
-      .order('sort_order')
-      .order('name')
+export const listCategorySuggestions = cache(async (businessTypeId: string): Promise<string[]> => {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('business_type_category_suggestions')
+    .select('name')
+    .eq('business_type_id', businessTypeId)
+    .order('sort_order')
+    .order('name')
 
-    if (error) throw error
-    return (data ?? []).map((row) => row.name as string)
-  },
-)
+  if (error) throw error
+  return (data ?? []).map((row) => row.name as string)
+})
 
 export async function listCategories(businessUnitId: string): Promise<Category[]> {
   const supabase = await createServerSupabaseClient()

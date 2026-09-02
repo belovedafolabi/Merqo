@@ -8,11 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/states/empty-state'
-import {
-  formatPaymentMethods,
-  shortSaleRef,
-  type SaleListEntry,
-} from '@/lib/sales/sale-list'
+import { formatPaymentMethods, shortSaleRef, type SaleListEntry } from '@/lib/sales/sale-list'
 
 function currency(value: number): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
@@ -113,12 +109,7 @@ export function SalesView({
         }
       />
       {!exhausted && sales.length > 0 && (
-        <Button
-          variant="outline"
-          onClick={loadMore}
-          disabled={pending}
-          className="self-center"
-        >
+        <Button variant="outline" onClick={loadMore} disabled={pending} className="self-center">
           {pending ? 'Loading…' : 'Load more'}
         </Button>
       )}

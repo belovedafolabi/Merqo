@@ -1,7 +1,15 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { ChevronDown, CreditCard, Landmark, Printer, TriangleAlert, Wallet, Banknote } from 'lucide-react'
+import {
+  ChevronDown,
+  CreditCard,
+  Landmark,
+  Printer,
+  TriangleAlert,
+  Wallet,
+  Banknote,
+} from 'lucide-react'
 
 import {
   checkoutAction,
@@ -10,11 +18,7 @@ import {
 } from '@/app/(pos)/pos/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Drawer,
   DrawerContent,

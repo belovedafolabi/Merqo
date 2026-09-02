@@ -54,10 +54,7 @@ export function CartSummary() {
       <Button
         size="lg"
         disabled={lines.length === 0}
-        className={cn(
-          'h-14 rounded-xl text-body font-semibold',
-          lines.length > 0 && 'glow-brand',
-        )}
+        className={cn('h-14 rounded-xl text-body font-semibold', lines.length > 0 && 'glow-brand')}
         onClick={() => {
           setAttempt((n) => n + 1)
           setCheckoutOpen(true)

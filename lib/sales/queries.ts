@@ -229,7 +229,9 @@ export async function listSales(
   }>
 
   const creatorIds = [
-    ...new Set(rows.map((row) => row.created_by).filter((value): value is string => Boolean(value))),
+    ...new Set(
+      rows.map((row) => row.created_by).filter((value): value is string => Boolean(value)),
+    ),
   ]
   const nameById = new Map<string, string>()
   if (creatorIds.length > 0) {

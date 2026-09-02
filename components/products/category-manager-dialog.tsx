@@ -116,9 +116,7 @@ export function CategoryManagerDialog({
 
         {openSuggestions.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-caption text-muted-foreground">
-              Suggested for your business type
-            </p>
+            <p className="text-caption text-muted-foreground">Suggested for your business type</p>
             <div className="flex flex-wrap gap-1.5">
               {openSuggestions.map((name) => (
                 <button
