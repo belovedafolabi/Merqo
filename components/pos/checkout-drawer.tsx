@@ -143,11 +143,13 @@ export function CheckoutDrawer({
 
   const payingWithCredit = paymentMethod === 'store_credit'
 
-  // Store credit needs a customer attached — surface the details section so
-  // the picker is visible rather than leaving the cashier to hunt for it.
-  useEffect(() => {
-    if (payingWithCredit) setDetailsOpen(true)
-  }, [payingWithCredit])
+  // Picking store credit needs a customer attached — open the details
+  // section in the same click so the picker is visible, rather than
+  // syncing it in an effect (an event, not a synchronization).
+  function selectPaymentMethod(value: string) {
+    setPaymentMethod(value)
+    if (value === 'store_credit') setDetailsOpen(true)
+  }
 
   function handleSelectCustomer(next: Customer | null) {
     setCustomer(next)
@@ -286,7 +288,7 @@ export function CheckoutDrawer({
                         size="touch"
                         className="justify-start gap-2"
                         aria-pressed={active}
-                        onClick={() => setPaymentMethod(value)}
+                        onClick={() => selectPaymentMethod(value)}
                       >
                         <Icon className="size-4" /> {label}
                       </Button>
