@@ -27,6 +27,13 @@ create index business_type_category_suggestions_type_idx
 
 alter table public.business_type_category_suggestions enable row level security;
 
+-- Table-level privilege. `20260823140000_revoke_authenticated_anon_dangerous_grants.sql`
+-- stripped the blanket public-schema grants, so every table needs its own —
+-- the RLS policy below only filters rows once this privilege check has
+-- passed. Mirrors `grant select on public.business_type_capabilities`
+-- (20260822095000).
+grant select on public.business_type_category_suggestions to authenticated;
+
 -- Platform-wide reference data (it describes business_types, not a tenant's
 -- rows) — readable by any authenticated user, migration/seed-managed only.
 -- Mirrors business_type_capabilities_select.
