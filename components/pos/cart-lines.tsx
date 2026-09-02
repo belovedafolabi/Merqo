@@ -1,10 +1,55 @@
 'use client'
 
+import { useState } from 'react'
 import { Minus, Plus, ShoppingCart, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/states/empty-state'
-import { useCart } from '@/lib/pos/cart-context'
+import { useCart, type CartLine } from '@/lib/pos/cart-context'
+
+/**
+ * Type-a-quantity field, replacing what used to be a read-only `<span>`
+ * between the −/+ buttons. Entering "12" directly beats tapping + eleven
+ * times, which is the whole point, but the stepper stays because it is still
+ * the faster control for ±1.
+ *
+ * `draft` is null whenever the field isn't being edited, so the displayed
+ * value is derived straight from the cart and the stepper buttons keep
+ * working with no effect syncing the two. While the cashier is mid-type it
+ * holds their raw text — otherwise clearing the field to retype would parse
+ * as 0 and delete the line out from under them.
+ */
+function QuantityField({ line }: { line: CartLine }) {
+  const { updateQuantity } = useCart()
+  const [draft, setDraft] = useState<string | null>(null)
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      // A quantity is never a decimal here (fractional units are sold by
+      // changing the unit of measurement, not the count), so digits only.
+      pattern="[0-9]*"
+      aria-label={`Quantity of ${line.name}`}
+      value={draft ?? String(line.quantity)}
+      className="h-11 w-14 px-1 text-center text-body-sm tabular-nums lg:h-8 lg:w-11"
+      onChange={(event) => {
+        const cleaned = event.target.value.replace(/\D/g, '').slice(0, 4)
+        setDraft(cleaned)
+        const next = Number(cleaned)
+        // Only commit a real quantity. A blank field or a leading 0 is a
+        // half-finished edit, not a request to remove the line — removal is
+        // the × button's job.
+        if (cleaned !== '' && next >= 1) {
+          updateQuantity(line.productId, line.variantId, next)
+        }
+      }}
+      onFocus={(event) => event.target.select()}
+      onBlur={() => setDraft(null)}
+    />
+  )
+}
 
 /**
  * The cart's line-item list — quantity stepper + remove, per
@@ -50,7 +95,7 @@ export function CartLines() {
             >
               <Minus className="size-4 lg:size-3" />
             </Button>
-            <span className="w-6 text-center text-body-sm tabular-nums">{line.quantity}</span>
+            <QuantityField line={line} />
             <Button
               type="button"
               variant="outline"

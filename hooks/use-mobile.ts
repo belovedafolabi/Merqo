@@ -1,25 +1,41 @@
 import * as React from 'react'
 
 const MOBILE_BREAKPOINT = 768
+const MOBILE_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
-export function useIsMobile() {
-  // Lazy initializer (not a setState call in the effect body below) so the
-  // initial value is computed once, synchronously, without the "impure
-  // during render" / "setState in effect" purity violations the project's
-  // eslint config enforces. `typeof window` guards the SSR pass, matching
-  // this hook's original SSR-then-correct-on-mount behavior.
-  const [isMobile, setIsMobile] = React.useState<boolean>(
-    () => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT,
-  )
+/**
+ * `useSyncExternalStore` rather than useState+useEffect, because the viewport
+ * IS an external store and React already knows how to read one safely.
+ *
+ * The previous shape — a lazy `useState` initializer plus an effect that only
+ * subscribed — could not self-correct: the initializer runs during hydration
+ * and reads the real viewport, but the server had rendered `false`, and a
+ * phone that simply loads the page narrow never fires a `change` event, so
+ * nothing ever reconciled the two. That left `isMobile` false on a phone,
+ * which made components/ui/sidebar.tsx render its `hidden md:block` desktop
+ * branch (never mounting the mobile Sheet) and made SidebarTrigger toggle the
+ * desktop collapse state instead of the mobile one.
+ *
+ * Adding a `setIsMobile()` call to the effect body would fix the value but
+ * trips this project's `react-hooks/set-state-in-effect` rule. This hook has
+ * no such problem: `getServerSnapshot` declares the SSR value explicitly and
+ * React re-reads `getSnapshot` on the client after hydration.
+ */
+function subscribe(onStoreChange: () => void): () => void {
+  const mql = window.matchMedia(MOBILE_QUERY)
+  mql.addEventListener('change', onStoreChange)
+  return () => mql.removeEventListener('change', onStoreChange)
+}
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [])
+function getSnapshot(): boolean {
+  return window.matchMedia(MOBILE_QUERY).matches
+}
 
-  return isMobile
+/** No viewport during SSR — the desktop branch is the safe default to emit. */
+function getServerSnapshot(): boolean {
+  return false
+}
+
+export function useIsMobile(): boolean {
+  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }

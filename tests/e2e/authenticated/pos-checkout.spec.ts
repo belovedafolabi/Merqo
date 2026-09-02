@@ -80,6 +80,42 @@ test('a cashier can search, add to cart and complete a sale at this viewport', a
   // Milestone 14's printing deliverable reaching the UI: before this
   // milestone the success state offered only "Done".
   await expect(page.getByRole('button', { name: /print receipt/i })).toBeVisible()
+
+  // The receipt is rendered in the drawer, not fetched by a popup on click.
+  // .and(':visible') because ReceiptView also renders a second, print-only
+  // copy portalled to <body> — the same double-mount idiom CartLines needs.
+  await expect(page.getByText(/Receipt #/).and(page.locator(':visible'))).toBeVisible()
+
+  // --- printing is isolated to the receipt -----------------------------
+  //
+  // Asserts the @media print cascade rather than calling window.print(),
+  // which would block on a native dialog. Printing used to open
+  // /receipts/preview in a popup — a whole second document load through the
+  // (app) layout — so the printed page was trivially just the receipt. Now
+  // the entire POS is still in the document when the dialog opens, and
+  // app/globals.css is what narrows the printout. This is the assertion that
+  // catches that CSS regressing into "print the whole till".
+  await page.evaluate(() => document.body.classList.add('printing-receipt'))
+  await page.emulateMedia({ media: 'print' })
+
+  const printedReceipt = page.locator('.receipt-print-portal')
+  await expect(printedReceipt).toBeVisible()
+  await expect(printedReceipt.getByText(/Receipt #/)).toBeVisible()
+  // The cart panel / drawer is chrome, and must not reach the paper.
+  await expect(page.getByRole('button', { name: /^checkout/i })).toBeHidden()
+  await expect(page.getByRole('button', { name: /print receipt/i })).toBeHidden()
+
+  await page.emulateMedia({ media: 'screen' })
+  await page.evaluate(() => document.body.classList.remove('printing-receipt'))
+
+  // --- the sale is in the record BEFORE Print or Done is touched -------
+  //
+  // checkoutAction() commits through create_sale() when the form submits, so
+  // neither footer button is what "processes" the order. Proving that here is
+  // what distinguishes a genuinely recorded sale from one that only looks
+  // complete on screen.
+  await page.goto('/sales')
+  await expect(page.getByRole('button', { name: /^view/i }).first()).toBeVisible()
 })
 
 test('the cart is reachable and readable at this viewport', async ({ page }) => {
@@ -107,7 +143,20 @@ test('the cart is reachable and readable at this viewport', async ({ page }) => 
     .and(page.locator(':visible'))
   await expect(increase).toBeVisible()
   await increase.click()
-  await expect(page.getByText('2', { exact: true }).and(page.locator(':visible'))).toBeVisible()
+
+  // The quantity is now a field rather than a read-only <span>, so this reads
+  // its VALUE. Deliberately not getByText('2'): that also matched a "2"
+  // anywhere else on the till, and it silently stopped matching at all once
+  // the span became an <input>.
+  const quantity = page
+    .getByRole('textbox', { name: /^quantity of /i })
+    .and(page.locator(':visible'))
+  await expect(quantity).toHaveValue('2')
+
+  // Typing a quantity is the point of the field — tapping + eleven times is
+  // what it replaces — so exercise that path, not only the stepper.
+  await quantity.fill('12')
+  await expect(quantity).toHaveValue('12')
 
   await expectNoHorizontalOverflow(page)
 })
