@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import {
@@ -15,6 +17,7 @@ import {
   updateProductVariant,
   upsertBranchPriceOverride,
 } from '@/lib/products/mutations'
+import { archiveUnit, createUnit, updateUnit } from '@/lib/units/mutations'
 
 /**
  * Server Actions for the Product/Category/Variant/pricing screens — same
@@ -28,7 +31,7 @@ export interface ProductsActionState {
 const initialState: ProductsActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 function numberField(formData: FormData, key: string): number {
@@ -115,6 +118,64 @@ export async function archiveCategoryAction(
 
   try {
     await archiveCategory(organizationId, businessUnitId, categoryId)
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  revalidatePath('/products')
+  return initialState
+}
+
+// --- Units of measurement (org-scoped custom units; system units are seeded) ---
+
+export async function createUnitAction(
+  _prevState: ProductsActionState,
+  formData: FormData,
+): Promise<ProductsActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+
+  try {
+    await createUnit(organizationId, {
+      name: String(formData.get('name') ?? ''),
+      abbreviation: String(formData.get('abbreviation') ?? ''),
+    })
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  revalidatePath('/products')
+  return initialState
+}
+
+export async function updateUnitAction(
+  _prevState: ProductsActionState,
+  formData: FormData,
+): Promise<ProductsActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const unitId = String(formData.get('unitId') ?? '')
+
+  try {
+    await updateUnit(organizationId, unitId, {
+      name: String(formData.get('name') ?? ''),
+      abbreviation: String(formData.get('abbreviation') ?? ''),
+    })
+  } catch (error) {
+    return { error: errorMessage(error) }
+  }
+
+  revalidatePath('/products')
+  return initialState
+}
+
+export async function archiveUnitAction(
+  _prevState: ProductsActionState,
+  formData: FormData,
+): Promise<ProductsActionState> {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const unitId = String(formData.get('unitId') ?? '')
+
+  try {
+    await archiveUnit(organizationId, unitId)
   } catch (error) {
     return { error: errorMessage(error) }
   }

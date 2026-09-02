@@ -21,6 +21,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: CustomerActionState = { error: null }
 
@@ -95,6 +97,7 @@ export function StoreCreditDialog({
             <Label htmlFor="credit-amount">
               Amount (₦) <span aria-hidden="true">*</span>
               <span className="sr-only">(required)</span>
+              <InfoHint text={FORM_HINTS.storeCredit.amount} />
             </Label>
             <Input
               id="credit-amount"
@@ -118,6 +121,7 @@ export function StoreCreditDialog({
             <Label htmlFor="credit-reason">
               Reason <span aria-hidden="true">*</span>
               <span className="sr-only">(required)</span>
+              <InfoHint text={FORM_HINTS.storeCredit.reason} />
             </Label>
             <Textarea
               id="credit-reason"

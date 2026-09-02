@@ -32,6 +32,15 @@ interface CartState {
   lines: CartLine[]
   discount: CartDiscountInput
   discountReason: string
+  /**
+   * One idempotency key per basket lifecycle. Stable across checkout
+   * retries — so a sale that committed but whose Server Action still
+   * returned an error (e.g. a post-commit audit failure) is deduplicated by
+   * create_sale()'s `on conflict (idempotency_key)` when the cashier
+   * retries, instead of creating a second real sale. Rotated only when the
+   * cart is cleared (after a completed sale) or reloaded from a held sale.
+   */
+  checkoutKey: string
   addItem: (item: {
     productId: string
     variantId?: string | null
@@ -55,6 +64,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([])
   const [discount, setDiscountState] = useState<CartDiscountInput>({})
   const [discountReason, setDiscountReason] = useState('')
+  const [checkoutKey, setCheckoutKey] = useState(() => crypto.randomUUID())
 
   const addItem = useCallback<CartState['addItem']>((item) => {
     setLines((prev) => {
@@ -112,12 +122,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const loadLines = useCallback<CartState['loadLines']>((next) => {
     setLines(next)
+    setCheckoutKey(crypto.randomUUID())
   }, [])
 
   const clear = useCallback(() => {
     setLines([])
     setDiscountState({})
     setDiscountReason('')
+    setCheckoutKey(crypto.randomUUID())
   }, [])
 
   const value = useMemo(
@@ -125,6 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       discount,
       discountReason,
+      checkoutKey,
       addItem,
       updateQuantity,
       removeItem,
@@ -136,6 +149,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       discount,
       discountReason,
+      checkoutKey,
       addItem,
       updateQuantity,
       removeItem,

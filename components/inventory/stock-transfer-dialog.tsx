@@ -30,6 +30,8 @@ import {
 import type { Branch } from '@/lib/business-structure/queries'
 import type { BranchProductOption } from '@/lib/inventory/queries'
 import type { StockTransferItemInput } from '@/lib/inventory/schemas'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: InventoryActionState = { error: null }
 
@@ -153,7 +155,10 @@ export function StockTransferDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="transfer-destination-branch">Destination branch</Label>
+            <Label htmlFor="transfer-destination-branch">
+              Destination branch
+              <InfoHint text={FORM_HINTS.inventory.toBranch} />
+            </Label>
             <Select value={destinationBranchId} onValueChange={handleDestinationBranchChange}>
               <SelectTrigger id="transfer-destination-branch" className="w-full">
                 <SelectValue placeholder="Select a branch" />

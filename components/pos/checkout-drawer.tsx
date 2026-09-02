@@ -41,6 +41,8 @@ import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
 import { CustomerPicker } from '@/components/customers/customer-picker'
 import { canCoverAmount } from '@/lib/customers/ledger'
 import type { Customer } from '@/lib/customers/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: PosActionState = { error: null }
 
@@ -93,13 +95,12 @@ export function CheckoutDrawer({
   onOpenChange: (open: boolean) => void
 }) {
   const { organizationId, branchId, businessUnitId } = usePosSession()
-  const { lines, discount, discountReason, setDiscount, clear } = useCart()
+  const { lines, discount, discountReason, checkoutKey, setDiscount, clear } = useCart()
   const totals = useCartTotals()
   const canApplyDiscount = usePermission('discount.apply', { organizationId, branchId })
   const isMobile = useIsMobile()
 
   const [state, formAction, pending] = useActionState(checkoutAction, initialState)
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
   const [discountInput, setDiscountInput] = useState('')
   const [discountReasonInput, setDiscountReasonInput] = useState('')
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -110,14 +111,12 @@ export function CheckoutDrawer({
 
   usePendingToast(pending, 'Completing sale…')
 
-  // Fresh idempotency key per checkout *attempt*, derived during render (the
-  // "adjust state when a prop changes" pattern) — see checkout-dialog.tsx's
-  // module doc for why this isn't a useEffect.
-  const [prevOpen, setPrevOpen] = useState(open)
-  if (open !== prevOpen) {
-    setPrevOpen(open)
-    if (open) setIdempotencyKey(crypto.randomUUID())
-  }
+  // The idempotency key now lives on the cart (useCart().checkoutKey): one
+  // key per basket, stable across retries, rotated only when the cart is
+  // cleared after a completed sale or reloaded from a held sale. A retry
+  // after a sale that committed-but-reported-an-error is therefore
+  // deduplicated by create_sale()'s `on conflict (idempotency_key)` instead
+  // of writing a second sale.
 
   useEffect(() => {
     setDiscount(
@@ -220,7 +219,7 @@ export function CheckoutDrawer({
               formData.set('organizationId', organizationId)
               formData.set('branchId', branchId)
               formData.set('businessUnitId', businessUnitId)
-              formData.set('idempotencyKey', idempotencyKey)
+              formData.set('idempotencyKey', checkoutKey)
               formData.set('paymentMethod', paymentMethod)
               if (customer) formData.set('customerId', customer.id)
               formData.set(
@@ -276,7 +275,10 @@ export function CheckoutDrawer({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label>Payment method</Label>
+                <Label>
+                  Payment method
+                  <InfoHint text={FORM_HINTS.checkout.paymentMethod} />
+                </Label>
                 <div className="grid grid-cols-2 gap-2">
                   {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => {
                     const active = paymentMethod === value
@@ -340,7 +342,10 @@ export function CheckoutDrawer({
                   {canApplyDiscount && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor="checkout-discount">Discount (%)</Label>
+                        <Label htmlFor="checkout-discount">
+                          Discount (%)
+                          <InfoHint text={FORM_HINTS.checkout.discountPercentage} />
+                        </Label>
                         <Input
                           id="checkout-discount"
                           type="number"
@@ -354,7 +359,10 @@ export function CheckoutDrawer({
                         />
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor="checkout-discount-reason">Discount reason</Label>
+                        <Label htmlFor="checkout-discount-reason">
+                          Discount reason
+                          <InfoHint text={FORM_HINTS.checkout.discountReason} />
+                        </Label>
                         <Input
                           id="checkout-discount-reason"
                           value={discountReasonInput}
@@ -366,7 +374,10 @@ export function CheckoutDrawer({
                   )}
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="checkout-payment-reference">Payment reference (optional)</Label>
+                    <Label htmlFor="checkout-payment-reference">
+                      Payment reference (optional)
+                      <InfoHint text={FORM_HINTS.checkout.paymentReference} />
+                    </Label>
                     <Textarea
                       id="checkout-payment-reference"
                       name="paymentReference"

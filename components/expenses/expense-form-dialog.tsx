@@ -17,6 +17,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: ExpenseActionState = { error: null }
 
@@ -87,7 +89,10 @@ export function ExpenseFormDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="expense-category">Category</Label>
+              <Label htmlFor="expense-category">
+                Category
+                <InfoHint text={FORM_HINTS.expense.category} />
+              </Label>
               <Input
                 id="expense-category"
                 name="category"
@@ -104,7 +109,10 @@ export function ExpenseFormDialog({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="expense-amount">Amount (₦)</Label>
+              <Label htmlFor="expense-amount">
+                Amount (₦)
+                <InfoHint text={FORM_HINTS.expense.amount} />
+              </Label>
               <Input
                 id="expense-amount"
                 name="amount"
@@ -117,7 +125,10 @@ export function ExpenseFormDialog({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="expense-date">Date</Label>
+              <Label htmlFor="expense-date">
+                Date
+                <InfoHint text={FORM_HINTS.expense.incurredOn} />
+              </Label>
               <Input
                 id="expense-date"
                 name="expenseDate"
@@ -146,7 +157,10 @@ export function ExpenseFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="expense-description">Description</Label>
+            <Label htmlFor="expense-description">
+              Description
+              <InfoHint text={FORM_HINTS.expense.description} />
+            </Label>
             <Textarea
               id="expense-description"
               name="description"

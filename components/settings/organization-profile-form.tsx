@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { OrganizationProfile } from '@/lib/organization/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: SettingsActionState = { error: null }
 
@@ -62,7 +64,10 @@ export function OrganizationProfileForm({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="contact-phone">Phone</Label>
+            <Label htmlFor="contact-phone">
+              Phone
+              <InfoHint text={FORM_HINTS.organization.phone} />
+            </Label>
             <Input
               id="contact-phone"
               name="contactPhone"
@@ -72,7 +77,10 @@ export function OrganizationProfileForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="contact-email">Email</Label>
+            <Label htmlFor="contact-email">
+              Email
+              <InfoHint text={FORM_HINTS.organization.email} />
+            </Label>
             <Input
               id="contact-email"
               name="contactEmail"
@@ -82,7 +90,10 @@ export function OrganizationProfileForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="address-line">Address</Label>
+            <Label htmlFor="address-line">
+              Address
+              <InfoHint text={FORM_HINTS.organization.address} />
+            </Label>
             <Input
               id="address-line"
               name="addressLine"

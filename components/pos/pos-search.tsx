@@ -31,7 +31,7 @@ export function PosSearch({
   inputRef?: React.Ref<HTMLInputElement>
 }) {
   return (
-    <div className="relative">
+    <div className="relative" data-tour="pos-search">
       <Search className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}

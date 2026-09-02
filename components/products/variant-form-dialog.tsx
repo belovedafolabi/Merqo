@@ -22,6 +22,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { ProductVariant } from '@/lib/products/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: ProductsActionState = { error: null }
 
@@ -85,17 +87,26 @@ export function VariantFormDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="variant-name">Name</Label>
+            <Label htmlFor="variant-name">
+              Name
+              <InfoHint text={FORM_HINTS.variant.name} />
+            </Label>
             <Input id="variant-name" name="name" defaultValue={variant?.name} required autoFocus />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="variant-sku">SKU</Label>
+              <Label htmlFor="variant-sku">
+                SKU
+                <InfoHint text={FORM_HINTS.variant.sku} />
+              </Label>
               <Input id="variant-sku" name="sku" defaultValue={variant?.sku ?? ''} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="variant-barcode">Barcode</Label>
+              <Label htmlFor="variant-barcode">
+                Barcode
+                <InfoHint text={FORM_HINTS.variant.barcode} />
+              </Label>
               <Input id="variant-barcode" name="barcode" defaultValue={variant?.barcode ?? ''} />
             </div>
           </div>
@@ -103,7 +114,10 @@ export function VariantFormDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Can permission="products.view_cost_price" scope={{ organizationId, businessUnitId }}>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="variant-cost-price">Cost price override</Label>
+                <Label htmlFor="variant-cost-price">
+                  Cost price override
+                  <InfoHint text={FORM_HINTS.variant.costPrice} />
+                </Label>
                 <Input
                   id="variant-cost-price"
                   name="costPrice"
@@ -117,7 +131,10 @@ export function VariantFormDialog({
               </div>
             </Can>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="variant-base-price">Base price override</Label>
+              <Label htmlFor="variant-base-price">
+                Base price override
+                <InfoHint text={FORM_HINTS.variant.basePrice} />
+              </Label>
               <Input
                 id="variant-base-price"
                 name="basePrice"

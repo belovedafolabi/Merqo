@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import { createExpense, decideExpense, voidExpense } from '@/lib/expenses/mutations'
@@ -15,7 +17,7 @@ export interface ExpenseActionState {
 const initialState: ExpenseActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 function optionalStringField(formData: FormData, key: string): string | undefined {

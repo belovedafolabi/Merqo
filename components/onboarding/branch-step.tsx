@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: OnboardingActionState = { error: null }
 
@@ -29,7 +31,10 @@ export function BranchStep({ organizationId }: { organizationId: string }) {
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Branch name</Label>
+        <Label htmlFor="name">
+          Branch name
+          <InfoHint text={FORM_HINTS.onboarding.branchName} />
+        </Label>
         <Input id="name" name="name" placeholder="Main Branch" autoFocus required />
         <p className="text-sm text-muted-foreground">
           Your first physical location. You can add more branches later from Business Structure.

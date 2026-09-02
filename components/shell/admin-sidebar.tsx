@@ -45,7 +45,7 @@ export function AdminSidebar({
   businessUnitName: string | null
 }) {
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" data-tour="app-sidebar">
       <SidebarCloseOnNavigate />
       <SidebarHeader className="gap-3 p-3">
         <div className="flex items-center gap-2 px-1 py-1">

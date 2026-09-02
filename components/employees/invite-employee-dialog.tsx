@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/select'
 import type { Branch, BusinessUnit } from '@/lib/business-structure/queries'
 import type { RoleSummary } from '@/lib/roles/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: EmployeeActionState = { error: null }
 
@@ -147,12 +149,18 @@ export function InviteEmployeeDialog({
             )}
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="invite-email">Email</Label>
+              <Label htmlFor="invite-email">
+                Email
+                <InfoHint text={FORM_HINTS.employee.email} />
+              </Label>
               <Input id="invite-email" name="email" type="email" required autoComplete="off" />
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="invite-role">Role</Label>
+              <Label htmlFor="invite-role">
+                Role
+                <InfoHint text={FORM_HINTS.employee.role} />
+              </Label>
               <Select name="roleId" required>
                 <SelectTrigger id="invite-role" className="w-full">
                   <SelectValue placeholder="Select a role" />
@@ -168,7 +176,10 @@ export function InviteEmployeeDialog({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="invite-branch">Scope</Label>
+              <Label htmlFor="invite-branch">
+                Scope
+                <InfoHint text={FORM_HINTS.employee.branch} />
+              </Label>
               <Select name="branchId">
                 <SelectTrigger id="invite-branch" className="w-full">
                   <SelectValue placeholder="Organization-wide" />
@@ -188,7 +199,10 @@ export function InviteEmployeeDialog({
 
             {businessUnits.length > 0 && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-business-unit">Business unit (optional)</Label>
+                <Label htmlFor="invite-business-unit">
+                  Business unit (optional)
+                  <InfoHint text={FORM_HINTS.employee.branch} />
+                </Label>
                 <Select name="businessUnitId">
                   <SelectTrigger id="invite-business-unit" className="w-full">
                     <SelectValue placeholder="Every unit in the branch" />

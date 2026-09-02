@@ -21,6 +21,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Branch } from '@/lib/business-structure/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: BusinessStructureActionState = { error: null }
 
@@ -78,7 +80,10 @@ export function BranchFormDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="branch-name">Name</Label>
+            <Label htmlFor="branch-name">
+              Name
+              <InfoHint text={FORM_HINTS.branch.name} />
+            </Label>
             <Input id="branch-name" name="name" defaultValue={branch?.name} required autoFocus />
           </div>
 

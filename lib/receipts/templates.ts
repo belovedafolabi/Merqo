@@ -27,6 +27,12 @@ export interface ReceiptTemplateDef {
   showItemUnitPrice: boolean
   showTaxBreakdown: boolean
   showPaymentDetail: boolean
+  /**
+   * Detailed-only extras: a per-line share of tax against each item, and a
+   * metadata block (item/unit count, payment reference) under the totals.
+   */
+  showItemTax: boolean
+  showReceiptMeta: boolean
   /** Tailwind max-width class for the printed/previewed document. */
   widthClass: string
   /**
@@ -64,6 +70,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showItemUnitPrice: true,
     showTaxBreakdown: true,
     showPaymentDetail: true,
+    showItemTax: false,
+    showReceiptMeta: false,
     widthClass: 'max-w-sm',
     paperWidthMm: 80,
   },
@@ -71,23 +79,27 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     id: 'compact',
     label: 'Compact',
     description:
-      'Narrower layout for thermal-printer widths, with unit prices omitted to save space.',
+      'Tight, narrow layout for 58mm thermal rolls — small type, unit prices omitted, minimal rules.',
     density: 'compact',
     showItemUnitPrice: false,
     showTaxBreakdown: true,
-    showPaymentDetail: true,
-    widthClass: 'max-w-xs',
+    showPaymentDetail: false,
+    showItemTax: false,
+    showReceiptMeta: false,
+    widthClass: 'max-w-[16rem]',
     paperWidthMm: 58,
   },
   detailed: {
     id: 'detailed',
     label: 'Detailed',
     description:
-      'Everything Classic shows, plus a full tax and payment breakdown — for businesses that need it on the printed copy.',
+      'Everything Classic shows, plus a per-item tax share and an item-count / payment-reference block — for businesses that need it on the printed copy.',
     density: 'comfortable',
     showItemUnitPrice: true,
     showTaxBreakdown: true,
     showPaymentDetail: true,
+    showItemTax: true,
+    showReceiptMeta: true,
     widthClass: 'max-w-md',
     paperWidthMm: 80,
   },

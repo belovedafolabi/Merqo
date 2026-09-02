@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Layaway } from '@/lib/customers/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: LayawayActionState = { error: null }
 
@@ -106,6 +108,7 @@ export function LayawayPaymentDialog({
             <Label htmlFor="layaway-amount">
               Amount (₦) <span aria-hidden="true">*</span>
               <span className="sr-only">(required)</span>
+              <InfoHint text={FORM_HINTS.layawayPayment.amount} />
             </Label>
             <Input
               id="layaway-amount"
@@ -125,7 +128,10 @@ export function LayawayPaymentDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="layaway-method">Payment method</Label>
+            <Label htmlFor="layaway-method">
+              Payment method
+              <InfoHint text={FORM_HINTS.layawayPayment.method} />
+            </Label>
             <Select name="method" defaultValue="cash" required>
               <SelectTrigger id="layaway-method" className="w-full">
                 <SelectValue />
@@ -139,7 +145,10 @@ export function LayawayPaymentDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="layaway-reference">Reference (optional)</Label>
+            <Label htmlFor="layaway-reference">
+              Reference (optional)
+              <InfoHint text={FORM_HINTS.layawayPayment.reference} />
+            </Label>
             <Input
               id="layaway-reference"
               name="reference"

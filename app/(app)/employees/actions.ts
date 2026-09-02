@@ -1,5 +1,7 @@
 'use server'
 
+import { toErrorMessage } from '@/lib/errors'
+
 import { revalidatePath } from 'next/cache'
 
 import { inviteEmployee, revokeInvitation, setEmployeeActive } from '@/lib/employees/mutations'
@@ -19,7 +21,7 @@ export interface EmployeeActionState {
 const initialState: EmployeeActionState = { error: null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return toErrorMessage(error)
 }
 
 function optionalStringField(formData: FormData, key: string): string | null {

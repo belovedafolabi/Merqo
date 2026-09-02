@@ -42,10 +42,21 @@ export function ReceiptDocument({
   branchName?: string | null
 }) {
   const template = RECEIPT_TEMPLATES[templateId]
+  const compact = template.density === 'compact'
+
+  // Density-driven layout. Compact is genuinely tighter — smaller type,
+  // less padding, hairline rules instead of dashed — so it reads as a
+  // different receipt at a glance, not just a narrower one.
+  const rootClass = compact ? 'gap-2 p-3 text-[0.6875rem] leading-tight' : 'gap-3 p-4 text-body-sm'
+  const ruleClass = compact ? 'border-t' : 'border-t border-dashed'
+  const itemsGap = compact ? 'gap-0.5' : 'gap-1.5'
+  const totalRow = compact ? 'text-body-sm font-semibold' : 'text-body font-semibold'
+
+  const totalUnits = sale.items.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
     <div
-      className={`mx-auto flex w-full flex-col gap-3 rounded-lg border bg-card p-4 text-body-sm print:rounded-none print:border-none ${template.widthClass}`}
+      className={`mx-auto flex w-full flex-col rounded-lg border bg-card print:rounded-none print:border-none ${rootClass} ${template.widthClass}`}
     >
       <div className="flex flex-col items-center gap-1 text-center">
         {settings.showLogo && branding?.logoUrl && (
@@ -54,32 +65,47 @@ export function ReceiptDocument({
           // benefit from Next's layout-shift/optimization machinery, and a
           // logo this small costs nothing unoptimized.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={branding.logoUrl} alt="" className="mb-1 h-10 w-auto object-contain" />
+          <img
+            src={branding.logoUrl}
+            alt=""
+            className={`w-auto object-contain ${compact ? 'mb-0.5 h-8' : 'mb-1 h-10'}`}
+          />
         )}
         <p className="font-semibold">{branding?.displayName ?? 'Merqo'}</p>
-        {branchName && <p className="text-xs text-muted-foreground">{branchName}</p>}
-        {settings.headerText && (
-          <p className="text-xs text-muted-foreground">{settings.headerText}</p>
-        )}
+        {branchName && <p className="text-muted-foreground">{branchName}</p>}
+        {settings.headerText && <p className="text-muted-foreground">{settings.headerText}</p>}
       </div>
 
-      <div className="border-t border-dashed" />
+      <div className={ruleClass} />
 
-      <ul className={`flex flex-col ${template.density === 'compact' ? 'gap-1' : 'gap-1.5'}`}>
-        {sale.items.map((item) => (
-          <li key={item.id} className="flex justify-between gap-2">
-            <span className="min-w-0 truncate">
-              {item.quantity} × {item.productName}
-              {template.showItemUnitPrice && (
-                <span className="text-muted-foreground"> @ {money(item.unitPrice)}</span>
+      <ul className={`flex flex-col ${itemsGap}`}>
+        {sale.items.map((item) => {
+          const itemTax =
+            template.showItemTax && sale.subtotal > 0
+              ? (item.lineTotal / sale.subtotal) * sale.taxAmount
+              : 0
+          return (
+            <li key={item.id} className="flex flex-col gap-0.5">
+              <div className="flex justify-between gap-2">
+                <span className="min-w-0 truncate">
+                  {item.quantity} × {item.productName}
+                  {template.showItemUnitPrice && (
+                    <span className="text-muted-foreground"> @ {money(item.unitPrice)}</span>
+                  )}
+                </span>
+                <span className="shrink-0 tabular-nums">{money(item.lineTotal)}</span>
+              </div>
+              {itemTax > 0 && (
+                <span className="text-caption text-muted-foreground">
+                  incl. tax {money(itemTax)}
+                </span>
               )}
-            </span>
-            <span className="shrink-0 tabular-nums">{money(item.lineTotal)}</span>
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
 
-      <div className="border-t border-dashed" />
+      <div className={ruleClass} />
 
       <div className="flex flex-col gap-1 text-muted-foreground">
         <div className="flex justify-between">
@@ -106,9 +132,9 @@ export function ReceiptDocument({
         )}
       </div>
 
-      <div className="border-t border-dashed" />
+      <div className={ruleClass} />
 
-      <div className="flex justify-between text-body font-semibold">
+      <div className={`flex justify-between ${totalRow}`}>
         <span>Total</span>
         <span className="tabular-nums">{money(sale.total)}</span>
       </div>
@@ -121,13 +147,35 @@ export function ReceiptDocument({
           </div>
         ))}
 
-      <p className="text-caption text-muted-foreground">
+      {template.showReceiptMeta && (
+        <div className="mt-1 flex flex-col gap-0.5 text-caption text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Items</span>
+            <span className="tabular-nums">
+              {sale.items.length} line{sale.items.length === 1 ? '' : 's'} · {totalUnits} unit
+              {totalUnits === 1 ? '' : 's'}
+            </span>
+          </div>
+          {sale.payments
+            .filter((payment) => payment.reference)
+            .map((payment) => (
+              <div key={payment.id} className="flex justify-between gap-2">
+                <span>Ref</span>
+                <span className="min-w-0 truncate text-right">{payment.reference}</span>
+              </div>
+            ))}
+        </div>
+      )}
+
+      <p className={`text-caption text-muted-foreground ${compact ? 'mt-1' : 'mt-2'}`}>
         {formatDateTime(sale.createdAt)} · Receipt #{sale.id.slice(0, 8).toUpperCase()}
-        {settings.showCashier && sale.createdByName ? ` · Served by ${sale.createdByName}` : ''}
+        {(settings.showCashier || template.showReceiptMeta) && sale.createdByName
+          ? ` · Served by ${sale.createdByName}`
+          : ''}
       </p>
 
       {settings.footerText && (
-        <p className="text-center text-xs text-muted-foreground">{settings.footerText}</p>
+        <p className="mt-1 text-center text-muted-foreground">{settings.footerText}</p>
       )}
     </div>
   )

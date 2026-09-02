@@ -27,6 +27,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useState } from 'react'
 import type { BranchOption } from '@/components/reports/report-filter-bar'
 import type { CustomReportConfig } from '@/lib/reports/schemas'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: ReportActionState = { error: null }
 
@@ -95,7 +97,10 @@ export function SaveReportDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="saved-report-name">Name</Label>
+            <Label htmlFor="saved-report-name">
+              Name
+              <InfoHint text={FORM_HINTS.savedReport.name} />
+            </Label>
             <Input
               id="saved-report-name"
               name="name"
@@ -107,7 +112,10 @@ export function SaveReportDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="saved-report-description">Description</Label>
+            <Label htmlFor="saved-report-description">
+              Description
+              <InfoHint text={FORM_HINTS.savedReport.description} />
+            </Label>
             <Textarea
               id="saved-report-description"
               name="description"
@@ -118,7 +126,10 @@ export function SaveReportDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="saved-report-visibility">Who can see it</Label>
+            <Label htmlFor="saved-report-visibility">
+              Who can see it
+              <InfoHint text={FORM_HINTS.savedReport.visibility} />
+            </Label>
             <Select
               value={visibility}
               onValueChange={(value) =>
@@ -143,7 +154,10 @@ export function SaveReportDialog({
 
           {visibility === 'branch' && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="saved-report-branch">Branch</Label>
+              <Label htmlFor="saved-report-branch">
+                Branch
+                <InfoHint text={FORM_HINTS.savedReport.branch} />
+              </Label>
               <select
                 id="saved-report-branch"
                 name="branchId"

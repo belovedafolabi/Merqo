@@ -4,6 +4,7 @@ import { Package } from 'lucide-react'
 import { requirePermission } from '@/lib/auth/guard'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { listCategories, listCategorySuggestions, listProducts } from '@/lib/products/queries'
+import { listUnitsOfMeasure } from '@/lib/units/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { EmptyState } from '@/components/states/empty-state'
 import { ProductsView } from '@/components/products/products-view'
@@ -68,10 +69,11 @@ async function ProductsPageContent({
   businessUnitId: string
   businessTypeId: string
 }) {
-  const [products, categories, categorySuggestions] = await Promise.all([
+  const [products, categories, categorySuggestions, units] = await Promise.all([
     listProducts(organizationId, businessUnitId),
     listCategories(businessUnitId),
     listCategorySuggestions(businessTypeId),
+    listUnitsOfMeasure(organizationId),
   ])
 
   return (
@@ -81,6 +83,7 @@ async function ProductsPageContent({
       products={products}
       categories={categories}
       categorySuggestions={categorySuggestions}
+      units={units}
     />
   )
 }

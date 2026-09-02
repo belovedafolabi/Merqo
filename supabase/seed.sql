@@ -167,7 +167,8 @@ insert into public.permissions (key, resource, action, description) values
   ('products.update', 'products', 'update', 'Update a product, variant, image, or branch price override.'),
   ('products.archive', 'products', 'archive', 'Archive (soft-delete) a product or variant.'),
   ('products.view_cost_price', 'products', 'view_cost_price', 'View a product''s cost price (sensitive — hidden from most roles by default).'),
-  ('categories.manage', 'categories', 'manage', 'Create, update, and archive product categories.')
+  ('categories.manage', 'categories', 'manage', 'Create, update, and archive product categories.'),
+  ('units.manage', 'units', 'manage', 'Create, update, and archive units of measurement.')
 on conflict (key) do nothing;
 
 -- =============================================================================
@@ -425,7 +426,7 @@ on conflict (role_id, permission_id) do nothing;
 with branch_manager_product_permissions (key) as (
   values
     ('products.view'), ('products.create'), ('products.update'),
-    ('products.archive'), ('categories.manage')
+    ('products.archive'), ('categories.manage'), ('units.manage')
 )
 insert into public.role_permissions (role_id, permission_id)
 select r.id, p.id
@@ -701,3 +702,23 @@ select bt.id, s.name, s.sort_order
 from suggestions s
 join public.business_types bt on bt.slug = s.business_type_slug
 on conflict (business_type_id, name) do nothing;
+
+-- =============================================================================
+-- System units of measurement (units_of_measure, 20260902090000). The
+-- migration seeds the same rows so an existing deployment gets them on
+-- deploy; this keeps a fresh `db reset` self-consistent. `organization_id`
+-- null = a system unit: read-only to tenants, visible to everyone.
+-- =============================================================================
+insert into public.units_of_measure (organization_id, name, abbreviation) values
+  (null, 'Unit', 'unit'), (null, 'Piece', 'pc'), (null, 'Pair', 'pr'), (null, 'Set', 'set'),
+  (null, 'Dozen', 'dz'), (null, 'Pack', 'pk'), (null, 'Bundle', 'bdl'), (null, 'Roll', 'roll'),
+  (null, 'Sheet', 'sht'), (null, 'Box', 'box'), (null, 'Carton', 'ctn'), (null, 'Case', 'cs'),
+  (null, 'Crate', 'crt'), (null, 'Tray', 'tray'), (null, 'Bag', 'bag'), (null, 'Sack', 'sack'),
+  (null, 'Sachet', 'sct'), (null, 'Bottle', 'btl'), (null, 'Can', 'can'), (null, 'Jar', 'jar'),
+  (null, 'Tube', 'tube'), (null, 'Tin', 'tin'), (null, 'Strip', 'strip'), (null, 'Tablet', 'tab'),
+  (null, 'Capsule', 'cap'), (null, 'Vial', 'vial'), (null, 'Milligram', 'mg'), (null, 'Gram', 'g'),
+  (null, 'Kilogram', 'kg'), (null, 'Tonne', 't'), (null, 'Millilitre', 'ml'), (null, 'Centilitre', 'cl'),
+  (null, 'Litre', 'L'), (null, 'Millimetre', 'mm'), (null, 'Centimetre', 'cm'), (null, 'Metre', 'm'),
+  (null, 'Square Metre', 'm2'), (null, 'Foot', 'ft'), (null, 'Yard', 'yd'), (null, 'Pallet', 'plt'),
+  (null, 'Container', 'cont'), (null, 'Hour', 'hr'), (null, 'Day', 'day'), (null, 'Service', 'svc')
+on conflict do nothing;

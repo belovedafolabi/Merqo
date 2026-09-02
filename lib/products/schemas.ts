@@ -47,7 +47,15 @@ export const productInputSchema = z.object({
     .max(2000, 'Description must be 2000 characters or fewer.')
     .optional()
     .transform((value) => (value ? value : undefined)),
-  sku: z.string().trim().min(1, 'SKU is required.').max(64, 'SKU must be 64 characters or fewer.'),
+  // Optional: products.sku is NOT NULL, but a blank field is filled in
+  // server-side by generateSku() (lib/products/sku.ts) at create time, and
+  // left untouched on update. undefined here means "auto-generate".
+  sku: z
+    .string()
+    .trim()
+    .max(64, 'SKU must be 64 characters or fewer.')
+    .optional()
+    .transform((value) => (value ? value : undefined)),
   barcode: optionalCode,
   unitOfMeasurement: z
     .string()

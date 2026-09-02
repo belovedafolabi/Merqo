@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { Customer } from '@/lib/customers/queries'
+import { InfoHint } from '@/components/ui/field-hint'
+import { FORM_HINTS } from '@/lib/form-hints'
 
 const initialState: CustomerActionState = { error: null }
 
@@ -91,6 +93,7 @@ export function CustomerFormDialog({
             <Label htmlFor="customer-name">
               Name <span aria-hidden="true">*</span>
               <span className="sr-only">(required)</span>
+              <InfoHint text={FORM_HINTS.customer.name} />
             </Label>
             <Input
               id="customer-name"
@@ -104,7 +107,10 @@ export function CustomerFormDialog({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="customer-phone">Phone</Label>
+              <Label htmlFor="customer-phone">
+                Phone
+                <InfoHint text={FORM_HINTS.customer.phone} />
+              </Label>
               <Input
                 id="customer-phone"
                 name="phone"
@@ -116,7 +122,10 @@ export function CustomerFormDialog({
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="customer-email">Email</Label>
+              <Label htmlFor="customer-email">
+                Email
+                <InfoHint text={FORM_HINTS.customer.email} />
+              </Label>
               <Input
                 id="customer-email"
                 name="email"
@@ -130,7 +139,10 @@ export function CustomerFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="customer-address">Address</Label>
+            <Label htmlFor="customer-address">
+              Address
+              <InfoHint text={FORM_HINTS.customer.address} />
+            </Label>
             <Textarea
               id="customer-address"
               name="address"
@@ -140,7 +152,10 @@ export function CustomerFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="customer-notes">Notes</Label>
+            <Label htmlFor="customer-notes">
+              Notes
+              <InfoHint text={FORM_HINTS.customer.notes} />
+            </Label>
             <Textarea
               id="customer-notes"
               name="notes"

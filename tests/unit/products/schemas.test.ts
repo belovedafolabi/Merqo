@@ -31,8 +31,16 @@ describe('productInputSchema', () => {
     basePrice: 500,
   }
 
-  it('rejects an empty SKU', () => {
-    expect(productInputSchema.safeParse({ ...base, sku: '' }).success).toBe(false)
+  it('treats an empty SKU as absent — it is generated server-side at create time', () => {
+    const result = productInputSchema.safeParse({ ...base, sku: '' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.sku).toBeUndefined()
+  })
+
+  it('keeps a supplied SKU', () => {
+    const result = productInputSchema.safeParse({ ...base, sku: '  COKE-50CL  ' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.sku).toBe('COKE-50CL')
   })
 
   it('rejects a negative base price', () => {

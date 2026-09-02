@@ -52,6 +52,7 @@ export function CartSummary() {
         <span className="text-h3 font-semibold tabular-nums">{money(totals.total)}</span>
       </div>
       <Button
+        data-tour="pos-checkout"
         size="lg"
         disabled={lines.length === 0}
         className={cn('h-14 rounded-xl text-body font-semibold', lines.length > 0 && 'glow-brand')}
