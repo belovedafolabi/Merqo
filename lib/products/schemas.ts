@@ -72,6 +72,19 @@ export const productInputSchema = z.object({
 })
 export type ProductInput = z.infer<typeof productInputSchema>
 
+/**
+ * Opening stock, set on the create form so a new product does not have to be
+ * created and then separately stocked on the Inventory screen. Absent (not
+ * zero) when the field was not rendered — it is gated on `inventory.adjust`,
+ * which the product's creator does not necessarily hold. Zero and blank both
+ * mean "no opening movement"; the actual stock write goes through
+ * createStockAdjustment(), so its own rules and audit trail apply unchanged.
+ */
+export const openingStockSchema = z.coerce
+  .number()
+  .min(0, 'Opening stock cannot be negative.')
+  .optional()
+
 export const productVariantInputSchema = z.object({
   name: nameSchema,
   sku: optionalCode,

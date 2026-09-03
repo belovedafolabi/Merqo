@@ -21,7 +21,12 @@ test('a signed-in cashier reaches the till and can search the seeded catalog', a
   await expect(search).toBeVisible()
 
   await search.fill(fixture.searchProductName)
-  await expect(page.getByText(fixture.searchProductName).first()).toBeVisible()
+  // Scope to the search-result TILE (a button), not bare text: the
+  // recently-sold / most-sold strips can also carry this product's name, and
+  // getByText().first() would then pass without the search returning anything.
+  await expect(
+    page.getByRole('button', { name: new RegExp(fixture.searchProductName, 'i') }),
+  ).toBeVisible({ timeout: 90_000 })
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

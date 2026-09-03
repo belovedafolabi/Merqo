@@ -17,8 +17,20 @@ const nameSchema = z
   .min(1, 'Name is required.')
   .max(120, 'Name must be 120 characters or fewer.')
 
+// `.optional()` last (no `.transform`) so the KEY is optional in the inferred
+// type — callers that don't set an address, e.g. the onboarding wizard's
+// branch step, pass `{ name }` and still type-check. A submitted-but-empty
+// value arrives as '' and is normalised to null by the mutation.
+const optionalText = (max: number, message: string) =>
+  z.string().trim().max(max, message).optional()
+
 export const branchInputSchema = z.object({
   name: nameSchema,
+  // Printed on this branch's receipts beneath the business name
+  // (20260903090200). Optional — a single-shop business leaves these blank
+  // and the receipt falls back to the organization's address/phone.
+  addressLine: optionalText(500, 'Address must be 500 characters or fewer.'),
+  contactPhone: optionalText(32, 'Phone number must be 32 characters or fewer.'),
 })
 export type BranchInput = z.infer<typeof branchInputSchema>
 

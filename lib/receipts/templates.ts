@@ -33,8 +33,23 @@ export interface ReceiptTemplateDef {
    */
   showItemTax: boolean
   showReceiptMeta: boolean
-  /** Tailwind max-width class for the printed/previewed document. */
+  /**
+   * Tailwind max-width class for the previewed document, sized to match the
+   * physical roll `paperWidthMm` targets — an 80mm roll has ~302px of
+   * printable width at 96dpi, a 58mm roll ~219px. It used to be `max-w-sm` /
+   * `max-w-md` (384–448px), so the on-screen preview was wider than anything
+   * that could actually print and the right-hand price column looked safe
+   * when it would in fact clip on the roll.
+   */
   widthClass: string
+  /**
+   * Receipt body type size. The three templates are meant to differ by size,
+   * density and which lines they show — not width alone (Classic and
+   * Detailed share an 80mm roll). Compact is the smallest; Detailed is a
+   * notch down from Classic because it carries the extra per-item-tax and
+   * meta rows and still has to fit the same roll.
+   */
+  bodyClass: string
   /**
    * Physical paper width the printed `@page` rule targets, in millimetres —
    * 58mm and 80mm being the two thermal receipt-roll sizes in general use.
@@ -72,7 +87,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showPaymentDetail: true,
     showItemTax: false,
     showReceiptMeta: false,
-    widthClass: 'max-w-sm',
+    widthClass: 'max-w-[302px]',
+    bodyClass: 'text-[0.75rem] leading-normal',
     paperWidthMm: 80,
   },
   compact: {
@@ -86,7 +102,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showPaymentDetail: false,
     showItemTax: false,
     showReceiptMeta: false,
-    widthClass: 'max-w-[16rem]',
+    widthClass: 'max-w-[219px]',
+    bodyClass: 'text-[0.625rem] leading-tight',
     paperWidthMm: 58,
   },
   detailed: {
@@ -100,7 +117,8 @@ export const RECEIPT_TEMPLATES: Record<ReceiptTemplateId, ReceiptTemplateDef> = 
     showPaymentDetail: true,
     showItemTax: true,
     showReceiptMeta: true,
-    widthClass: 'max-w-md',
+    widthClass: 'max-w-[302px]',
+    bodyClass: 'text-[0.6875rem] leading-snug',
     paperWidthMm: 80,
   },
 }

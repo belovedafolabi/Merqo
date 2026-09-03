@@ -1,18 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Package } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PosSearch } from '@/components/pos/pos-search'
 import { ProductTile } from '@/components/pos/product-tile'
+import { ProductShortcutStrips } from '@/components/pos/product-shortcut-strips'
 import { EmptyState } from '@/components/states/empty-state'
 import { useBarcodeScanner, isScanCaptureBlocked } from '@/hooks/use-barcode-scanner'
 import { logger } from '@/lib/logger'
 import { useCart } from '@/lib/pos/cart-context'
 import { usePosSession } from '@/lib/pos/session-context'
-import { searchProductsAction, lookupBarcodeAction } from '@/app/(pos)/pos/actions'
-import type { Product } from '@/lib/products/queries'
+import type { PosProduct } from '@/lib/pos/catalog'
+import { lookupBarcodeAction } from '@/app/(pos)/pos/actions'
 
 /**
  * Owns the search-as-you-type / barcode-scan workflow Milestone 08's
@@ -36,6 +37,16 @@ const TILE_GRID_CLASS =
   'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
 
 /**
+ * Search debounce. Was 250ms; dropped to 120 once the search moved off a
+ * serialized Server Action onto an abortable fetch (app/api/pos/products/
+ * search) — the old value was partly compensating for the fact that stale
+ * in-flight actions could not be cancelled, so a short debounce meant several
+ * of them queued. With cancellation, 120ms is long enough to coalesce a fast
+ * typist's burst and short enough to feel immediate.
+ */
+const SEARCH_DEBOUNCE_MS = 120
+
+/**
  * Focuses the search box only on a device with a real pointer — i.e. a
  * desktop or a till with a keyboard attached.
  *
@@ -57,38 +68,98 @@ function focusSearchIfKeyboardDevice(input: HTMLInputElement | null): void {
 }
 
 export function ProductGrid() {
-  const { organizationId, businessUnitId } = usePosSession()
+  const { businessUnitId } = usePosSession()
   const { addItem } = useCart()
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Product[]>([])
+  const [results, setResults] = useState<PosProduct[]>([])
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   // Derived, not a separate toggled boolean: "pending" is just "the trimmed
   // query hasn't been searched yet" — comparing against the last query that
-  // actually resolved. Only the resolve itself (searchProductsAction's
-  // .then()) needs to setState from inside the effect, and doing so from a
-  // callback rather than synchronously in the effect body is the documented
-  // exception react-hooks/set-state-in-effect allows.
+  // actually resolved.
   const [lastSearchedQuery, setLastSearchedQuery] = useState('')
   const pending = query.trim() !== '' && query.trim() !== lastSearchedQuery
 
+  // Keyed by the trimmed lowercase term. Backspacing through a word the
+  // cashier just typed is then instant — the result for "brea" is already
+  // here when they delete the "d". Lives in a ref so filling it never itself
+  // triggers a render.
+  const cacheRef = useRef<Map<string, PosProduct[]>>(new Map())
+  // The in-flight request for the current keystroke, aborted when the next
+  // one starts so a slow earlier response can never paint over a newer one.
+  const abortRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
     const term = query.trim()
-    // No setResults([]) here for the empty-query case — nothing needs to
-    // clear it: the render below already shows the "search or scan" empty
-    // state whenever `!query.trim()`, without ever reading `results`, so a
-    // stale value sitting in state until the next real search is harmless
-    // and avoids a synchronous setState-in-effect for a case the render
-    // already handles.
     if (!term) return
+
+    const key = term.toLowerCase()
+    const cached = cacheRef.current.get(key)
+    if (cached) {
+      setResults(cached)
+      setLastSearchedQuery(term)
+      return
+    }
+
     const timeout = setTimeout(() => {
-      searchProductsAction(organizationId, businessUnitId, term).then((data) => {
-        setResults(data)
-        setLastSearchedQuery(term)
-      })
-    }, 250)
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      fetch(
+        `/api/pos/products/search?businessUnitId=${encodeURIComponent(
+          businessUnitId,
+        )}&q=${encodeURIComponent(term)}`,
+        { signal: controller.signal },
+      )
+        .then((response) => {
+          if (!response.ok) throw new Error(`search ${response.status}`)
+          return response.json() as Promise<{ products: PosProduct[] }>
+        })
+        .then(({ products }) => {
+          cacheRef.current.set(key, products)
+          setResults(products)
+          setLastSearchedQuery(term)
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') return
+          logger.error('pos.search_request_failed', {
+            error: error instanceof Error ? error.message : String(error),
+          })
+          toast.error('Search is unavailable', { description: 'Try again in a moment.' })
+        })
+    }, SEARCH_DEBOUNCE_MS)
+
     return () => clearTimeout(timeout)
-  }, [query, organizationId, businessUnitId])
+  }, [query, businessUnitId])
+
+  // The category chips: distinct categories present in the current result
+  // set. Shown only once there is more than one to choose between.
+  const resultCategories = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const product of results) {
+      if (product.categoryId && product.categoryName && !seen.has(product.categoryId)) {
+        seen.set(product.categoryId, product.categoryName)
+      }
+    }
+    return [...seen.entries()].map(([id, name]) => ({ id, name }))
+  }, [results])
+
+  // A filter that no longer matches any category in the current results (the
+  // cashier changed the query) self-heals to "All" here, rather than an
+  // effect resetting it on every keystroke — which would be a setState in an
+  // effect body, and this project's lint forbids that.
+  const activeCategory =
+    categoryFilter && resultCategories.some((category) => category.id === categoryFilter)
+      ? categoryFilter
+      : null
+
+  const visibleResults = useMemo(
+    () =>
+      activeCategory ? results.filter((product) => product.categoryId === activeCategory) : results,
+    [results, activeCategory],
+  )
 
   const addProductToCart = useCallback(
     (product: { id: string; name: string; basePrice: number }) => {
@@ -113,19 +184,14 @@ export function ProductGrid() {
 
       // Previously a silent no-op, which was indistinguishable from a scanner
       // that had not fired at all. sonner's region is aria-live, so this is
-      // announced rather than conveyed by colour alone. The server side
-      // already logs products.barcode_lookup_miss with the code itself
-      // (lib/products/queries.ts); this client event is what correlates a
-      // miss with useBarcodeScanner's own heuristic events during rollout,
-      // per this milestone's Observability section.
+      // announced rather than conveyed by colour alone.
       logger.warn('pos.scan_no_match', { businessUnitId, length: barcode.length })
       toast.error(`No product matches barcode ${barcode}`, {
         description: 'Search by name or SKU instead.',
       })
 
-      // Fall back to the ordinary debounced search, which already matches
-      // the barcode column (searchProducts' ilike OR) — so a partially-read
-      // or mistyped code still surfaces its near-matches.
+      // Fall back to the ordinary debounced search, which also matches the
+      // barcode column — a partially-read code still surfaces its near-matches.
       setQuery(barcode)
     },
     [businessUnitId, addProductToCart],
@@ -140,15 +206,8 @@ export function ProductGrid() {
   }, [])
 
   // "Type anywhere to search": on a keyboard device, a printable keystroke
-  // while nothing else is focused (a product tile, the cart, the page body)
-  // pulls focus into the search box so the cashier never has to click it
-  // first. Deliberately narrow — isScanCaptureBlocked() already excludes
-  // inputs/textareas/selects/contenteditable and anything inside a
-  // [role="dialog"] (the checkout drawer, customer picker), so this never
-  // fights a field the user is actually typing in, and never fires while a
-  // modal is open. No preventDefault, so the character that triggered it
-  // still lands in the newly-focused input. Bubble phase and a focus guard
-  // keep it composable with useBarcodeScanner (document-level, same phase).
+  // while nothing else is focused pulls focus into the search box so the
+  // cashier never has to click it first.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -168,6 +227,8 @@ export function ProductGrid() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  const searching = query.trim() !== ''
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
       <PosSearch
@@ -177,7 +238,27 @@ export function ProductGrid() {
         inputRef={inputRef}
       />
 
-      {!query.trim() ? (
+      {!searching && <ProductShortcutStrips onSelect={addProductToCart} />}
+
+      {searching && resultCategories.length > 1 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter results by category">
+          <CategoryChip
+            label="All"
+            active={activeCategory === null}
+            onClick={() => setCategoryFilter(null)}
+          />
+          {resultCategories.map((category) => (
+            <CategoryChip
+              key={category.id}
+              label={category.name}
+              active={activeCategory === category.id}
+              onClick={() => setCategoryFilter(category.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {!searching ? (
         <div className="flex flex-1 items-center justify-center">
           <EmptyState
             icon={Package}
@@ -185,7 +266,7 @@ export function ProductGrid() {
             description="Matching products appear here as you type or scan a barcode."
           />
         </div>
-      ) : results.length === 0 && !pending ? (
+      ) : visibleResults.length === 0 && !pending ? (
         <div className="flex flex-1 items-center justify-center">
           <EmptyState
             icon={Package}
@@ -195,13 +276,13 @@ export function ProductGrid() {
         </div>
       ) : (
         <div className={TILE_GRID_CLASS}>
-          {results.map((product) => (
+          {visibleResults.map((product) => (
             <ProductTile
               key={product.id}
               product={{
                 id: product.id,
                 name: product.name,
-                sku: product.sku,
+                sku: product.sku ?? undefined,
                 price: product.basePrice.toLocaleString(undefined, {
                   style: 'currency',
                   currency: 'NGN',
@@ -213,5 +294,31 @@ export function ProductGrid() {
         </div>
       )}
     </div>
+  )
+}
+
+function CategoryChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        'min-h-9 rounded-full border px-3 text-body-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ' +
+        (active
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-input bg-card text-muted-foreground hover:text-foreground')
+      }
+    >
+      {label}
+    </button>
   )
 }

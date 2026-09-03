@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import type { Branch } from '@/lib/business-structure/queries'
 import { InfoHint } from '@/components/ui/field-hint'
 import { FORM_HINTS } from '@/lib/form-hints'
@@ -59,7 +60,7 @@ export function BranchFormDialog({
           <DialogTitle>{branch ? 'Edit branch' : 'New branch'}</DialogTitle>
           <DialogDescription>
             {branch
-              ? 'Update this branch’s name.'
+              ? 'Update this branch’s name and the address printed on its receipts.'
               : 'A physical location — store, outlet, or warehouse.'}
           </DialogDescription>
         </DialogHeader>
@@ -85,6 +86,34 @@ export function BranchFormDialog({
               <InfoHint text={FORM_HINTS.branch.name} />
             </Label>
             <Input id="branch-name" name="name" defaultValue={branch?.name} required autoFocus />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="branch-address">
+              Address
+              <InfoHint text={FORM_HINTS.branch.address} />
+            </Label>
+            <Textarea
+              id="branch-address"
+              name="addressLine"
+              defaultValue={branch?.addressLine ?? ''}
+              rows={2}
+              placeholder="Printed on receipts. Leave blank to use the organization address."
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="branch-phone">
+              Contact phone
+              <InfoHint text={FORM_HINTS.branch.phone} />
+            </Label>
+            <Input
+              id="branch-phone"
+              name="contactPhone"
+              type="tel"
+              inputMode="tel"
+              defaultValue={branch?.contactPhone ?? ''}
+            />
           </div>
 
           <DialogFooter>

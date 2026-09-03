@@ -20,6 +20,8 @@ export const FORM_HINTS = {
       'What you pay to buy or make one unit. Used for profit reporting; never shown to customers.',
     basePrice: 'The normal selling price per unit, before any branch override or discount.',
     description: 'Optional notes about the product. Not printed on receipts.',
+    openingStock:
+      'How many units are in stock right now at your main branch. Recorded as a stock adjustment; you can correct it later on the Inventory screen.',
   },
   variant: {
     name: 'What makes this version different — e.g. "500ml", "Large", "Red".',

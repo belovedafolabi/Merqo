@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
   createProductAction,
@@ -76,6 +77,9 @@ export function ProductFormDialog({
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {
+      // A product created without its opening stock still closes the form —
+      // the product exists — but says so rather than silently succeeding.
+      if (state.notice) toast.warning(state.notice)
       onOpenChange(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,6 +217,27 @@ export function ProductFormDialog({
               />
             </div>
           </div>
+
+          {!product && (
+            <Can permission="inventory.adjust" scope={{ organizationId }}>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="product-opening-stock">
+                  Opening stock
+                  <InfoHint text={FORM_HINTS.product.openingStock} />
+                </Label>
+                <Input
+                  id="product-opening-stock"
+                  name="openingStock"
+                  type="number"
+                  min={0}
+                  step="1"
+                  inputMode="numeric"
+                  defaultValue={0}
+                  placeholder="0"
+                />
+              </div>
+            </Can>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="product-description">

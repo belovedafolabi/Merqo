@@ -46,6 +46,16 @@ export interface Sale {
    *  line (Milestone 11's receipt_show_cashier setting). Null whenever
    *  createdBy is null, or (rarely) if the user row has since been removed. */
   createdByName: string | null
+  /**
+   * The selling branch's name and contact details, for the receipt header
+   * block under the business name (20260903090200). Address/phone are null
+   * when the branch has not set its own — the renderer falls back to the
+   * organization's. A separate sub-query in getSale(), same additive shape
+   * as createByName above.
+   */
+  branchName: string | null
+  branchAddressLine: string | null
+  branchContactPhone: string | null
   items: SaleItem[]
   payments: Payment[]
 }
@@ -153,10 +163,22 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     createdByName = creator?.full_name ?? null
   }
 
+  // Additive, like createdByName: keeps getSale a pure extension rather than
+  // reworking the sales select. RLS already scoped saleRow to a branch the
+  // caller can see, so this row is always readable.
+  const { data: branchRow } = await supabase
+    .from('branches')
+    .select('name, address_line, contact_phone')
+    .eq('id', saleRow.branch_id)
+    .maybeSingle<{ name: string; address_line: string | null; contact_phone: string | null }>()
+
   return {
     id: saleRow.id,
     branchId: saleRow.branch_id,
     businessUnitId: saleRow.business_unit_id,
+    branchName: branchRow?.name ?? null,
+    branchAddressLine: branchRow?.address_line ?? null,
+    branchContactPhone: branchRow?.contact_phone ?? null,
     subtotal: Number(saleRow.subtotal),
     discountAmount: Number(saleRow.discount_amount),
     discountReason: saleRow.discount_reason,

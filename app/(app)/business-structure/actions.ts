@@ -39,10 +39,9 @@ export async function createBranchAction(
   formData: FormData,
 ): Promise<BusinessStructureActionState> {
   const organizationId = String(formData.get('organizationId') ?? '')
-  const name = String(formData.get('name') ?? '')
 
   try {
-    await createBranch(organizationId, { name })
+    await createBranch(organizationId, branchInputFrom(formData))
   } catch (error) {
     return { error: errorMessage(error) }
   }
@@ -51,16 +50,28 @@ export async function createBranchAction(
   return { error: null }
 }
 
+/**
+ * The Branch identity + receipt-address fields, shared by create and update.
+ * Empty strings pass the schema (they are within max length) and are
+ * normalised to null by lib/business-structure/mutations.ts.
+ */
+function branchInputFrom(formData: FormData) {
+  return {
+    name: String(formData.get('name') ?? ''),
+    addressLine: String(formData.get('addressLine') ?? ''),
+    contactPhone: String(formData.get('contactPhone') ?? ''),
+  }
+}
+
 export async function updateBranchAction(
   _prevState: BusinessStructureActionState,
   formData: FormData,
 ): Promise<BusinessStructureActionState> {
   const organizationId = String(formData.get('organizationId') ?? '')
   const branchId = String(formData.get('branchId') ?? '')
-  const name = String(formData.get('name') ?? '')
 
   try {
-    await updateBranch(organizationId, branchId, { name })
+    await updateBranch(organizationId, branchId, branchInputFrom(formData))
   } catch (error) {
     return { error: errorMessage(error) }
   }

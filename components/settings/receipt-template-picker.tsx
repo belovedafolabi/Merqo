@@ -72,6 +72,8 @@ export function ReceiptTemplatePicker({
                       footerText: footerText || null,
                       showLogo,
                       showCashier: true,
+                      orgAddressLine: null,
+                      orgContactPhone: null,
                     }}
                   />
                 </div>

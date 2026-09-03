@@ -57,7 +57,14 @@ export async function createBranch(
   const row = await withSlugRetry<{ id: string }>(slugify(parsed.name), (slug) =>
     supabase
       .from('branches')
-      .insert({ organization_id: organizationId, name: parsed.name, slug, created_by: user.id })
+      .insert({
+        organization_id: organizationId,
+        name: parsed.name,
+        slug,
+        address_line: parsed.addressLine?.trim() || null,
+        contact_phone: parsed.contactPhone?.trim() || null,
+        created_by: user.id,
+      })
       .select('id')
       .single(),
   )
@@ -86,7 +93,14 @@ export async function updateBranch(
   const parsed = branchInputSchema.parse(input)
   const supabase = await createServerSupabaseClient()
 
-  const { error } = await supabase.from('branches').update({ name: parsed.name }).eq('id', branchId)
+  const { error } = await supabase
+    .from('branches')
+    .update({
+      name: parsed.name,
+      address_line: parsed.addressLine?.trim() || null,
+      contact_phone: parsed.contactPhone?.trim() || null,
+    })
+    .eq('id', branchId)
   if (error) throw error
 
   await recordAuditEvent(
