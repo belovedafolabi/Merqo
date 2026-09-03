@@ -13,6 +13,10 @@ const TABS = [
   { href: '/settings/branding', label: 'Branding', permission: null },
   { href: '/settings/receipts', label: 'Receipts', permission: null },
   { href: '/settings/notifications', label: 'Notifications', permission: null },
+  // Milestone 17 Part C. Per-user, not org-scoped — like Notifications above,
+  // and for the same reason it sits here rather than in the sidebar: password
+  // change plus two session-revoke buttons is one small form, not a screen.
+  { href: '/settings/account', label: 'Account', permission: null },
   // Milestone 13: every org member can view their organization's own
   // subscription (subscription.view is on Owner and every locked-out user
   // by construction — see 20260825100500), so this tab is unconditional

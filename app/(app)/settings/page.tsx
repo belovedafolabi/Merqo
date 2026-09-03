@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Bell, Building2, Palette, Receipt } from 'lucide-react'
+import { ArrowRight, Bell, Building2, Palette, Receipt, ShieldCheck } from 'lucide-react'
 
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +29,12 @@ const SECTIONS = [
     icon: Bell,
     title: 'Notifications',
     description: 'Choose which alerts reach you in-app or by email.',
+  },
+  {
+    href: '/settings/account',
+    icon: ShieldCheck,
+    title: 'Account',
+    description: 'Change your password and sign out of other devices.',
   },
 ]
 

@@ -41,6 +41,20 @@ async function signInAndSaveState(
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(credentials.email)
     await page.getByLabel('Password').fill(credentials.password)
+
+    // Milestone 17 Part C: tick "remember me" so the saved storageState carries
+    // the `long` session policy. Without it every authenticated project would
+    // inherit `short` — browser-lifetime cookies with a 12h absolute cap — and
+    // a suite that reuses one storageState across projects and retries would be
+    // asserting against an ambiguous session lifetime.
+    const remember = page.getByRole('switch', { name: 'Remember me for 30 days' })
+    await remember.click()
+    // Asserted, not assumed: /sign-in is statically prerendered, so a click
+    // that lands before Radix hydrates is silently swallowed and the run would
+    // proceed on a `short` session — which then expires mid-suite in ways that
+    // look like unrelated flakes rather than a miswired fixture.
+    await expect(remember).toBeChecked()
+
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await page.waitForURL('**/dashboard', { timeout: 30_000 })

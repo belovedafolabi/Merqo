@@ -24,6 +24,11 @@ export const dynamic = 'force-dynamic'
  * below plus pos_search_products's SECURITY INVOKER RLS scoping mean a caller
  * only ever searches a business unit they can already see. A bogus
  * businessUnitId returns an empty list, not another tenant's catalog.
+ *
+ * Milestone 17 Part C narrowed that exemption: proxy.ts's inactivity/absolute
+ * -cap check deliberately does NOT use isPublicPath(), so an idle session is
+ * rejected here with a 401 before this handler runs. Polling this route can no
+ * longer keep a dead session alive.
  */
 export async function GET(request: NextRequest) {
   const { user } = await getCurrentUserContext()
