@@ -25,6 +25,9 @@ export interface Branch {
   id: string
   name: string
   slug: string
+  /** Printed on this branch's receipts under the business name (20260903090200). */
+  addressLine: string | null
+  contactPhone: string | null
   archivedAt: string | null
 }
 
@@ -86,7 +89,7 @@ export async function listBranches(organizationId: string): Promise<Branch[]> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('branches')
-    .select('id, name, slug, archived_at')
+    .select('id, name, slug, address_line, contact_phone, archived_at')
     .eq('organization_id', organizationId)
     .order('archived_at', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: true })
@@ -96,6 +99,8 @@ export async function listBranches(organizationId: string): Promise<Branch[]> {
     id: row.id,
     name: row.name,
     slug: row.slug,
+    addressLine: row.address_line,
+    contactPhone: row.contact_phone,
     archivedAt: row.archived_at,
   }))
 }

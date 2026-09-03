@@ -49,6 +49,8 @@ export function ReceiptView({ saleId }: { saleId: string }) {
     footerText: null,
     showLogo: true,
     showCashier: true,
+    orgAddressLine: null,
+    orgContactPhone: null,
   }
 
   return (

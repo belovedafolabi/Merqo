@@ -18,6 +18,9 @@ import {
   upsertBranchPriceOverride,
 } from '@/lib/products/mutations'
 import { archiveUnit, createUnit, updateUnit } from '@/lib/units/mutations'
+import { createStockAdjustment } from '@/lib/inventory/mutations'
+import { getOnboardingState } from '@/lib/business-structure/queries'
+import { openingStockSchema } from '@/lib/products/schemas'
 
 /**
  * Server Actions for the Product/Category/Variant/pricing screens — same
@@ -26,6 +29,13 @@ import { archiveUnit, createUnit, updateUnit } from '@/lib/units/mutations'
  */
 export interface ProductsActionState {
   error: string | null
+  /**
+   * A non-fatal follow-up message: the primary action succeeded, but a
+   * secondary step did not. Used when a product is created but its opening
+   * stock could not be recorded — the product exists, so this is not an
+   * `error`, but the cashier needs to know to set stock manually.
+   */
+  notice?: string
 }
 
 const initialState: ProductsActionState = { error: null }
@@ -192,8 +202,21 @@ export async function createProductAction(
   const businessUnitId = String(formData.get('businessUnitId') ?? '')
   const categoryId = optionalStringField(formData, 'categoryId')
 
+  // Present only when the form rendered the field, which it does only for a
+  // caller holding `inventory.adjust` (see product-form-dialog.tsx). Parsed
+  // before the product write so a malformed value fails fast, without a
+  // half-created product.
+  const openingStockParse = formData.has('openingStock')
+    ? openingStockSchema.safeParse(formData.get('openingStock'))
+    : null
+  if (openingStockParse && !openingStockParse.success) {
+    return { error: openingStockParse.error.issues[0]?.message ?? 'Invalid opening stock.' }
+  }
+  const openingStock = openingStockParse?.data ?? 0
+
+  let productId: string
   try {
-    await createProduct(organizationId, businessUnitId, {
+    const created = await createProduct(organizationId, businessUnitId, {
       categoryId: categoryId ?? null,
       name: String(formData.get('name') ?? ''),
       description: optionalStringField(formData, 'description'),
@@ -203,11 +226,50 @@ export async function createProductAction(
       costPrice: optionalNumberField(formData, 'costPrice'),
       basePrice: numberField(formData, 'basePrice'),
     })
+    productId = created.id
   } catch (error) {
     return { error: errorMessage(error) }
   }
 
   revalidatePath('/products')
+
+  if (openingStock > 0) {
+    // Routed through createStockAdjustment rather than a raw movement so its
+    // own `inventory.adjust` check, audit event and low-stock notification
+    // all apply. The branch is the onboarding branch — the same one the
+    // Products screen and Inventory screen already treat as authoritative;
+    // multi-branch opening stock is a per-branch Inventory-screen task.
+    try {
+      const onboarding = await getOnboardingState()
+      if (!onboarding.branch) {
+        return {
+          error: null,
+          notice:
+            'Product created. Set its opening stock on the Inventory screen — no branch is configured yet.',
+        }
+      }
+      await createStockAdjustment(organizationId, {
+        branchId: onboarding.branch.id,
+        productId,
+        variantId: null,
+        quantityDelta: openingStock,
+        reason: 'Opening stock',
+        batchNumber: undefined,
+        expiryDate: undefined,
+      })
+      revalidatePath('/inventory')
+    } catch (error) {
+      // The product is already saved and revalidated; a failure here (a
+      // missing permission, a transient DB error) must not read as "create
+      // failed". Surface it as a notice so the cashier knows to stock it by
+      // hand.
+      return {
+        error: null,
+        notice: `Product created, but its opening stock could not be recorded: ${errorMessage(error)}`,
+      }
+    }
+  }
+
   return initialState
 }
 

@@ -27,36 +27,48 @@ function money(value: number): string {
  * Pure and presentational — no fetching, no Server Actions. Every prop is
  * data the caller already had permission to read; the component's only job
  * is to lay it out according to `template`.
+ *
+ * The three templates differ by width (Compact targets a 58mm roll, the
+ * others 80mm), by body type size (`template.bodyClass`), by density
+ * (padding / rules / gaps, driven by `template.density`), and by which
+ * optional lines they show. The address block under the business name is the
+ * same for all three.
  */
 export function ReceiptDocument({
   sale,
   templateId,
   branding,
   settings,
-  branchName,
 }: {
   sale: Sale
   templateId: keyof typeof RECEIPT_TEMPLATES
   branding: Pick<OrganizationBranding, 'displayName' | 'logoUrl'> | null
-  settings: Pick<ReceiptSettings, 'headerText' | 'footerText' | 'showLogo' | 'showCashier'>
-  branchName?: string | null
+  settings: Pick<
+    ReceiptSettings,
+    'headerText' | 'footerText' | 'showLogo' | 'showCashier' | 'orgAddressLine' | 'orgContactPhone'
+  >
 }) {
   const template = RECEIPT_TEMPLATES[templateId]
   const compact = template.density === 'compact'
 
-  // Density-driven layout. Compact is genuinely tighter — smaller type,
-  // less padding, hairline rules instead of dashed — so it reads as a
-  // different receipt at a glance, not just a narrower one.
-  const rootClass = compact ? 'gap-2 p-3 text-[0.6875rem] leading-tight' : 'gap-3 p-4 text-body-sm'
+  // Density-driven layout — padding, gaps and rule style. Type SIZE comes
+  // from template.bodyClass instead, so Detailed can be a step smaller than
+  // Classic while sharing its comfortable density.
+  const rootClass = compact ? 'gap-2 p-3' : 'gap-3 p-4'
   const ruleClass = compact ? 'border-t' : 'border-t border-dashed'
   const itemsGap = compact ? 'gap-0.5' : 'gap-1.5'
-  const totalRow = compact ? 'text-body-sm font-semibold' : 'text-body font-semibold'
+  const totalRow = compact ? 'font-semibold' : 'text-body font-semibold'
 
   const totalUnits = sale.items.reduce((sum, item) => sum + item.quantity, 0)
 
+  // The selling branch's own address/phone, falling back to the
+  // organization's when the branch has not set its own (20260903090200).
+  const addressLine = sale.branchAddressLine ?? settings.orgAddressLine
+  const contactPhone = sale.branchContactPhone ?? settings.orgContactPhone
+
   return (
     <div
-      className={`mx-auto flex w-full flex-col rounded-lg border bg-card print:rounded-none print:border-none ${rootClass} ${template.widthClass}`}
+      className={`mx-auto flex w-full flex-col rounded-lg border bg-card print:rounded-none print:border-none ${rootClass} ${template.bodyClass} ${template.widthClass}`}
     >
       <div className="flex flex-col items-center gap-1 text-center">
         {settings.showLogo && branding?.logoUrl && (
@@ -72,7 +84,12 @@ export function ReceiptDocument({
           />
         )}
         <p className="font-semibold">{branding?.displayName ?? 'Merqo'}</p>
-        {branchName && <p className="text-muted-foreground">{branchName}</p>}
+        {/* Address block, immediately under the business name and above the
+            branch/header lines — the position a printed receipt conventionally
+            carries the shop's address. */}
+        {addressLine && <p className="text-muted-foreground">{addressLine}</p>}
+        {contactPhone && <p className="text-muted-foreground">{contactPhone}</p>}
+        {sale.branchName && <p className="text-muted-foreground">{sale.branchName}</p>}
         {settings.headerText && <p className="text-muted-foreground">{settings.headerText}</p>}
       </div>
 

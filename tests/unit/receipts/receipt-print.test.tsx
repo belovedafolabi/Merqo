@@ -43,6 +43,8 @@ const settings = {
   footerText: 'Returns accepted within 7 days',
   showLogo: true,
   showCashier: true,
+  orgAddressLine: null,
+  orgContactPhone: null,
 }
 
 describe('ReceiptDocument renders each template stably', () => {
@@ -54,7 +56,6 @@ describe('ReceiptDocument renders each template stably', () => {
           templateId={templateId}
           branding={{ displayName: 'Merqo Test Store', logoUrl: null }}
           settings={settings}
-          branchName="Main"
         />,
       )
       expect(container.innerHTML).toMatchSnapshot()

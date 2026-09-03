@@ -11,7 +11,8 @@ import {
   discardHeldSale,
   type ResumedCartLine,
 } from '@/lib/sales/mutations'
-import { searchProducts, lookupProductByBarcode, type Product } from '@/lib/products/queries'
+import { lookupProductByBarcode } from '@/lib/products/queries'
+import { getPosProductShortcuts, type PosProductShortcuts } from '@/lib/pos/catalog'
 import { getSale, listHeldSales, type Sale, type HeldSale } from '@/lib/sales/queries'
 import type { SaleLineItemInput } from '@/lib/sales/schemas'
 import { getStoreCreditBalance, searchCustomers, type Customer } from '@/lib/customers/queries'
@@ -44,13 +45,25 @@ export async function listHeldSalesAction(branchId: string): Promise<HeldSale[]>
   return listHeldSales(branchId)
 }
 
-export async function searchProductsAction(
-  organizationId: string,
+// searchProductsAction was removed in the POS-fast-search change: the search
+// box now calls the abortable GET handler at app/api/pos/products/search
+// instead of a Server Action, because React serializes actions and cannot
+// cancel a stale in-flight one. lib/products/queries.ts's searchProducts()
+// stays for the Admin catalog side.
+
+/**
+ * The recently-sold / most-sold strips' data. A Server Action rather than a
+ * server-rendered prop because ProductGrid must mount immediately — it
+ * registers the document-level barcode scanner on mount, and putting the
+ * grid behind a <Suspense> that waits on this query meant the scanner
+ * listener was torn down and rebuilt when the real grid replaced the
+ * fallback, dropping any scan in flight during that swap.
+ */
+export async function getPosShortcutsAction(
+  branchId: string,
   businessUnitId: string,
-  term: string,
-): Promise<Product[]> {
-  if (!term.trim()) return []
-  return searchProducts(organizationId, businessUnitId, term)
+): Promise<PosProductShortcuts> {
+  return getPosProductShortcuts(branchId, businessUnitId)
 }
 
 export async function lookupBarcodeAction(

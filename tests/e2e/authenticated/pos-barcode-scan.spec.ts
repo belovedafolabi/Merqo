@@ -15,6 +15,15 @@ import { readE2EFixture } from '../helpers/fixture'
 const SCANNER_DELAY_MS = 10
 const HUMAN_DELAY_MS = 200
 
+/**
+ * A cart line for `name` — matched by its own remove button, which nothing
+ * else on the page renders. Scoped this way because the POS "recently sold" /
+ * "most sold" strips also print a product's NAME once it has been sold, so a
+ * bare getByText(name) is no longer a reliable "it's in the cart" signal.
+ */
+const cartLine = (page: import('@playwright/test').Page, name: string) =>
+  page.getByRole('button', { name: new RegExp(`Remove ${name} from cart`, 'i') })
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/pos')
   await expect(page).toHaveURL(/\/pos$/)
@@ -71,13 +80,9 @@ test('a fast burst with nothing focused adds the scanned product', async ({ page
 
   await openCart(page)
 
-  // .and(':visible') as defense in depth: CartLines is mounted in both
-  // CartPanel and MobileCartBar's drawer, and only one copy is ever the one
-  // actually on screen — DOM order between the two does not reliably put the
-  // visible copy first.
   await expect(
-    page.getByText(fixture.barcodeProductName).and(page.locator(':visible')),
-  ).toBeVisible()
+    cartLine(page, fixture.barcodeProductName).and(page.locator(':visible')),
+  ).toBeVisible({ timeout: 90_000 })
 })
 
 test('the same characters typed at human speed do not add anything', async ({ page }) => {
@@ -88,8 +93,11 @@ test('the same characters typed at human speed do not add anything', async ({ pa
   await page.keyboard.press('Enter')
 
   // The control case for "does not misfire on normal typing". Nothing may
-  // reach the cart — the product name must not appear anywhere on the page.
-  await expect(page.getByText(fixture.barcodeProductName)).toHaveCount(0)
+  // reach the cart. Asserted via the cart line's remove button, not bare
+  // text: the "most sold" strip can legitimately show this product's name
+  // once an earlier test has sold it.
+  await openCart(page)
+  await expect(cartLine(page, fixture.barcodeProductName)).toHaveCount(0)
 })
 
 test('a scan that matches nothing says so instead of failing silently', async ({ page }) => {
@@ -98,5 +106,7 @@ test('a scan that matches nothing says so instead of failing silently', async ({
   await page.keyboard.type('0000000000000', { delay: SCANNER_DELAY_MS })
   await page.keyboard.press('Enter')
 
-  await expect(page.getByText(/No product matches barcode/i)).toBeVisible()
+  // 90s: the miss path runs lookupBarcodeAction, and on a cold `next dev` the
+  // Server Action's first invocation compiles the whole module graph.
+  await expect(page.getByText(/No product matches barcode/i)).toBeVisible({ timeout: 90_000 })
 })

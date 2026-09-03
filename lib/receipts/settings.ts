@@ -25,6 +25,15 @@ export interface ReceiptSettings {
   footerText: string | null
   showLogo: boolean
   showCashier: boolean
+  /**
+   * The organization's own address/phone (20260824091000), used on a receipt
+   * only as the fallback when the selling branch has not set its own
+   * (20260903090200). Read here because every receipt renderer already loads
+   * ReceiptSettings, so this avoids a second organization fetch at each call
+   * site.
+   */
+  orgAddressLine: string | null
+  orgContactPhone: string | null
 }
 
 interface ReceiptSettingsRow {
@@ -33,6 +42,8 @@ interface ReceiptSettingsRow {
   receipt_footer_text: string | null
   receipt_show_logo: boolean
   receipt_show_cashier: boolean
+  address_line: string | null
+  contact_phone: string | null
 }
 
 const DEFAULT_SETTINGS: ReceiptSettings = {
@@ -41,6 +52,8 @@ const DEFAULT_SETTINGS: ReceiptSettings = {
   footerText: null,
   showLogo: true,
   showCashier: true,
+  orgAddressLine: null,
+  orgContactPhone: null,
 }
 
 export const getReceiptSettings = cache(async (): Promise<ReceiptSettings> => {
@@ -51,7 +64,7 @@ export const getReceiptSettings = cache(async (): Promise<ReceiptSettings> => {
   const { data, error } = await supabase
     .from('organizations')
     .select(
-      'receipt_template_id, receipt_header_text, receipt_footer_text, receipt_show_logo, receipt_show_cashier',
+      'receipt_template_id, receipt_header_text, receipt_footer_text, receipt_show_logo, receipt_show_cashier, address_line, contact_phone',
     )
     .eq('id', organizationId)
     .single<ReceiptSettingsRow>()
@@ -71,6 +84,8 @@ export const getReceiptSettings = cache(async (): Promise<ReceiptSettings> => {
     footerText: data.receipt_footer_text,
     showLogo: data.receipt_show_logo,
     showCashier: data.receipt_show_cashier,
+    orgAddressLine: data.address_line,
+    orgContactPhone: data.contact_phone,
   }
 })
 

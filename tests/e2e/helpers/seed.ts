@@ -43,6 +43,12 @@ export const E2E_BARCODE = 'E2EBARCODE0001'
 export const E2E_BARCODE_PRODUCT_NAME = 'E2E Scan Milk'
 /** A second, search-only product — proves search and scan are separate paths. */
 export const E2E_SEARCH_PRODUCT_NAME = 'E2E Search Bread'
+/** The category "E2E Search Bread" is filed under — the POS can search by it. */
+export const E2E_SEARCH_CATEGORY_NAME = 'E2E Bakery'
+/** The category "E2E Scan Milk" is filed under — so a POS search shows >1 chip. */
+const E2E_SCAN_CATEGORY_NAME = 'E2E Dairy'
+/** The seeded branch's address — printed on receipts (20260903090200). */
+export const E2E_BRANCH_ADDRESS = '7 Test Market Road, Ikeja, Lagos'
 
 const SEEDED_STOCK_QUANTITY = 500
 
@@ -86,6 +92,10 @@ export interface E2EFixture {
   barcode: string
   barcodeProductName: string
   searchProductName: string
+  /** The category "E2E Search Bread" is in — for asserting POS category search/filter. */
+  searchCategoryName: string
+  /** The seeded branch's address line — for asserting it prints on the receipt. */
+  branchAddress: string
   limited: {
     email: string
     password: string
@@ -195,6 +205,10 @@ async function seedOrganization(params: {
       organization_id: organizationId,
       name: 'Main',
       slug: `${slugPrefix}-main-${shortId}`,
+      // Exercised by the receipt spec — a branch with its own address prints
+      // it under the business name (20260903090200).
+      address_line: E2E_BRANCH_ADDRESS,
+      contact_phone: '+234 111 222 3333',
     })
     .select('id')
     .single<{ id: string }>()
@@ -253,10 +267,34 @@ async function seedOrganization(params: {
   const { error: tourError } = await supabase.rpc('mark_tour_completed')
   assertOk('mark tour completed', tourError)
 
+  // Two categories, so a POS search that spans both surfaces the category
+  // filter chips (which only appear when results span more than one) and so
+  // pos_search_products' category-name match (20260903090000) has something
+  // to hit.
+  const { data: categoryRows, error: categoriesError } = await supabase
+    .from('categories')
+    .insert([
+      { business_unit_id: businessUnitId, name: E2E_SEARCH_CATEGORY_NAME },
+      { business_unit_id: businessUnitId, name: E2E_SCAN_CATEGORY_NAME },
+    ])
+    .select('id, name')
+  assertOk('insert categories', categoriesError)
+  const categoryIdByName = new Map((categoryRows ?? []).map((row) => [row.name, row.id]))
+
   const { data: inserted, error: productsError } = await supabase
     .from('products')
     .insert(
-      products.map((product) => ({ ...product, business_unit_id: businessUnitId, cost_price: 0 })),
+      products.map((product) => ({
+        ...product,
+        business_unit_id: businessUnitId,
+        cost_price: 0,
+        category_id:
+          product.name === E2E_SEARCH_PRODUCT_NAME
+            ? (categoryIdByName.get(E2E_SEARCH_CATEGORY_NAME) ?? null)
+            : product.name === E2E_BARCODE_PRODUCT_NAME
+              ? (categoryIdByName.get(E2E_SCAN_CATEGORY_NAME) ?? null)
+              : null,
+      })),
     )
     .select('id, name')
   assertOk('insert products', productsError)
@@ -419,6 +457,8 @@ export async function seedE2EFixture(): Promise<E2EFixture> {
     barcode: E2E_BARCODE,
     barcodeProductName: E2E_BARCODE_PRODUCT_NAME,
     searchProductName: E2E_SEARCH_PRODUCT_NAME,
+    searchCategoryName: E2E_SEARCH_CATEGORY_NAME,
+    branchAddress: E2E_BRANCH_ADDRESS,
     limited: {
       email: limitedEmail,
       password: limitedPassword,

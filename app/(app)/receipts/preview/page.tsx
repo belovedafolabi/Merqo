@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { requirePermission } from '@/lib/auth/guard'
 import { getOrganizationBranding } from '@/lib/branding/queries'
-import { getOnboardingState, listBranches } from '@/lib/business-structure/queries'
+import { getOnboardingState } from '@/lib/business-structure/queries'
 import { getReceiptSettings } from '@/lib/receipts/settings'
 import { SAMPLE_SALE } from '@/lib/receipts/sample'
 import {
@@ -72,16 +72,14 @@ export default async function ReceiptPreviewPage({
     findReceiptPaperWidth(resolvedSearchParams.paper) ?? RECEIPT_TEMPLATES[templateId].paperWidthMm
 
   let sale = SAMPLE_SALE
-  let branchName: string | null = null
 
   if (resolvedSearchParams.saleId) {
     await requirePermission('sales.view', { organizationId })
     const realSale = await getSale(resolvedSearchParams.saleId)
     if (!realSale) redirect('/settings/receipts')
+    // getSale() now carries the branch name and address itself (a sub-query
+    // like createdByName), so the old listBranches() lookup here is gone.
     sale = realSale
-
-    const branches = await listBranches(organizationId)
-    branchName = branches.find((branch) => branch.id === sale.branchId)?.name ?? null
   } else {
     await requirePermission('organizations.update', { organizationId })
   }
@@ -92,7 +90,6 @@ export default async function ReceiptPreviewPage({
       templateId={templateId}
       branding={branding}
       settings={settings}
-      branchName={branchName}
       autoPrint={resolvedSearchParams.print === '1'}
       paperWidthMm={paperWidthMm}
     />
