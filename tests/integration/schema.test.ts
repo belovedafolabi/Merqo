@@ -114,10 +114,16 @@ describe('core hierarchy schema', () => {
     // `units_of_measure` (custom units an admin adds for their org) carries
     // archived_at for the same reason categories does — a unit an existing
     // product still names by string must be retired, not deleted.
+    //
+    // `coupons` (20260904090300) is tenant configuration with the same
+    // lifecycle: a redeemed coupon is referenced by sales.coupon_id
+    // permanently, so a retired code is archived, not deleted, and its text
+    // frees up for reuse via the partial-unique index.
     expect(tables).toEqual([
       'branches',
       'business_units',
       'categories',
+      'coupons',
       'customers',
       'organizations',
       'product_variants',
