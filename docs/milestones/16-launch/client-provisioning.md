@@ -8,32 +8,55 @@ deliberate concern not to be solved ad hoc at the first real launch.
 
 The automation is matched to the near-term client count (a handful). The
 error-prone, order-dependent database half is scripted; project creation is
-six dashboard steps.
+seven dashboard steps.
 
 ## Scripted vs. manual — the split
 
-### Manual (dashboard, ~6 steps)
+### Manual (dashboard, ~7 steps)
 
 1. **Create the Supabase project** — pick a region near the client, set a
    strong database password (record it in the client's Vercel env as
    `SUPABASE_DB_PASSWORD`, server-only). This is what provides the
    `auth` / `storage` / `extensions` schemas that migrations build on top of.
-2. **Create the Vercel project** — link the `belovedafolabi/Merqo` repo,
+2. **Set the Auth session limits** — Supabase dashboard → Authentication →
+   Sessions:
+   - **Time-box user sessions**: `720` hours (30 days)
+   - **Inactivity timeout**: `24` hours
+
+   These mirror `[auth.sessions]` in `supabase/config.toml`, which governs the
+   *local* stack only. They are **project settings, not schema** — neither
+   `supabase db push` nor `provision-client.sh` carries them, so a project
+   provisioned without this step has no server-side session bound at all and
+   falls back to app-level enforcement in `proxy.ts` alone (Milestone 17
+   Part C). Verify on an existing project as well as a new one: every client
+   provisioned before Milestone 17 needs this applied retroactively.
+3. **Create the Vercel project** — link the `belovedafolabi/Merqo` repo,
    Production branch `main`.
-3. **Set the Vercel environment variables** (Production + Preview) — the list
+4. **Set the Vercel environment variables** (Production + Preview) — the list
    `provision-client.sh` prints, split into per-client and platform-shared
    below.
-4. **Attach the client's custom domain** in Vercel, set `NEXT_PUBLIC_APP_URL`
+5. **Attach the client's custom domain** in Vercel, set `NEXT_PUBLIC_APP_URL`
    to it.
-5. **Register the Paystack webhook**: `https://<domain>/api/webhooks/paystack`
+6. **Register the Paystack webhook**: `https://<domain>/api/webhooks/paystack`
    (see `README.md` "Paystack webhook + the daily subscription cron").
-6. **Create the UptimeRobot monitor** — see `operations.md`.
+7. **Create the UptimeRobot monitor** — see `operations.md`.
 
-**Rejected as automation:** scripting steps 1–2 via the Supabase Management
+**Rejected as automation:** scripting steps 1 and 3 via the Supabase Management
 API and Vercel CLI. It requires storing and rotating two long-lived
-platform-owner tokens to replace roughly six clicks performed a few times a
+platform-owner tokens to replace roughly seven clicks performed a few times a
 year — a worse security posture for negative operational value at this client
 count.
+
+### Rollout note: session limits change behaviour for live users
+
+Applying step 2 (or deploying the Milestone 17 Part C code) changes session
+behaviour for **everyone currently signed in**, from their next request onward.
+It is not an instant mass logout: `proxy.ts` treats a session with no
+`merqo_sess_*` cookie as starting now, so the first evictions land 24h (or 12h
+without "remember me") *after* the deploy, not at deploy time. Still worth
+announcing to the client beforehand, and worth deploying outside trading hours
+— a till that signs itself out mid-queue is a bad first impression of a
+security improvement.
 
 ### Scripted (`scripts/provision-client.sh`)
 

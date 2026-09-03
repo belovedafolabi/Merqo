@@ -27,6 +27,15 @@ This directory is the implementation-ready roadmap for the Merqo platform, recon
 | [15](15-security-qa-and-hardening.md) | Security, QA & Production Hardening | Cross-cutting RLS/authorization audit, secrets/rate-limiting review, full regression/E2E suite, cross-browser/hardware regression. |
 | [16](16-production-readiness-and-launch.md) | Production Readiness & Launch | Performance/DB optimization, monitoring/backup/DR, per-client deployment automation, launch checklist. |
 
+## Post-launch enhancements
+
+Milestones 01–16 are the fixed greenfield roadmap. Work requested after launch lives in
+numbered documents from 17 onward and does not assume the greenfield framing:
+
+| # | Document | One-line description |
+|---|----------|---------------------|
+| [17](17-post-launch-enhancements.md) | Post-Launch Enhancements | Four independent, separately-shippable parts: (A) a statistics-only Sales Insights page — per-product demand forecasts, restock suggestions, slow-mover promo candidates, no ML; (B) business-type refinements via configuration only — per-type terminology/dashboard/onboarding presets and a few new à-la-carte capabilities; (C) session lifecycle — 24h rolling inactivity timeout, 30-day cap, "remember me", force-logout on password change, "sign out everywhere"; (D) UX batch — toasts on every async action, wire up the dead POS menu button, clickable customer-activity rows, and a jump-to step list in the product tour. |
+
 ## Dependency graph
 
 ```text

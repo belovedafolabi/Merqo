@@ -269,11 +269,25 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
-# [auth.sessions]
-# Force log out after the specified duration.
-# timebox = "24h"
+#
+# Milestone 17 Part C. Before this, the block was commented out entirely, so a
+# session persisted until someone clicked "Log out" — on a POS where staff have
+# their own logins, a departed employee's laptop stayed authenticated forever.
+#
+# These are the outer, server-side bound and apply to every user identically;
+# they are NOT per-login configurable, which is why the "remember me" split
+# (12h vs 30d) is enforced in the app layer by lib/auth/session-policy.ts and
+# proxy.ts. Keep the values here at or above the longest app-level policy, or
+# the app-level window can never be reached.
+#
+# These are PROJECT settings, not schema — `supabase db push` does not carry
+# them to a hosted deployment. Every client project must have the same two
+# values set by hand; see docs/milestones/16-launch/client-provisioning.md.
+[auth.sessions]
+# Force log out after the specified duration. 720h = 30 days.
+timebox = "720h"
 # Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
+inactivity_timeout = "24h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]

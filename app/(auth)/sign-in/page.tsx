@@ -9,6 +9,7 @@ import { AuthReasonAlert } from '@/components/auth/auth-reason-alert'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { usePendingToast } from '@/hooks/use-pending-toast'
 
 const initialState: AuthActionState = { error: null }
@@ -54,6 +55,20 @@ export default function SignInPage() {
             autoComplete="current-password"
             required
           />
+        </div>
+
+        {/* Milestone 17 Part C. Off by default, and the label says what that
+            means rather than just naming the setting — a till shared between
+            shifts is the common case, and the safe choice should be the one
+            nobody has to think about. */}
+        <div className="flex items-start justify-between gap-4">
+          <Label htmlFor="remember" className="flex flex-col items-start gap-1 font-normal">
+            Remember me for 30 days
+            <span className="text-xs text-muted-foreground">
+              Leave this off on a shared or public device.
+            </span>
+          </Label>
+          <Switch id="remember" name="remember" defaultChecked={false} />
         </div>
 
         <Button type="submit" disabled={pending} className="mt-2">

@@ -1,6 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import {
+  SESSION_COOKIES,
+  absoluteCapMs,
+  evaluateSession,
+  type SessionPolicy,
+} from '@/lib/auth/session-policy'
 import { logger } from '@/lib/logger'
 
 /**
@@ -35,6 +41,38 @@ function isPublicPath(pathname: string): boolean {
   // (auth) route.
   if (pathname.startsWith('/invite/')) return true
   return false
+}
+
+/**
+ * Milestone 17 Part C. `httpOnly` so page JS cannot extend a session by
+ * rewriting `merqo_last_seen`; `Secure` off in dev only because localhost is
+ * plain http. A `maxAge` is written for `long` sessions only — omitting it
+ * makes the browser treat the cookie as a session cookie, which is what
+ * actually delivers "signed out when the browser closes" for `short`.
+ */
+function writeSessionCookies(
+  response: NextResponse,
+  policy: SessionPolicy,
+  startedAt: number,
+  lastSeen: number,
+): void {
+  const options = {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    ...(policy === 'long' ? { maxAge: Math.floor(absoluteCapMs(policy) / 1000) } : {}),
+  } as const
+
+  response.cookies.set(SESSION_COOKIES.policy, policy, options)
+  response.cookies.set(SESSION_COOKIES.start, String(startedAt), options)
+  response.cookies.set(SESSION_COOKIES.lastSeen, String(lastSeen), options)
+}
+
+function clearSessionCookies(response: NextResponse): void {
+  for (const name of Object.values(SESSION_COOKIES)) {
+    response.cookies.delete(name)
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -102,6 +140,96 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
+  // Milestone 17 Part C: bounded sessions. Runs BEFORE the two RPCs below —
+  // there is no point spending them on a session we are about to kill.
+  //
+  // Gated on `!isAuthScreen`, deliberately NOT on `!isPublicPath()`: that
+  // helper returns true for every `/api/` path, so reusing it here would leave
+  // an authenticated API route as a way to keep a long-idle session alive
+  // indefinitely — the exact bypass this part exists to close. Prefetches are
+  // excluded so a link hover never counts as activity.
+  //
+  // The write itself is deferred to just before the final `return`: the RPCs
+  // below can trigger a token refresh, and the setAll hook above rebuilds
+  // `response` from scratch when that happens — cookies set on the old object
+  // would be silently dropped roughly once per jwt_expiry.
+  let pendingSessionCookies: { policy: SessionPolicy; startedAt: number; lastSeen: number } | null =
+    null
+
+  if (user && !isAuthScreen && !isPrefetch) {
+    const now = Date.now()
+    const rawPolicy = request.cookies.get(SESSION_COOKIES.policy)?.value
+
+    if (rawPolicy === undefined) {
+      // No cookie yet: a session that predates this feature, or one just
+      // established by the recovery/invite flows rather than by signIn().
+      // Treat it as starting now — the alternative, treating "unknown" as
+      // "expired", would sign out every live user the moment this deploys.
+      // The Supabase-side timebox still bounds these from the server.
+      pendingSessionCookies = { policy: 'long', startedAt: now, lastSeen: now }
+    } else {
+      const verdict = evaluateSession({
+        policy: rawPolicy,
+        startedAt: request.cookies.get(SESSION_COOKIES.start)?.value,
+        lastSeen: request.cookies.get(SESSION_COOKIES.lastSeen)?.value,
+        now,
+      })
+
+      // The locked screen is exempt from expiry but not from the clock: an
+      // Owner sitting on /subscription-locked long enough to arrange payment
+      // must not be signed out mid-flow (Milestone 13), yet their session
+      // still has to age normally once they leave it.
+      if (verdict.status === 'expired' && !LOCK_EXEMPT_PATHS.includes(pathname)) {
+        const lastSeen = Number(request.cookies.get(SESSION_COOKIES.lastSeen)?.value)
+        logger.info('auth.session_timeout', {
+          policy: rawPolicy,
+          reason: verdict.reason,
+          pathname,
+          idleMs: Number.isFinite(lastSeen) ? now - lastSeen : null,
+        })
+
+        // `scope: 'local'` — this device only. The default is 'global', which
+        // would revoke the refresh token everywhere: a laptop left idle
+        // overnight would silently sign the user out of the till they are
+        // standing at. An idle timeout is a statement about THIS device, not
+        // about the account. Deactivation below keeps the global signOut(),
+        // where killing every session is exactly the point.
+        await supabase.auth.signOut({ scope: 'local' })
+
+        // An expired session on an API route gets JSON, not a 302 to an HTML
+        // login page a fetch() caller cannot do anything useful with.
+        const expiredResponse = pathname.startsWith('/api/')
+          ? NextResponse.json({ error: 'session_expired' }, { status: 401 })
+          : NextResponse.redirect(
+              (() => {
+                const url = new URL('/sign-in', request.url)
+                url.searchParams.set('reason', 'timeout')
+                return url
+              })(),
+            )
+        // signOut() clears the Supabase auth cookies through the setAll hook
+        // above, which writes them onto `response` — an object we are about to
+        // throw away. Without carrying them over, the browser keeps a valid
+        // auth cookie, the next request re-bootstraps a fresh window, and the
+        // timeout becomes a redirect the user can simply navigate past.
+        for (const cookie of response.cookies.getAll()) {
+          expiredResponse.cookies.set(cookie)
+        }
+        clearSessionCookies(expiredResponse)
+        return expiredResponse
+      }
+
+      // Still alive: slide the idle window forward. `startedAt` is never
+      // rewritten — that is what makes the absolute cap absolute.
+      const startedAt = Number(request.cookies.get(SESSION_COOKIES.start)?.value)
+      pendingSessionCookies = {
+        policy: rawPolicy === 'short' ? 'short' : 'long',
+        startedAt: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : now,
+        lastSeen: now,
+      }
+    }
+  }
+
   // Milestone 11's Security Requirement: deactivation "immediately
   // invalidates their active session(s), not just future logins." The real
   // boundary is the database — user_is_active() (20260824090100) makes every
@@ -140,6 +268,17 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL('/subscription-locked', request.url))
       }
     }
+  }
+
+  // Applied last, against whatever `response` object the cookie adapter left
+  // behind — see the comment on pendingSessionCookies above.
+  if (pendingSessionCookies) {
+    writeSessionCookies(
+      response,
+      pendingSessionCookies.policy,
+      pendingSessionCookies.startedAt,
+      pendingSessionCookies.lastSeen,
+    )
   }
 
   return response

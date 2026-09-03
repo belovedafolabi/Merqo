@@ -14,6 +14,11 @@ const DEACTIVATED_MESSAGE = 'Your account has been deactivated. Contact your adm
 const SUBSCRIPTION_EXPIRED_MESSAGE =
   "This organization's subscription has expired. Contact your organization's owner to renew."
 
+/** proxy.ts's Milestone 17 Part C bounded-session check — an idle timeout or
+ *  the absolute cap. Phrased without naming which of the two fired: the user
+ *  does the same thing either way, and the distinction is in the server log. */
+const TIMEOUT_MESSAGE = 'You were signed out after a period of inactivity. Please sign in again.'
+
 /**
  * Renders proxy.ts's `?reason=` signed-out notice (deactivation) or signIn()'s
  * subscription-locked notice as its own destructive Alert — or nothing at all.
@@ -33,7 +38,9 @@ export function AuthReasonAlert() {
       ? DEACTIVATED_MESSAGE
       : reason === 'subscription_expired'
         ? SUBSCRIPTION_EXPIRED_MESSAGE
-        : null
+        : reason === 'timeout'
+          ? TIMEOUT_MESSAGE
+          : null
 
   if (!message) return null
 
