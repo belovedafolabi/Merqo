@@ -11,11 +11,23 @@ import { readE2EFixture } from '../helpers/fixture'
  * contents: whether it draws bars or its own "no sales in this period" empty
  * state depends on how many sales the surrounding specs happened to ring up
  * in the last 14 days, which is not this suite's concern.
+ *
+ * NOTE on the `getByRole('main')` scoping below. These routes have a
+ * `loading.tsx`, so their content is inside a Suspense boundary and React
+ * streams it in out of order: for ~100ms during hydration a copy of the page
+ * also exists in React's `<div hidden id="S:n">` streaming buffer parked at
+ * the end of <body> (the window is widest on the phone viewport, where
+ * useIsMobile()'s post-hydration re-render of the shell delays the buffer's
+ * promotion). It is inert, hidden, removed almost immediately, and there is
+ * only ever one real <main> — but an unscoped getByText briefly matches both
+ * copies and trips strict mode. Scoping to `main` sidesteps it because the
+ * buffer copy is not inside <main>.
  */
 
 test('the dashboard shows real sales figures, not the milestone placeholder', async ({ page }) => {
   await page.goto('/dashboard')
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 90_000 })
+  const main = page.getByRole('main')
+  await expect(main.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 90_000 })
 
   // #10 / #14: the old placeholder copy is gone.
   await expect(page.getByText(/Milestone 08/i)).toHaveCount(0)
@@ -23,15 +35,12 @@ test('the dashboard shows real sales figures, not the milestone placeholder', as
   await expect(page.getByText(/starts recording sales/i)).toHaveCount(0)
 
   // #14: the summary widget (on by default) is wired up — its three cards
-  // render where the static "₦0" placeholders used to be. `.first()` — on
-  // the CI production build the streamed and hydrated copies of a node can
-  // both be sampled for an instant. The actual figures depend on file
-  // ordering (this spec may run before any sale is rung up), so this checks
-  // the widget is present, not a value.
-  const grid = page.getByRole('main')
-  await expect(grid.getByText('Sales today').first()).toBeVisible()
-  await expect(grid.getByText('Transactions').first()).toBeVisible()
-  await expect(grid.getByText('Average sale').first()).toBeVisible()
+  // render where the static "₦0" placeholders used to be. The figures
+  // themselves depend on file ordering (this spec may run before any sale is
+  // rung up), so this checks the widget is present, not a value.
+  await expect(main.getByText('Sales today')).toBeVisible()
+  await expect(main.getByText('Transactions')).toBeVisible()
+  await expect(main.getByText('Average sale')).toBeVisible()
 })
 
 test('the Add widget button opens a bottom drawer of widget toggles', async ({ page }) => {
@@ -98,15 +107,16 @@ test('the sales list filters by date and payment method', async ({ page }) => {
   await expect(page.getByText('Sale complete')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('button', { name: /^done$/i }).click()
 
+  // Scoped to `main` throughout — see the file header note on the streaming
+  // buffer that otherwise makes an unscoped locator match twice at mobile
+  // widths.
+  const main = page.getByRole('main')
   await page.goto('/sales')
-  await expect(page.getByRole('heading', { name: 'Sales' })).toBeVisible({ timeout: 90_000 })
-  await expect(page.getByRole('button', { name: /^view receipt/i }).first()).toBeVisible()
+  await expect(main.getByRole('heading', { name: 'Sales' })).toBeVisible({ timeout: 90_000 })
+  const anyReceiptButton = main.getByRole('button', { name: /^view receipt/i }).first()
+  await expect(anyReceiptButton).toBeVisible()
 
-  // `.first()` throughout: at mobile widths the CI production build streams
-  // the admin shell's main region such that a text node can briefly resolve
-  // twice; the assertions only care that the state is present and visible.
-  const filteredEmpty = page.getByText(/No sales match these filters/i).first()
-  const anyReceiptButton = page.getByRole('button', { name: /^view receipt/i }).first()
+  const filteredEmpty = main.getByText(/No sales match these filters/i)
 
   // A future-dated `from` (driven through the URL, the source of truth for
   // this screen's filter) leaves nothing in range — the filtered empty
@@ -114,17 +124,17 @@ test('the sales list filters by date and payment method', async ({ page }) => {
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   await page.goto(`/sales?from=${tomorrow}`)
   await expect(filteredEmpty).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByLabel('From', { exact: true }).first()).toHaveValue(tomorrow)
+  await expect(main.getByLabel('From', { exact: true })).toHaveValue(tomorrow)
 
   // The payment-method filter uses the same `method` param; `card` excludes
   // the cash sale just rung up. The filter bar reflects the active param and
   // the Clear control appears.
   await page.goto('/sales?method=card')
   await expect(filteredEmpty).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('button', { name: /clear/i }).first()).toBeVisible()
+  await expect(main.getByRole('button', { name: /clear/i })).toBeVisible()
 
   // Clearing returns to an unfiltered list with the sale back.
-  await page.getByRole('button', { name: /clear/i }).first().click()
+  await main.getByRole('button', { name: /clear/i }).click()
   await expect(page).not.toHaveURL(/method=/, { timeout: 60_000 })
   await expect(anyReceiptButton).toBeVisible({ timeout: 30_000 })
 })
