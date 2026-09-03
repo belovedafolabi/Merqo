@@ -60,9 +60,7 @@ export const SESSION_COOKIES = {
 
 export type SessionExpiryReason = 'idle' | 'cap' | 'malformed'
 
-export type SessionVerdict =
-  | { status: 'ok' }
-  | { status: 'expired'; reason: SessionExpiryReason }
+export type SessionVerdict = { status: 'ok' } | { status: 'expired'; reason: SessionExpiryReason }
 
 function parsePositiveInt(raw: string | undefined): number | null {
   if (raw === undefined) return null

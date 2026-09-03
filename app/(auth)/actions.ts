@@ -5,11 +5,7 @@ import { redirect } from 'next/navigation'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { recordAuditEvent, recordUnauthenticatedAuditEvent } from '@/lib/auth/audit'
-import {
-  SESSION_COOKIES,
-  absoluteCapMs,
-  type SessionPolicy,
-} from '@/lib/auth/session-policy'
+import { SESSION_COOKIES, absoluteCapMs, type SessionPolicy } from '@/lib/auth/session-policy'
 import { isLoginThrottled, recordLoginAttempt } from '@/lib/auth/login-throttle'
 import { getRequestMeta } from '@/lib/auth/request-context'
 import { ensureOrganizationBootstrapped } from '@/lib/organization/mutations'

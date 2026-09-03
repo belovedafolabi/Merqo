@@ -73,15 +73,15 @@ describe('evaluateSession', () => {
   })
 
   it('expires a long session idle for over 24h', () => {
-    expect(session({ lastSeen: String(NOW - 25 * HOUR), startedAt: String(NOW - 26 * HOUR) })).toEqual(
-      { status: 'expired', reason: 'idle' },
-    )
+    expect(
+      session({ lastSeen: String(NOW - 25 * HOUR), startedAt: String(NOW - 26 * HOUR) }),
+    ).toEqual({ status: 'expired', reason: 'idle' })
   })
 
   it('keeps a long session alive at 23h idle', () => {
-    expect(session({ lastSeen: String(NOW - 23 * HOUR), startedAt: String(NOW - 23 * HOUR) })).toEqual(
-      { status: 'ok' },
-    )
+    expect(
+      session({ lastSeen: String(NOW - 23 * HOUR), startedAt: String(NOW - 23 * HOUR) }),
+    ).toEqual({ status: 'ok' })
   })
 
   it('expires exactly at the idle limit, not one tick after', () => {
@@ -105,7 +105,9 @@ describe('evaluateSession', () => {
   })
 
   it("reports 'cap' rather than 'idle' when both bounds are blown", () => {
-    expect(session({ startedAt: String(NOW - 40 * DAY), lastSeen: String(NOW - 40 * DAY) })).toEqual({
+    expect(
+      session({ startedAt: String(NOW - 40 * DAY), lastSeen: String(NOW - 40 * DAY) }),
+    ).toEqual({
       status: 'expired',
       reason: 'cap',
     })
@@ -113,7 +115,11 @@ describe('evaluateSession', () => {
 
   it('a short session dies at 13h even though last_seen is recent', () => {
     expect(
-      session({ policy: 'short', startedAt: String(NOW - 13 * HOUR), lastSeen: String(NOW - 1000) }),
+      session({
+        policy: 'short',
+        startedAt: String(NOW - 13 * HOUR),
+        lastSeen: String(NOW - 1000),
+      }),
     ).toEqual({ status: 'expired', reason: 'cap' })
   })
 
