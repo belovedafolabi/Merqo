@@ -7,47 +7,66 @@ import { readE2EFixture } from '../helpers/fixture'
  * (#14), "Add widget" opens a drawer (#15), the bell opens a drawer instead
  * of navigating (#12), and the sales list has working filters (#13).
  *
- * The strong assertion for #14 is that the milestone-copy placeholder is
- * gone and the stat cards carry currency; the exact numbers depend on how
- * many sales earlier specs rang up, so this does not pin a value.
+ * These deliberately avoid asserting on the "Sales overview" chart's own
+ * contents: whether it draws bars or its own "no sales in this period" empty
+ * state depends on how many sales the surrounding specs happened to ring up
+ * in the last 14 days, which is not this suite's concern.
  */
 
 test('the dashboard shows real sales figures, not the milestone placeholder', async ({ page }) => {
   await page.goto('/dashboard')
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 90_000 })
 
-  // #10 / #14: the old copy is gone.
+  // #10 / #14: the old placeholder copy is gone.
   await expect(page.getByText(/Milestone 08/i)).toHaveCount(0)
   await expect(page.getByText(/POS Transaction Engine/i)).toHaveCount(0)
+  await expect(page.getByText(/starts recording sales/i)).toHaveCount(0)
 
-  // The three stat cards render with a currency value rather than a literal ₦0.
-  await expect(page.getByText('Sales today')).toBeVisible()
-  await expect(page.getByText('Transactions')).toBeVisible()
-  await expect(page.getByText('Average sale')).toBeVisible()
+  // #14: the summary widget (on by default) is wired up — its three cards
+  // render where the static "₦0" placeholders used to be. `.first()` — on
+  // the CI production build the streamed and hydrated copies of a node can
+  // both be sampled for an instant. The actual figures depend on file
+  // ordering (this spec may run before any sale is rung up), so this checks
+  // the widget is present, not a value.
+  const grid = page.getByRole('main')
+  await expect(grid.getByText('Sales today').first()).toBeVisible()
+  await expect(grid.getByText('Transactions').first()).toBeVisible()
+  await expect(grid.getByText('Average sale').first()).toBeVisible()
 })
 
-test('the Add widget button opens a bottom drawer of toggles', async ({ page }) => {
+test('the Add widget drawer toggles a card on and off the dashboard', async ({ page }) => {
   await page.goto('/dashboard')
-  await page.getByRole('button', { name: 'Add widget' }).click()
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 90_000 })
 
+  // "Recent sales" is off by default — so this test starts and ends in the
+  // seed's baseline state no matter how it exits. Its card title is a
+  // styled <div>, not a heading, so match on text scoped to the grid.
+  const grid = page.getByRole('main')
+  const recentSalesCard = grid.getByText('Recent sales', { exact: true })
+  await expect(recentSalesCard).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Add widget' }).click()
   const drawer = page.getByRole('dialog')
   await expect(drawer.getByText('Dashboard widgets')).toBeVisible()
-  const salesOverviewToggle = drawer.getByRole('switch', { name: /Sales overview/i })
-  await expect(salesOverviewToggle).toBeVisible()
 
-  // Toggling it off removes the card from the grid behind the drawer.
-  await salesOverviewToggle.click()
-  await expect(salesOverviewToggle).toHaveAttribute('aria-checked', 'false')
+  const recentSalesToggle = drawer.getByRole('switch', { name: /Recent sales/i })
+  await expect(recentSalesToggle).not.toBeChecked()
+  await recentSalesToggle.click()
+  await expect(recentSalesToggle).toBeChecked()
   await page.getByRole('button', { name: 'Done' }).click()
-  await expect(page.getByRole('heading', { name: 'Sales overview' })).toBeHidden()
 
-  // Put it back so the seed's dashboard is unchanged for other specs.
+  // The server action revalidates /dashboard; the card appears behind the
+  // now-closed drawer.
+  await expect(recentSalesCard).toBeVisible({ timeout: 30_000 })
+
+  // Turn it back off; the card goes away and the baseline is restored.
   await page.getByRole('button', { name: 'Add widget' }).click()
-  await page
-    .getByRole('dialog')
-    .getByRole('switch', { name: /Sales overview/i })
-    .click()
+  const toggleAgain = page.getByRole('dialog').getByRole('switch', { name: /Recent sales/i })
+  await expect(toggleAgain).toBeChecked()
+  await toggleAgain.click()
+  await expect(toggleAgain).not.toBeChecked()
   await page.getByRole('button', { name: 'Done' }).click()
+  await expect(recentSalesCard).toHaveCount(0, { timeout: 30_000 })
 })
 
 test('the notification bell opens a drawer, not the notifications page', async ({ page }) => {
