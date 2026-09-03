@@ -31,7 +31,9 @@ function readCouponForm(formData: FormData): CouponInput {
   }
   return {
     code: String(formData.get('code') ?? ''),
-    discountType: String(formData.get('discountType') ?? 'percentage') as CouponInput['discountType'],
+    discountType: String(
+      formData.get('discountType') ?? 'percentage',
+    ) as CouponInput['discountType'],
     discountValue: num('discountValue'),
     minimumPurchase: num('minimumPurchase'),
     maxRedemptions: optionalNum('maxRedemptions'),

@@ -245,7 +245,11 @@ export async function createSale(
   let couponId: string | null = null
   let couponAmount = 0
   if (parsed.couponCode) {
-    const result = await findRedeemableCoupon(organizationId, parsed.couponCode, manualOnly.subtotal)
+    const result = await findRedeemableCoupon(
+      organizationId,
+      parsed.couponCode,
+      manualOnly.subtotal,
+    )
     if (!result.ok) throw new Error(result.reason)
     couponId = result.coupon.id
     couponAmount = result.discountAmount

@@ -37,7 +37,11 @@ import type { Coupon } from '@/lib/coupons/schemas'
 const initialState: CouponsActionState = { error: null }
 
 function money(value: number): string {
-  return value.toLocaleString('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 })
+  return value.toLocaleString('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  })
 }
 
 /** A stored expires_at instant is the exclusive next-midnight; show the last valid day. */
@@ -47,11 +51,16 @@ function lastValidDay(iso: string): string {
   return d.toISOString().slice(0, 10)
 }
 
-function couponStatus(c: Coupon): { label: string; variant: 'secondary' | 'outline' | 'destructive' } {
+function couponStatus(c: Coupon): {
+  label: string
+  variant: 'secondary' | 'outline' | 'destructive'
+} {
   if (c.archivedAt) return { label: 'Archived', variant: 'outline' }
   const now = Date.now()
-  if (c.startsAt && now < new Date(c.startsAt).getTime()) return { label: 'Scheduled', variant: 'secondary' }
-  if (c.expiresAt && now >= new Date(c.expiresAt).getTime()) return { label: 'Expired', variant: 'outline' }
+  if (c.startsAt && now < new Date(c.startsAt).getTime())
+    return { label: 'Scheduled', variant: 'secondary' }
+  if (c.expiresAt && now >= new Date(c.expiresAt).getTime())
+    return { label: 'Expired', variant: 'outline' }
   if (c.maxRedemptions !== null && c.redemptionCount >= c.maxRedemptions)
     return { label: 'Used up', variant: 'outline' }
   return { label: 'Active', variant: 'secondary' }
@@ -85,7 +94,10 @@ export function CouponsManager({
     },
     {
       header: 'Redeemed',
-      cell: (c) => (c.maxRedemptions !== null ? `${c.redemptionCount} / ${c.maxRedemptions}` : String(c.redemptionCount)),
+      cell: (c) =>
+        c.maxRedemptions !== null
+          ? `${c.redemptionCount} / ${c.maxRedemptions}`
+          : String(c.redemptionCount),
     },
     {
       header: 'Status',
@@ -100,7 +112,11 @@ export function CouponsManager({
       cell: (c) =>
         c.archivedAt ? null : (
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDialog({ mode: 'edit', coupon: c })}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialog({ mode: 'edit', coupon: c })}
+            >
               Edit
             </Button>
             <ArchiveButton organizationId={organizationId} couponId={c.id} />
@@ -147,7 +163,13 @@ function ArchiveButton({ organizationId, couponId }: { organizationId: string; c
     <form action={formAction}>
       <input type="hidden" name="organizationId" value={organizationId} />
       <input type="hidden" name="couponId" value={couponId} />
-      <Button type="submit" variant="ghost" size="sm" disabled={pending} title={state.error ?? undefined}>
+      <Button
+        type="submit"
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+        title={state.error ?? undefined}
+      >
         {pending ? 'Archiving…' : 'Archive'}
       </Button>
     </form>
@@ -225,7 +247,10 @@ function CouponDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="coupon-type">Type</Label>
-              <Select value={discountType} onValueChange={(v) => setDiscountType(v as Coupon['discountType'])}>
+              <Select
+                value={discountType}
+                onValueChange={(v) => setDiscountType(v as Coupon['discountType'])}
+              >
                 <SelectTrigger id="coupon-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -236,7 +261,9 @@ function CouponDialog({
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="coupon-value">{discountType === 'percentage' ? 'Percent off' : 'Amount off (₦)'}</Label>
+              <Label htmlFor="coupon-value">
+                {discountType === 'percentage' ? 'Percent off' : 'Amount off (₦)'}
+              </Label>
               <Input
                 id="coupon-value"
                 name="discountValue"

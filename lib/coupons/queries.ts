@@ -60,8 +60,7 @@ export async function listCoupons(organizationId: string): Promise<Coupon[]> {
 }
 
 export type RedeemableCoupon =
-  | { ok: true; coupon: Coupon; discountAmount: number }
-  | { ok: false; reason: string }
+  { ok: true; coupon: Coupon; discountAmount: number } | { ok: false; reason: string }
 
 /**
  * Resolve a code to a redeemable coupon for a sale of `subtotal`, or a
@@ -99,10 +98,7 @@ export async function findRedeemableCoupon(
   if (coupon.expiresAt && now >= new Date(coupon.expiresAt).getTime()) {
     return { ok: false, reason: `Coupon “${coupon.code}” has expired.` }
   }
-  if (
-    coupon.maxRedemptions !== null &&
-    coupon.redemptionCount >= coupon.maxRedemptions
-  ) {
+  if (coupon.maxRedemptions !== null && coupon.redemptionCount >= coupon.maxRedemptions) {
     return { ok: false, reason: `Coupon “${coupon.code}” has reached its redemption limit.` }
   }
   if (subtotal < coupon.minimumPurchase) {

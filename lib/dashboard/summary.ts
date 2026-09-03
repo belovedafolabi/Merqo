@@ -18,11 +18,7 @@ import type { DashboardSeriesPoint, DashboardSummary } from '@/lib/dashboard/typ
  * that already import this module.
  */
 
-export {
-  deltaLabel,
-  type DashboardSeriesPoint,
-  type DashboardSummary,
-} from '@/lib/dashboard/types'
+export { deltaLabel, type DashboardSeriesPoint, type DashboardSummary } from '@/lib/dashboard/types'
 
 interface SummaryRow {
   sale_count: number

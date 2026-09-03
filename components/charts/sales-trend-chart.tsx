@@ -48,7 +48,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
   return (
     <div className="rounded-md border bg-popover px-2.5 py-1.5 text-caption shadow-md">
       <p className="font-medium text-popover-foreground">{shortDay(point.day)}</p>
-      <p className="tabular-nums text-muted-foreground">
+      <p className="text-muted-foreground tabular-nums">
         {money(point.netSales)} · {point.saleCount} sale{point.saleCount === 1 ? '' : 's'}
       </p>
     </div>
@@ -83,7 +83,11 @@ export function SalesTrendChart({
 
   return (
     <figure className="flex flex-col gap-2">
-      <div style={{ width: '100%', height }} role="img" aria-label={`${ariaLabel}. Total ${money(total)}.`}>
+      <div
+        style={{ width: '100%', height }}
+        role="img"
+        aria-label={`${ariaLabel}. Total ${money(total)}.`}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={series} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
             <defs>

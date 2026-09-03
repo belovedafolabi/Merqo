@@ -9,5 +9,7 @@ import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
  * card and the "Sales performance" card render through one implementation.
  */
 export function SalesOverviewChart({ series }: { series: DashboardSeriesPoint[] }) {
-  return <SalesTrendChart series={series} height={160} ariaLabel="Net sales per day, last two weeks" />
+  return (
+    <SalesTrendChart series={series} height={160} ariaLabel="Net sales per day, last two weeks" />
+  )
 }

@@ -61,7 +61,11 @@ export async function createCoupon(organizationId: string, rawInput: CouponInput
     action: 'coupon.created',
     resourceType: 'coupon',
     resourceId: data.id,
-    metadata: { code: input.code, discountType: input.discountType, discountValue: input.discountValue },
+    metadata: {
+      code: input.code,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+    },
   })
 
   return data.id

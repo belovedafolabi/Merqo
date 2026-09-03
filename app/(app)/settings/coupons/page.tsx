@@ -25,8 +25,8 @@ export default async function CouponsSettingsPage() {
       <CardHeader>
         <CardTitle>Coupons</CardTitle>
         <CardDescription>
-          Discount codes a customer can give at checkout. A redeemed coupon is applied as a
-          discount on the sale.
+          Discount codes a customer can give at checkout. A redeemed coupon is applied as a discount
+          on the sale.
         </CardDescription>
       </CardHeader>
       <CardContent>

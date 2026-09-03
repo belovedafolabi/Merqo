@@ -164,9 +164,14 @@ export async function toWorkbookBuffer(result: ReportResult): Promise<Buffer> {
         ? `${(result.parameters.from ?? '—').slice(0, 10)} to ${(result.parameters.to ?? '—').slice(0, 10)}`
         : 'All time',
     ],
-    ['Generated', new Date(result.generatedAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'],
+    [
+      'Generated',
+      new Date(result.generatedAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
+    ],
     ['Rows', String(result.rows.length)],
-    ...(result.truncated ? ([['Note', 'Row limit reached — this export is truncated.']] as [string, string][]) : []),
+    ...(result.truncated
+      ? ([['Note', 'Row limit reached — this export is truncated.']] as [string, string][])
+      : []),
   ]
   for (const [label, value] of infoRows) {
     const r = info.addRow([label, value])

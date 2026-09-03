@@ -323,7 +323,11 @@ export function CheckoutDrawer({
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount</span>
                     <span className="tabular-nums">
-                      −{currency(totals.discountAmount - Math.min(coupon?.discountAmount ?? 0, totals.discountAmount))}
+                      −
+                      {currency(
+                        totals.discountAmount -
+                          Math.min(coupon?.discountAmount ?? 0, totals.discountAmount),
+                      )}
                     </span>
                   </div>
                 )}

@@ -81,7 +81,9 @@ export function ReportChart({ result }: { result: ReportResult }) {
               axisLine={{ stroke: 'var(--border)' }}
               interval={0}
               height={28}
-              tickFormatter={(label: string) => (label.length > 10 ? `${label.slice(0, 9)}…` : label)}
+              tickFormatter={(label: string) =>
+                label.length > 10 ? `${label.slice(0, 9)}…` : label
+              }
             />
             <YAxis
               width={44}
@@ -98,7 +100,7 @@ export function ReportChart({ result }: { result: ReportResult }) {
                 return (
                   <div className="rounded-md border bg-popover px-2.5 py-1.5 text-caption shadow-md">
                     <p className="font-medium text-popover-foreground">{point.label}</p>
-                    <p className="tabular-nums text-muted-foreground">
+                    <p className="text-muted-foreground tabular-nums">
                       {new Intl.NumberFormat('en-NG').format(point.value)}
                     </p>
                   </div>
