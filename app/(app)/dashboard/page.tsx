@@ -1,126 +1,77 @@
-import { Package, Plus } from 'lucide-react'
+import { redirect } from 'next/navigation'
 
+import { getCurrentOrganizationId } from '@/lib/auth/context'
 import { getOnboardingState } from '@/lib/business-structure/queries'
 import { listLowStockBalances } from '@/lib/inventory/queries'
+import { listRecentProducts } from '@/lib/products/queries'
+import { getPosProductShortcuts } from '@/lib/pos/catalog'
+import { listSales } from '@/lib/sales/queries'
+import { getDashboardSeries, getDashboardSummary } from '@/lib/dashboard/summary'
+import { activeDashboardWidgets, resolveDashboardWidgets } from '@/lib/dashboard/layout'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
-import { StatCard } from '@/components/ui/stat-card'
-import { Badge } from '@/components/ui/badge'
-import { DataTable } from '@/components/ui/data-table'
-import { EmptyState } from '@/components/states/empty-state'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { AddWidgetDrawer } from '@/components/dashboard/add-widget-drawer'
+import { DashboardGrid, type DashboardData } from '@/components/dashboard/dashboard-grid'
 
 /**
- * The Admin Dashboard's landing screen. Milestone 04 shipped the shell and
- * shared components only, with every card a static placeholder. Milestone
- * 07 fills in "Low stock" with a real query
- * (lib/inventory/queries.ts's listLowStockBalances()) — the other cards
- * stay placeholders until their own milestone (Sales: 08, Products list:
- * already live on /products) does the same.
+ * The Admin dashboard's Overview. Milestone 04 shipped it with every card a
+ * static "₦0" placeholder; this fills them from real queries and makes the
+ * card set user-configurable (dashboard_widgets, 20260903090400).
+ *
+ * The window for the summary/chart is the last 14 days ending now; the
+ * summary's day-on-day delta compares that against the 14 days before it
+ * (dashboard_sales_summary derives the prior window itself).
  */
+const WINDOW_DAYS = 14
+
 export default async function DashboardPage() {
-  const onboardingState = await getOnboardingState()
-  const lowStockBalances = onboardingState.branch
-    ? await listLowStockBalances(onboardingState.branch.id)
-    : []
+  const organizationId = await getCurrentOrganizationId()
+  if (!organizationId) redirect('/sign-in')
+
+  const onboarding = await getOnboardingState()
+  const branch = onboarding.branch
+  const businessUnit = onboarding.businessUnit
+
+  const [active, allWidgets] = await Promise.all([
+    activeDashboardWidgets(organizationId),
+    resolveDashboardWidgets(organizationId),
+  ])
+  const wants = (id: string) => active.some((widget) => widget.id === id)
+
+  const to = new Date()
+  const from = new Date(to.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000)
+
+  // Fetch only what the enabled widgets need — a user who has removed a card
+  // does not pay for its query.
+  const [summary, series, lowStock, recentProducts, recentSales, shortcuts] = await Promise.all([
+    branch && (wants('sales_summary') || wants('sales_overview'))
+      ? getDashboardSummary(branch.id, from, to)
+      : null,
+    branch && wants('sales_overview') ? getDashboardSeries(branch.id, from, to) : [],
+    branch && wants('low_stock') ? listLowStockBalances(branch.id) : [],
+    businessUnit && wants('recent_products') ? listRecentProducts(businessUnit.id) : [],
+    branch && wants('recent_sales') ? listSales(branch.id, { limit: 5 }) : [],
+    branch && businessUnit && wants('top_products')
+      ? getPosProductShortcuts(branch.id, businessUnit.id)
+      : { recent: [], top: [] },
+  ])
+
+  const data: DashboardData = {
+    summary,
+    series,
+    lowStock,
+    recentProducts,
+    recentSales,
+    topProducts: shortcuts.top,
+  }
 
   return (
     <div className="flex flex-1 flex-col">
       <AdminTopbar title="Dashboard">
-        <Button size="sm" className="rounded-full">
-          <Plus /> Add widget
-        </Button>
+        <AddWidgetDrawer widgets={allWidgets} />
       </AdminTopbar>
 
       <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Sales today"
-            value="₦0"
-            delta={{ label: '0% vs. yesterday', direction: 'up', positive: true }}
-            tone="inverted"
-          />
-          <StatCard
-            label="Transactions"
-            value="0"
-            delta={{ label: '0% vs. yesterday', direction: 'up', positive: true }}
-          />
-          <StatCard
-            label="Average sale"
-            value="₦0"
-            delta={{ label: '0% vs. yesterday', direction: 'up', positive: true }}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Card className="shadow-card lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Sales overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EmptyState
-                icon={Package}
-                title="No sales data yet"
-                description="Charts populate once the POS Transaction Engine (Milestone 08) starts recording sales."
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Low stock</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {lowStockBalances.length === 0 ? (
-                <EmptyState
-                  icon={Package}
-                  title="Nothing low"
-                  description="Every tracked product is above its configured threshold."
-                />
-              ) : (
-                <ul className="flex flex-col gap-3">
-                  {lowStockBalances.slice(0, 5).map((balance) => (
-                    <li
-                      key={balance.id}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium">{balance.productName}</span>
-                        <span className="text-xs text-muted-foreground">{balance.sku}</span>
-                      </div>
-                      <Badge variant="destructive">{balance.quantity} left</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Recent products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={[
-                { header: 'Product', cell: () => null },
-                { header: 'SKU', cell: () => null },
-                { header: 'Price', cell: () => null },
-                { header: 'Stock', cell: () => null },
-              ]}
-              rows={[]}
-              getRowKey={() => ''}
-              emptyState={
-                <EmptyState
-                  icon={Package}
-                  title="No products yet"
-                  description="Create your first product to start selling once Milestone 06 ships the catalog."
-                />
-              }
-            />
-          </CardContent>
-        </Card>
+        <DashboardGrid widgets={active} data={data} />
       </div>
     </div>
   )
