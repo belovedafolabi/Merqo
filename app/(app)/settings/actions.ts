@@ -41,10 +41,12 @@ export async function updateOrganizationProfileAction(
   const organizationId = String(formData.get('organizationId') ?? '')
 
   try {
+    const rawThreshold = String(formData.get('defaultLowStockThreshold') ?? '').trim()
     await updateOrganizationProfile(organizationId, {
       contactPhone: (formData.get('contactPhone') as string) || undefined,
       contactEmail: (formData.get('contactEmail') as string) || undefined,
       addressLine: (formData.get('addressLine') as string) || undefined,
+      defaultLowStockThreshold: rawThreshold === '' ? null : Number(rawThreshold),
     })
   } catch (error) {
     return { error: errorMessage(error) }

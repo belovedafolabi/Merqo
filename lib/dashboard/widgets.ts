@@ -18,6 +18,7 @@
 export const WIDGET_IDS = [
   'sales_summary',
   'sales_overview',
+  'sales_performance',
   'low_stock',
   'recent_products',
   'recent_sales',
@@ -56,6 +57,19 @@ export const WIDGETS: Record<WidgetId, WidgetDef> = {
     permission: null,
     defaultEnabled: true,
     defaultPosition: 1,
+    span: 2,
+  },
+  sales_performance: {
+    id: 'sales_performance',
+    label: 'Sales performance',
+    description:
+      'Net sales, transactions and average sale for today, this month, this year or all time — switch the period in the card.',
+    permission: null,
+    // Off by default (Sales summary + Sales overview already cover the default
+    // dashboard); a defaultPosition past the seeded cards so it lands at the
+    // end when a user adds it.
+    defaultEnabled: false,
+    defaultPosition: 6,
     span: 2,
   },
   low_stock: {

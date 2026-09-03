@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 import { fromDateInputValue, toDateInputValue } from '@/lib/reports/params'
 import type { ReportGroupingDef } from '@/lib/reports/catalog'
 import type { ReportParameters } from '@/lib/reports/types'
@@ -52,6 +53,7 @@ export function ReportFilterBar({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
+  usePendingToast(pending, 'Running report…', 400)
 
   function update(changes: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams.toString())

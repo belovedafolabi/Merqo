@@ -1,6 +1,6 @@
 'use server'
 
-import { toErrorMessage } from '@/lib/errors'
+import { InsufficientStockError, toErrorMessage, type StockShortfall } from '@/lib/errors'
 
 import { revalidatePath } from 'next/cache'
 
@@ -16,6 +16,7 @@ import { getPosProductShortcuts, type PosProductShortcuts } from '@/lib/pos/cata
 import { getSale, listHeldSales, type Sale, type HeldSale } from '@/lib/sales/queries'
 import type { SaleLineItemInput } from '@/lib/sales/schemas'
 import { getStoreCreditBalance, searchCustomers, type Customer } from '@/lib/customers/queries'
+import { findRedeemableCoupon } from '@/lib/coupons/queries'
 import { createCustomer } from '@/lib/customers/mutations'
 import type { CustomerInput } from '@/lib/customers/schemas'
 import { getOrganizationBranding, type OrganizationBranding } from '@/lib/branding/queries'
@@ -96,6 +97,35 @@ export async function getStoreCreditBalanceAction(customerId: string): Promise<n
   return getStoreCreditBalance(customerId)
 }
 
+export interface CouponPreview {
+  ok: boolean
+  /** Present when ok — the code as stored and the discount it would apply. */
+  code?: string
+  discountAmount?: number
+  /** Present when not ok — a plain-language reason. */
+  reason?: string
+}
+
+/**
+ * The checkout drawer's "Apply" button. Advisory only — createSale()
+ * re-validates the code against the server-recomputed subtotal and counts the
+ * redemption under a row lock — so a stale preview here is safe.
+ */
+export async function validateCouponAction(
+  organizationId: string,
+  code: string,
+  subtotal: number,
+): Promise<CouponPreview> {
+  try {
+    const result = await findRedeemableCoupon(organizationId, code, subtotal)
+    return result.ok
+      ? { ok: true, code: result.coupon.code, discountAmount: result.discountAmount }
+      : { ok: false, reason: result.reason }
+  } catch (error) {
+    return { ok: false, reason: errorMessage(error) }
+  }
+}
+
 export async function quickAddCustomerAction(
   organizationId: string,
   input: CustomerInput,
@@ -119,6 +149,8 @@ export interface PosActionState {
   error: string | null
   saleId?: string
   total?: number
+  /** Present when the sale was blocked by insufficient stock — one entry per short line. */
+  stockShortfalls?: StockShortfall[]
 }
 
 const initialState: PosActionState = { error: null }
@@ -158,6 +190,7 @@ export async function checkoutAction(
       discountReason: formData.get('discountReason')
         ? String(formData.get('discountReason'))
         : undefined,
+      couponCode: formData.get('couponCode') ? String(formData.get('couponCode')) : undefined,
       paymentMethod: String(formData.get('paymentMethod') ?? 'cash') as
         'cash' | 'card' | 'transfer' | 'store_credit',
       paymentReference: formData.get('paymentReference')
@@ -168,6 +201,9 @@ export async function checkoutAction(
     revalidatePath('/pos')
     return { error: null, saleId: sale.id, total: sale.total }
   } catch (error) {
+    if (error instanceof InsufficientStockError) {
+      return { error: error.message, stockShortfalls: error.shortfalls }
+    }
     return { error: errorMessage(error) }
   }
 }

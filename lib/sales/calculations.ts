@@ -59,6 +59,12 @@ export interface CartDiscountInput {
   percentage?: number
   /** A flat amount takes precedence over `percentage` when both are supplied. */
   amount?: number
+  /**
+   * A redeemed coupon's already-resolved discount amount. Added to the manual
+   * discount above rather than replacing it — a coupon and a till discount
+   * can both apply to one sale — and the sum is still capped at the subtotal.
+   */
+  couponAmount?: number
 }
 
 /**
@@ -73,12 +79,14 @@ export interface CartDiscountInput {
 export function calculateDiscount(subtotal: number, discount?: CartDiscountInput): number {
   if (!discount || subtotal <= 0) return 0
 
-  const raw =
+  const manual =
     discount.amount !== undefined
       ? discount.amount
       : discount.percentage
         ? subtotal * (discount.percentage / 100)
         : 0
+
+  const raw = manual + (discount.couponAmount ?? 0)
 
   return round2(Math.min(Math.max(0, raw), subtotal))
 }

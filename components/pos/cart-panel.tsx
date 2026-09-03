@@ -18,7 +18,7 @@ export function CartPanel() {
     >
       <h2 className="text-body font-semibold">Cart</h2>
       <HeldSalesTabs />
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-y-auto scroll-smooth">
         <CartLines />
       </div>
       <CartSummary />

@@ -5,27 +5,37 @@ import { CircleHelp } from 'lucide-react'
 import 'driver.js/dist/driver.css'
 
 import { Button } from '@/components/ui/button'
+import { useSidebarOptional } from '@/components/ui/sidebar'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { completeTourAction } from '@/app/(app)/tour-actions'
 import { ADMIN_TOUR_STEPS, POS_TOUR_STEPS, type TourStep } from '@/components/tour/steps'
 
 const SEEN_KEY = 'merqo.tour.seen'
 
+/** Enough steps to count as a real tour — below this we assume targets failed
+ *  to resolve and don't burn the user's one-time run. */
+const MIN_REAL_STEPS = 2
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 /**
- * The in-app product tour (driver.js). On the ADMIN shell it auto-starts
- * once for a user whose users.tour_completed_at is null (passed in as
- * `autoStart`); on the POS it never auto-starts — the till is speed-first
- * (docs/UXUI_Design_System_Specification.md §16/§33) and a modal overlay the
- * instant a cashier opens it to serve someone would be exactly the wrong
- * thing. Both shells keep the floating "Take a tour" button for on-demand
- * replay.
+ * The in-app product tour (driver.js). On the ADMIN shell it auto-starts once
+ * for a user whose users.tour_completed_at is null (passed in as `autoStart`);
+ * on the POS it never auto-starts.
  *
- * Which steps show is decided at run time by whether each step's target
- * element is on the page, so the POS track drops its admin steps and vice
- * versa. `area` only picks the ordering of the candidate list.
+ * RESPONSIVE. On a phone the Admin nav lives in a Radix Sheet that is closed
+ * until the hamburger is tapped, so every sidebar/nav step's target is absent
+ * from the DOM when the tour builds its step list. Before building steps we
+ * open that Sheet (useSidebarOptional().setOpenMobile) and wait for it to
+ * mount, then close it again when the tour ends. Step `side` also flips from
+ * the desktop `right` to `over` on a narrow screen, where a right-anchored
+ * popover would spill off-screen.
  */
 export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoStart: boolean }) {
   const [running, setRunning] = useState(false)
   const startedRef = useRef(false)
+  const sidebar = useSidebarOptional()
+  const isMobile = useIsMobile()
   const autoStartEnabled = autoStart && area === 'admin'
 
   const markDone = useCallback(() => {
@@ -42,6 +52,14 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
     startedRef.current = true
     setRunning(true)
 
+    // On a phone, the Admin nav is inside a closed Sheet — open it so its
+    // steps have targets, and remember we did so we can close it after.
+    const openedMobileNav = area === 'admin' && isMobile && !!sidebar && !sidebar.openMobile
+    if (openedMobileNav) {
+      sidebar!.setOpenMobile(true)
+      await sleep(350)
+    }
+
     const { driver } = await import('driver.js')
 
     const source: TourStep[] =
@@ -53,14 +71,21 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
         popover: {
           title: step.title,
           description: step.body,
-          side: step.side ?? 'bottom',
+          // A right-anchored popover has nowhere to go on a 375px screen;
+          // bottom is the one side that always fits.
+          side: isMobile ? ('bottom' as const) : (step.side ?? 'bottom'),
           align: 'start' as const,
         },
       }))
 
-    if (steps.length === 0) {
+    const finish = () => {
       startedRef.current = false
       setRunning(false)
+      if (openedMobileNav) sidebar!.setOpenMobile(false)
+    }
+
+    if (steps.length === 0) {
+      finish()
       return
     }
 
@@ -74,13 +99,13 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       popoverClass: 'merqo-tour',
       steps,
       onDestroyed: () => {
-        startedRef.current = false
-        setRunning(false)
-        markDone()
+        finish()
+        // Don't burn the one-time tour on a degenerate run (targets missing).
+        if (steps.length >= MIN_REAL_STEPS) markDone()
       },
     })
     d.drive()
-  }, [area, markDone])
+  }, [area, isMobile, sidebar, markDone])
 
   useEffect(() => {
     if (!autoStartEnabled) return

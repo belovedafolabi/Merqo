@@ -56,6 +56,8 @@ export interface Sale {
   branchName: string | null
   branchAddressLine: string | null
   branchContactPhone: string | null
+  /** The redeemed coupon's code, for the receipt's discount line. Null when no coupon. */
+  couponCode: string | null
   items: SaleItem[]
   payments: Payment[]
 }
@@ -72,6 +74,7 @@ interface SaleRow {
   total: string | number
   created_at: string
   created_by: string | null
+  coupon_id: string | null
 }
 
 interface SaleItemRow {
@@ -106,7 +109,7 @@ export async function getSale(saleId: string): Promise<Sale | null> {
   const { data: saleRow, error: saleError } = await supabase
     .from('sales')
     .select(
-      'id, branch_id, business_unit_id, subtotal, discount_amount, discount_reason, tax_amount, service_charge_amount, total, created_at, created_by',
+      'id, branch_id, business_unit_id, subtotal, discount_amount, discount_reason, tax_amount, service_charge_amount, total, created_at, created_by, coupon_id',
     )
     .eq('id', saleId)
     .maybeSingle<SaleRow>()
@@ -172,6 +175,16 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     .eq('id', saleRow.branch_id)
     .maybeSingle<{ name: string; address_line: string | null; contact_phone: string | null }>()
 
+  let couponCode: string | null = null
+  if (saleRow.coupon_id) {
+    const { data: couponRow } = await supabase
+      .from('coupons')
+      .select('code')
+      .eq('id', saleRow.coupon_id)
+      .maybeSingle<{ code: string }>()
+    couponCode = couponRow?.code ?? null
+  }
+
   return {
     id: saleRow.id,
     branchId: saleRow.branch_id,
@@ -179,6 +192,7 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     branchName: branchRow?.name ?? null,
     branchAddressLine: branchRow?.address_line ?? null,
     branchContactPhone: branchRow?.contact_phone ?? null,
+    couponCode,
     subtotal: Number(saleRow.subtotal),
     discountAmount: Number(saleRow.discount_amount),
     discountReason: saleRow.discount_reason,
@@ -207,6 +221,45 @@ export async function getSale(saleId: string): Promise<Sale | null> {
       createdAt: row.created_at,
     })),
   }
+}
+
+/**
+ * Find one sale for the returns screen from whatever the cashier has on the
+ * receipt: either the full sale UUID or the 8-char "Receipt #" that
+ * `shortSaleRef()` prints (the leading hex of the UUID — there is no separate
+ * receipt-number column). A bare prefix is not a valid `uuid`, so
+ * `getSale()`'s `.eq('id', ...)` throws Postgres `22P02` on it; this resolves
+ * the prefix to a real id first, scoped to the caller's branch so two
+ * branches' receipts can't collide on the same 8 characters.
+ *
+ * Returns null for "no match" and for an ambiguous prefix (2+ sales share it)
+ * — the caller shows the same "Sale not found" state for both.
+ */
+export async function findSaleByRef(ref: string, branchId: string): Promise<Sale | null> {
+  const trimmed = ref.trim()
+  if (!trimmed) return null
+
+  // A full UUID (32 hex digits once separators are stripped) — look it up directly.
+  if (trimmed.replace(/[^0-9a-fA-F]/g, '').length === 32) {
+    return getSale(trimmed)
+  }
+
+  const range = uuidPrefixRange(trimmed)
+  if (!range) return null
+
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('sales')
+    .select('id')
+    .eq('branch_id', branchId)
+    .gte('id', range.lo)
+    .lt('id', range.hi)
+    .limit(2)
+  if (error) throw error
+
+  const matches = (data ?? []) as Array<{ id: string }>
+  if (matches.length !== 1) return null
+  return getSale(matches[0]!.id)
 }
 
 /**

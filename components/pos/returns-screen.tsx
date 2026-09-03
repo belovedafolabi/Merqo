@@ -68,7 +68,7 @@ export function ReturnsScreen() {
     setError(null)
     setLastReturnId(null)
     startTransition(async () => {
-      const found = await findSaleAction(saleIdInput.trim())
+      const found = await findSaleAction(saleIdInput.trim(), branchId)
       setSale(found)
       setNotFound(!found)
       setReturnQuantities({})
@@ -108,7 +108,7 @@ export function ReturnsScreen() {
         return
       }
       setLastReturnId(result.returnId ?? null)
-      const found = await findSaleAction(sale.id)
+      const found = await findSaleAction(sale.id, branchId)
       setSale(found)
       setReturnQuantities({})
     })
@@ -146,7 +146,7 @@ export function ReturnsScreen() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
+    <div className="flex flex-1 flex-col gap-6 overflow-y-auto scroll-smooth p-4">
       {error && (
         <Alert variant="destructive" role="alert">
           <AlertDescription>{error}</AlertDescription>
@@ -160,12 +160,15 @@ export function ReturnsScreen() {
             id="returns-sale-id"
             value={saleIdInput}
             onChange={(event) => setSaleIdInput(event.target.value)}
-            placeholder="Paste the sale ID from the receipt"
+            placeholder="Receipt # or full sale ID"
           />
           <Button type="button" onClick={handleFindSale} disabled={pending || !saleIdInput.trim()}>
             Find sale
           </Button>
         </div>
+        <p className="text-caption text-muted-foreground">
+          The “Receipt #” is printed at the top of every receipt.
+        </p>
       </Card>
 
       {notFound && (

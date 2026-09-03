@@ -3,6 +3,30 @@ import { ZodError } from 'zod'
 import { AuthorizationError } from '@/lib/auth/guard'
 import { RateLimitError } from '@/lib/rate-limit/limiter'
 
+export interface StockShortfall {
+  name: string
+  available: number
+  requested: number
+}
+
+/**
+ * A checkout blocked because one or more lines exceed available stock, raised
+ * by lib/sales/mutations.ts's pre-check BEFORE create_sale() so the offending
+ * products can be named (the DB's P0001 is quantity-only). The Server Action
+ * surfaces `shortfalls` as structured data for a tidy list in the UI; this
+ * error's own message is the plain-text fallback.
+ */
+export class InsufficientStockError extends Error {
+  readonly shortfalls: StockShortfall[]
+
+  constructor(shortfalls: StockShortfall[]) {
+    const names = shortfalls.map((s) => s.name).join(', ')
+    super(`Not enough stock for ${names}.`)
+    this.name = 'InsufficientStockError'
+    this.shortfalls = shortfalls
+  }
+}
+
 /**
  * The single place a caught `unknown` becomes a string safe to show a user.
  *
@@ -69,6 +93,10 @@ export function toErrorMessage(
 
   if (error instanceof RateLimitError) {
     return 'Too many attempts in a short time — wait a moment and try again.'
+  }
+
+  if (error instanceof InsufficientStockError) {
+    return error.message
   }
 
   if (isPostgrestLike(error)) {

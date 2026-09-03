@@ -6,11 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/states/empty-state'
 import { SalesOverviewChart } from '@/components/dashboard/sales-overview-chart'
-import {
-  deltaLabel,
-  type DashboardSummary,
-  type DashboardSeriesPoint,
-} from '@/lib/dashboard/summary'
+import { SalesPerformanceCard } from '@/components/dashboard/sales-performance-card'
+import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/types'
+import type { DashboardPeriod } from '@/lib/dashboard/periods'
 import type { ResolvedWidget } from '@/lib/dashboard/layout'
 import type { InventoryBalance } from '@/lib/inventory/queries'
 import type { RecentProduct } from '@/lib/products/queries'
@@ -26,9 +24,15 @@ function money(value: number): string {
   })
 }
 
+export type PerformanceBundle = Record<
+  DashboardPeriod,
+  { summary: DashboardSummary; series: DashboardSeriesPoint[] }
+>
+
 export interface DashboardData {
   summary: DashboardSummary | null
   series: DashboardSeriesPoint[]
+  performance: PerformanceBundle | null
   lowStock: InventoryBalance[]
   recentProducts: RecentProduct[]
   recentSales: SaleListEntry[]
@@ -75,6 +79,10 @@ export function DashboardGrid({
                 </CardContent>
               </Card>
             )
+          case 'sales_performance':
+            return data.performance ? (
+              <SalesPerformanceCard key={widget.id} bundle={data.performance} />
+            ) : null
           case 'low_stock':
             return <LowStockWidget key={widget.id} balances={data.lowStock} />
           case 'recent_products':
@@ -135,7 +143,7 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
           <EmptyState
             icon={Package}
             title="Nothing low"
-            description="Every tracked product is above its configured threshold."
+            description="Every product is above its threshold. Set a default in Settings → Organization if this looks empty."
           />
         ) : (
           <ul className="flex flex-col gap-3">
@@ -145,7 +153,7 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
                   <span className="truncate font-medium">{balance.productName}</span>
                   <span className="text-xs text-muted-foreground">{balance.sku}</span>
                 </div>
-                <Badge variant="destructive">{balance.quantity} left</Badge>
+                <Badge variant="destructive">{balance.availableQuantity} left</Badge>
               </li>
             ))}
           </ul>

@@ -208,7 +208,11 @@ insert into public.permissions (key, resource, action, description) values
   ('discount.override', 'discount', 'override', 'Apply a discount beyond the configured policy limits, or where authorization is required.'),
   ('returns.create', 'returns', 'create', 'Process a return against an original sale.'),
   ('refund.initiate', 'refund', 'initiate', 'Request a refund against a sale or return.'),
-  ('refund.approve', 'refund', 'approve', 'Authorize a pending refund request.')
+  ('refund.approve', 'refund', 'approve', 'Authorize a pending refund request.'),
+  -- Post-milestone addition (20260904090300): manage checkout discount
+  -- coupons. Redeeming a coupon at the till needs only the existing
+  -- sales.create; this key gates the Settings -> Coupons CRUD screen.
+  ('coupons.manage', 'coupons', 'manage', 'Create, edit, and archive checkout discount coupons.')
 on conflict (key) do nothing;
 
 -- =============================================================================
@@ -462,7 +466,8 @@ with branch_manager_sales_permissions (key) as (
   values
     ('sales.view'), ('sales.create'), ('sales.cancel'),
     ('discount.apply'), ('discount.override'),
-    ('returns.create'), ('refund.initiate'), ('refund.approve')
+    ('returns.create'), ('refund.initiate'), ('refund.approve'),
+    ('coupons.manage')
 )
 insert into public.role_permissions (role_id, permission_id)
 select r.id, p.id

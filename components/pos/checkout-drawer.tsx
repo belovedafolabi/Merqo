@@ -1,19 +1,22 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 import {
   ChevronDown,
   CreditCard,
   Landmark,
   Printer,
+  TicketPercent,
   TriangleAlert,
   Wallet,
+  X,
   Banknote,
 } from 'lucide-react'
 
 import {
   checkoutAction,
   getStoreCreditBalanceAction,
+  validateCouponAction,
   type PosActionState,
 } from '@/app/(pos)/pos/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -81,7 +84,8 @@ export function CheckoutDrawer({
   onOpenChange: (open: boolean) => void
 }) {
   const { organizationId, branchId, businessUnitId } = usePosSession()
-  const { lines, discount, discountReason, checkoutKey, setDiscount, clear } = useCart()
+  const { lines, discount, discountReason, coupon, checkoutKey, setDiscount, setCoupon, clear } =
+    useCart()
   const totals = useCartTotals()
   const canApplyDiscount = usePermission('discount.apply', { organizationId, branchId })
   const isMobile = useIsMobile()
@@ -95,6 +99,9 @@ export function CheckoutDrawer({
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [couponPending, startCouponCheck] = useTransition()
 
   usePendingToast(pending, 'Completing sale…')
 
@@ -146,9 +153,42 @@ export function CheckoutDrawer({
     clear()
     setDiscountInput('')
     setDiscountReasonInput('')
+    setCouponInput('')
+    setCouponError(null)
     handleSelectCustomer(null)
     setPaymentMethod('cash')
     setDetailsOpen(false)
+  }
+
+  function applyCoupon() {
+    const code = couponInput.trim()
+    if (!code) return
+    setCouponError(null)
+    startCouponCheck(async () => {
+      const result = await validateCouponAction(organizationId, code, totals.subtotal)
+      if (result.ok && result.code) {
+        setCoupon({ code: result.code, discountAmount: result.discountAmount ?? 0 })
+        setCouponInput('')
+      } else {
+        setCoupon(null)
+        setCouponError(result.reason ?? 'That code could not be applied.')
+      }
+    })
+  }
+
+  function removeCoupon() {
+    setCoupon(null)
+    setCouponError(null)
+  }
+
+  // "Done" / "Print receipt" flip the parent's controlled `open` prop directly,
+  // and vaul/Radix do NOT fire a Drawer's `onOpenChange` for a parent-driven
+  // close (only for Esc / overlay / swipe) — so the cart-clear that hung off
+  // that callback never ran and the basket survived into the next sale.
+  // Clearing here, on the actual button, is what empties the till.
+  function finish() {
+    resetAfterSale()
+    onOpenChange(false)
   }
 
   const creditShortfall =
@@ -163,8 +203,10 @@ export function CheckoutDrawer({
         open={open}
         direction={direction}
         onOpenChange={(next) => {
-          if (!next) resetAfterSale()
-          onOpenChange(next)
+          // Esc / overlay / swipe dismissal of the success sheet: clear too, so
+          // every way out of this screen lands the cashier at an empty till.
+          if (!next) finish()
+          else onOpenChange(next)
         }}
       >
         <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
@@ -172,7 +214,7 @@ export function CheckoutDrawer({
             <DrawerTitle>Sale complete</DrawerTitle>
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4">
+          <div className="flex-1 overflow-y-auto scroll-smooth px-4">
             <ReceiptView saleId={state.saleId} />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
@@ -182,19 +224,18 @@ export function CheckoutDrawer({
               disabled={printing}
               onClick={() => {
                 setPrinting(true)
-                // Closing the drawer is what runs resetAfterSale(), so
-                // finishing the print clears the cart and dismisses the
-                // receipt in one step — the cashier is back at an empty till
-                // ready for the next customer without touching Done.
+                // Finishing the print clears the cart and dismisses the receipt
+                // in one step — the cashier is back at an empty till ready for
+                // the next customer without touching Done.
                 printReceiptInPlace(() => {
                   setPrinting(false)
-                  onOpenChange(false)
+                  finish()
                 })
               }}
             >
               <Printer /> {printing ? 'Printing…' : 'Print receipt'}
             </Button>
-            <Button size="touch" disabled={printing} onClick={() => onOpenChange(false)}>
+            <Button size="touch" disabled={printing} onClick={finish}>
               Done
             </Button>
           </DrawerFooter>
@@ -237,15 +278,31 @@ export function CheckoutDrawer({
               if (discount.percentage)
                 formData.set('discountPercentage', String(discount.percentage))
               if (discountReason) formData.set('discountReason', discountReason)
+              if (coupon) formData.set('couponCode', coupon.code)
               formAction(formData)
             }}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-2">
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth px-4 pb-2">
               {state.error && (
                 <Alert variant="destructive" role="alert">
                   <TriangleAlert />
-                  <AlertDescription>{state.error}</AlertDescription>
+                  <AlertDescription>
+                    {state.stockShortfalls && state.stockShortfalls.length > 0 ? (
+                      <>
+                        <span>Not enough stock for:</span>
+                        <ul className="mt-1 list-disc pl-4">
+                          {state.stockShortfalls.map((s) => (
+                            <li key={s.name}>
+                              {s.name} — {s.available} left, {s.requested} needed
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      state.error
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 
@@ -254,10 +311,24 @@ export function CheckoutDrawer({
                   <span>Subtotal</span>
                   <span className="tabular-nums">{currency(totals.subtotal)}</span>
                 </div>
-                {totals.discountAmount > 0 && (
+                {coupon && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Coupon ({coupon.code})</span>
+                    <span className="tabular-nums">
+                      −{currency(Math.min(coupon.discountAmount, totals.discountAmount))}
+                    </span>
+                  </div>
+                )}
+                {totals.discountAmount - (coupon?.discountAmount ?? 0) > 0.004 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount</span>
-                    <span className="tabular-nums">−{currency(totals.discountAmount)}</span>
+                    <span className="tabular-nums">
+                      −
+                      {currency(
+                        totals.discountAmount -
+                          Math.min(coupon?.discountAmount ?? 0, totals.discountAmount),
+                      )}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
@@ -321,7 +392,7 @@ export function CheckoutDrawer({
                     variant="ghost"
                     className="h-10 w-full justify-between px-3 text-body-sm"
                   >
-                    Add customer, discount or note
+                    Add customer, coupon, discount or note
                     <ChevronDown
                       className={cn('size-4 transition-transform', detailsOpen && 'rotate-180')}
                     />
@@ -340,6 +411,56 @@ export function CheckoutDrawer({
                         : `Store credit available: ${currency(creditBalance)}`
                     }
                   />
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="checkout-coupon">
+                      Coupon code
+                      <InfoHint text={FORM_HINTS.checkout.coupon} />
+                    </Label>
+                    {coupon ? (
+                      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-body-sm">
+                        <span className="inline-flex items-center gap-2 font-medium">
+                          <TicketPercent className="size-4 text-muted-foreground" />
+                          {coupon.code}
+                          <span className="text-muted-foreground">
+                            −{currency(coupon.discountAmount)}
+                          </span>
+                        </span>
+                        <Button type="button" variant="ghost" size="sm" onClick={removeCoupon}>
+                          <X className="size-4" /> Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          id="checkout-coupon"
+                          value={couponInput}
+                          onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              applyCoupon()
+                            }
+                          }}
+                          placeholder="e.g. WELCOME10"
+                          autoCapitalize="characters"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={applyCoupon}
+                          disabled={couponPending || !couponInput.trim()}
+                        >
+                          {couponPending ? 'Checking…' : 'Apply'}
+                        </Button>
+                      </div>
+                    )}
+                    {couponError && (
+                      <p className="text-body-sm text-destructive" role="alert">
+                        {couponError}
+                      </p>
+                    )}
+                  </div>
 
                   {canApplyDiscount && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -16,6 +16,7 @@ export const SAMPLE_SALE: Sale = {
   branchName: 'Main Branch',
   branchAddressLine: '12 Market Street, Lagos',
   branchContactPhone: '+234 800 000 0000',
+  couponCode: null,
   subtotal: 15000,
   discountAmount: 1000,
   discountReason: 'Loyalty discount',

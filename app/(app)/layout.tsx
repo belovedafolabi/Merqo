@@ -48,7 +48,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PermissionsProvider grants={grants}>
       <BrandStyle />
-      <div className="bg-admin-canvas min-h-svh p-2 sm:p-3">
+      {/* `overflow-x-clip` — a shell-level backstop against any page whose
+          content still manages to exceed the viewport width (the fix belongs
+          at each offender, but the shell should never let the whole page
+          scroll sideways on a phone). Clip, not hidden: no scroll container,
+          no effect on `position: sticky` descendants. */}
+      <div className="bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3">
         <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
           {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
               On mobile <Sidebar> renders its children inside a Radix Sheet,
@@ -75,8 +80,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Suspense>
             {children}
           </SidebarInset>
+          {/* Inside SidebarProvider so the tour can open the mobile nav Sheet
+              (whose nav links are otherwise unmounted) before building its
+              step list. */}
+          <ProductTour area="admin" autoStart={!tourCompleted} />
         </SidebarProvider>
-        <ProductTour area="admin" autoStart={!tourCompleted} />
       </div>
     </PermissionsProvider>
   )

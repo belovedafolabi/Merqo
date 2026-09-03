@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { toCsv } from '@/lib/reports/export/csv'
 import { reportFilename } from '@/lib/reports/export/filename'
@@ -142,6 +142,12 @@ describe('CSV', () => {
 })
 
 describe('Excel', () => {
+  // exceljs is a ~1MB dynamic import; warming it once here keeps the first
+  // real test from spending its whole timeout on the cold module load.
+  beforeAll(async () => {
+    await import('exceljs')
+  }, 30_000)
+
   it('round-trips headers, values and the totals row', async () => {
     const ExcelJS = (await import('exceljs')).default
     const buffer = await toWorkbookBuffer(result())
@@ -182,7 +188,30 @@ describe('Excel', () => {
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer)
     const sheet = workbook.worksheets[0]!
 
-    expect(sheet.getRow(2).getCell(3).numFmt).toBe('#,##0.00;(#,##0.00)')
+    expect(sheet.getRow(2).getCell(3).numFmt).toBe('"₦"#,##0.00;("₦"#,##0.00)')
+  })
+
+  it('fills and bolds the header row', async () => {
+    const ExcelJS = (await import('exceljs')).default
+    const buffer = await toWorkbookBuffer(result())
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer)
+    const header = workbook.worksheets[0]!.getRow(1)
+
+    expect(header.font?.bold).toBe(true)
+    expect((header.fill as { fgColor?: { argb?: string } })?.fgColor?.argb).toBe('FF1F2937')
+  })
+
+  it('carries report metadata on a second sheet, leaving the data grid at row 1', async () => {
+    const ExcelJS = (await import('exceljs')).default
+    const buffer = await toWorkbookBuffer(result())
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer)
+
+    expect(workbook.worksheets).toHaveLength(2)
+    const info = workbook.worksheets[1]!
+    expect(info.name).toBe('Report info')
+    expect((info.getRow(1).values as unknown[]).slice(1)).toEqual(['Report', 'Sales summary'])
   })
 
   it('converts ISO date strings into real dates', async () => {

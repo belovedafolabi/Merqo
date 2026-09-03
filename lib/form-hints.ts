@@ -45,6 +45,8 @@ export const FORM_HINTS = {
     discountPercentage:
       'A percentage taken off the subtotal. May need a manager’s approval above a set limit.',
     discountReason: 'Why the discount is being given — kept on the sale record for auditing.',
+    coupon:
+      'A discount code the customer provides. It’s checked against the current cart and applied as a discount.',
     paymentReference:
       'An optional note such as a transfer reference or card authorisation code, printed on the receipt.',
   },
@@ -152,6 +154,8 @@ export const FORM_HINTS = {
     phone: 'A general contact number for the business.',
     email: 'A general contact email for the business.',
     address: 'The business’s main address.',
+    defaultLowStockThreshold:
+      'Any product whose available stock falls to this number is flagged as low — on the dashboard and by notification. A product with its own threshold set in Inventory uses that instead. Leave blank to disable.',
   },
   branding: {
     primaryColor: 'Your brand colour. It recolours buttons, links and highlights across the app.',

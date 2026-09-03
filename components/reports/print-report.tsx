@@ -18,20 +18,22 @@ import type { ReportResult } from '@/lib/reports/types'
  * Chrome to run or pay for, and one rendering path: what prints is the same
  * `ReportResult` the screen showed, so the PDF cannot disagree with it.
  *
- * The page opens the print dialog on mount only when `autoPrint` is set, which
- * the Print button does via `?print=1`. Navigating here directly — from a
- * bookmark, a shared link, or a test — renders the report and waits. Printing
- * unconditionally would ambush anyone who arrived any other way, and the print
- * dialog is modal: it blocks the renderer until dismissed, which makes an
- * always-printing page impossible to load programmatically at all.
+ * The presentation — a brand-coloured rule under the header, the org logo where
+ * one is set, zebra rows, a table header that repeats on every printed page, a
+ * running footer — is all print CSS scoped to `.merqo-report`; nothing here
+ * changes the numbers.
  */
 export function PrintReport({
   result,
   organizationName,
+  logoUrl,
+  brandColor,
   autoPrint,
 }: {
   result: ReportResult
   organizationName: string
+  logoUrl?: string | null
+  brandColor?: string | null
   autoPrint: boolean
 }) {
   useEffect(() => {
@@ -48,33 +50,53 @@ export function PrintReport({
       ? `${formatDateTime(result.parameters.from)} — ${formatDateTime(result.parameters.to)}`
       : 'All time'
 
+  const accent = brandColor || 'oklch(0.6 0.15 155)'
+
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 p-8 print:p-0">
-      {/* `print:hidden` on the chrome, so the printed sheet carries the report
-          and its provenance and nothing else — no sidebar, no buttons. */}
+    <div
+      className="merqo-report mx-auto flex max-w-4xl flex-col gap-6 p-8 print:p-0"
+      style={{ ['--report-accent' as string]: accent }}
+    >
       <style>{`
         @media print {
-          @page { margin: 16mm; }
-          body { background: white; }
+          @page { size: A4; margin: 16mm; }
+          body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Repeat the column headers at the top of every printed page. */
+          .merqo-report thead { display: table-header-group; }
+          .merqo-report tfoot { display: table-footer-group; }
+          /* Never split a row across a page break. */
+          .merqo-report tr { break-inside: avoid; }
+          /* Zebra striping survives to paper. */
+          .merqo-report tbody tr:nth-child(even) { background: #f3f4f6 !important; }
+          .merqo-report .report-foot { position: fixed; bottom: 0; left: 0; right: 0; }
         }
+        .merqo-report .report-accent-rule {
+          border-bottom: 3px solid var(--report-accent);
+        }
+        .merqo-report tbody tr:nth-child(even) { background: color-mix(in oklch, currentColor 4%, transparent); }
       `}</style>
 
-      <header className="flex flex-col gap-1 border-b pb-4">
-        <p className="text-body-sm text-muted-foreground">{organizationName}</p>
-        <h1 className="text-h2 font-semibold">{result.title}</h1>
-        <p className="text-body-sm text-muted-foreground">{range}</p>
-        {/* Generation time on the page itself: a printed report with no date
-            on it is indistinguishable from one printed last quarter. */}
-        <p className="text-caption text-muted-foreground">
-          Generated {formatDateTime(result.generatedAt)}
-        </p>
+      <header className="report-accent-rule flex items-start justify-between gap-4 pb-4">
+        <div className="flex flex-col gap-1">
+          <p className="text-body-sm font-medium text-muted-foreground">{organizationName}</p>
+          <h1 className="text-h2 font-semibold">{result.title}</h1>
+          <p className="text-body-sm text-muted-foreground">{range}</p>
+          <p className="text-caption text-muted-foreground">
+            Generated {formatDateTime(result.generatedAt)}
+          </p>
+        </div>
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" className="h-12 w-auto object-contain" />
+        )}
       </header>
 
       <ReportTable result={result} />
 
-      <p className="text-caption text-muted-foreground print:fixed print:bottom-0">
-        Merqo · {result.rows.length} row{result.rows.length === 1 ? '' : 's'}
-        {result.truncated ? ' (truncated)' : ''}
+      <p className="report-foot text-caption text-muted-foreground">
+        {organizationName} · {result.title} · {result.rows.length} row
+        {result.rows.length === 1 ? '' : 's'}
+        {result.truncated ? ' (truncated)' : ''} · Generated {formatDateTime(result.generatedAt)}
       </p>
     </div>
   )
