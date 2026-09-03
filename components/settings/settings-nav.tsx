@@ -45,7 +45,9 @@ export function SettingsNav() {
   const organizationId = useCurrentOrganizationId()
 
   return (
-    <nav className="flex gap-1 border-b">
+    // `flex-wrap` so the tab strip drops to a second line on a narrow card
+    // rather than clipping the last tabs (there are enough of them now).
+    <nav className="flex flex-wrap gap-1 border-b">
       {TABS.map((tab) => {
         const isActive = pathname === tab.href
         const link = (
