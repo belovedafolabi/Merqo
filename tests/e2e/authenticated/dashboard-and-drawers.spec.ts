@@ -102,26 +102,29 @@ test('the sales list filters by date and payment method', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Sales' })).toBeVisible({ timeout: 90_000 })
   await expect(page.getByRole('button', { name: /^view receipt/i }).first()).toBeVisible()
 
+  // `.first()` throughout: at mobile widths the CI production build streams
+  // the admin shell's main region such that a text node can briefly resolve
+  // twice; the assertions only care that the state is present and visible.
+  const filteredEmpty = page.getByText(/No sales match these filters/i).first()
+  const anyReceiptButton = page.getByRole('button', { name: /^view receipt/i }).first()
+
   // A future-dated `from` (driven through the URL, the source of truth for
   // this screen's filter) leaves nothing in range — the filtered empty
   // state, distinct from the "No sales yet" one.
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   await page.goto(`/sales?from=${tomorrow}`)
-  await expect(page.getByText(/No sales match these filters/i)).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByLabel('From', { exact: true })).toHaveValue(tomorrow)
+  await expect(filteredEmpty).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByLabel('From', { exact: true }).first()).toHaveValue(tomorrow)
 
   // The payment-method filter uses the same `method` param; `card` excludes
   // the cash sale just rung up. The filter bar reflects the active param and
   // the Clear control appears.
   await page.goto('/sales?method=card')
-  await expect(page.getByText(/No sales match these filters/i)).toBeVisible({ timeout: 30_000 })
-  const clear = page.getByRole('button', { name: /clear/i })
-  await expect(clear).toBeVisible()
+  await expect(filteredEmpty).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: /clear/i }).first()).toBeVisible()
 
   // Clearing returns to an unfiltered list with the sale back.
-  await clear.click()
+  await page.getByRole('button', { name: /clear/i }).first().click()
   await expect(page).not.toHaveURL(/method=/, { timeout: 60_000 })
-  await expect(page.getByRole('button', { name: /^view receipt/i }).first()).toBeVisible({
-    timeout: 30_000,
-  })
+  await expect(anyReceiptButton).toBeVisible({ timeout: 30_000 })
 })
