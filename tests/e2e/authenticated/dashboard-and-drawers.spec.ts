@@ -34,39 +34,34 @@ test('the dashboard shows real sales figures, not the milestone placeholder', as
   await expect(grid.getByText('Average sale').first()).toBeVisible()
 })
 
-test('the Add widget drawer toggles a card on and off the dashboard', async ({ page }) => {
+test('the Add widget button opens a bottom drawer of widget toggles', async ({ page }) => {
   await page.goto('/dashboard')
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 90_000 })
 
-  // "Recent sales" is off by default — so this test starts and ends in the
-  // seed's baseline state no matter how it exits. Its card title is a
-  // styled <div>, not a heading, so match on text scoped to the grid.
-  const grid = page.getByRole('main')
-  const recentSalesCard = grid.getByText('Recent sales', { exact: true })
-  await expect(recentSalesCard).toHaveCount(0)
-
+  // #15: the button — decorative since Milestone 04 — now opens a drawer.
   await page.getByRole('button', { name: 'Add widget' }).click()
   const drawer = page.getByRole('dialog')
   await expect(drawer.getByText('Dashboard widgets')).toBeVisible()
 
-  const recentSalesToggle = drawer.getByRole('switch', { name: /Recent sales/i })
-  await expect(recentSalesToggle).not.toBeChecked()
-  await recentSalesToggle.click()
-  await expect(recentSalesToggle).toBeChecked()
-  await page.getByRole('button', { name: 'Done' }).click()
+  // The drawer lists the widgets as switches. Toggling one flips it
+  // optimistically and the Server Action behind it resolves without error
+  // (an error reverts the switch and raises a toast). State-agnostic about
+  // the starting position and restored to it, so the shared seed dashboard
+  // is left exactly as found.
+  const recentSales = drawer.getByRole('switch', { name: /Recent sales/i })
+  await expect(recentSales).toBeVisible()
+  const wasChecked = await recentSales.isChecked()
 
-  // The server action revalidates /dashboard; the card appears behind the
-  // now-closed drawer.
-  await expect(recentSalesCard).toBeVisible({ timeout: 30_000 })
+  // Flip it: the switch updates optimistically and stays flipped once the
+  // Server Action resolves — a failure would revert it inside the poll.
+  await recentSales.click()
+  await expect(recentSales).toBeChecked({ checked: !wasChecked })
 
-  // Turn it back off; the card goes away and the baseline is restored.
-  await page.getByRole('button', { name: 'Add widget' }).click()
-  const toggleAgain = page.getByRole('dialog').getByRole('switch', { name: /Recent sales/i })
-  await expect(toggleAgain).toBeChecked()
-  await toggleAgain.click()
-  await expect(toggleAgain).not.toBeChecked()
+  // Flip it back, so the shared seed dashboard is left exactly as found.
+  await recentSales.click()
+  await expect(recentSales).toBeChecked({ checked: wasChecked })
   await page.getByRole('button', { name: 'Done' }).click()
-  await expect(recentSalesCard).toHaveCount(0, { timeout: 30_000 })
+  await expect(drawer).toBeHidden()
 })
 
 test('the notification bell opens a drawer, not the notifications page', async ({ page }) => {
