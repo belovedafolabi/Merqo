@@ -287,7 +287,22 @@ export function CheckoutDrawer({
               {state.error && (
                 <Alert variant="destructive" role="alert">
                   <TriangleAlert />
-                  <AlertDescription>{state.error}</AlertDescription>
+                  <AlertDescription>
+                    {state.stockShortfalls && state.stockShortfalls.length > 0 ? (
+                      <>
+                        <span>Not enough stock for:</span>
+                        <ul className="mt-1 list-disc pl-4">
+                          {state.stockShortfalls.map((s) => (
+                            <li key={s.name}>
+                              {s.name} — {s.available} left, {s.requested} needed
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      state.error
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 

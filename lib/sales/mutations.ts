@@ -11,6 +11,8 @@ import {
 } from '@/lib/business-structure/queries'
 import { calculateSaleTotals, type SaleLineItemCalcInput } from '@/lib/sales/calculations'
 import { findRedeemableCoupon } from '@/lib/coupons/queries'
+import { InsufficientStockError } from '@/lib/errors'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   createSaleInputSchema,
   holdSaleInputSchema,
@@ -89,6 +91,83 @@ export interface CompletedSale {
   total: number
 }
 
+interface StockCheckItem {
+  productId: string
+  variantId?: string | null
+  quantity: number
+}
+
+/**
+ * Advisory pre-check so an insufficient-stock rejection can name the
+ * products. Sums the requested quantity per (product, variant), compares it
+ * to inventory_balances.available_quantity, and throws
+ * InsufficientStockError listing every line that comes up short. A missing
+ * balance row counts as zero available.
+ */
+async function assertStockAvailable(
+  supabase: SupabaseClient,
+  branchId: string,
+  items: StockCheckItem[],
+): Promise<void> {
+  const requested = new Map<string, { productId: string; variantId: string | null; qty: number }>()
+  for (const item of items) {
+    const variantId = item.variantId ?? null
+    const key = `${item.productId}:${variantId}`
+    const existing = requested.get(key)
+    if (existing) existing.qty += item.quantity
+    else requested.set(key, { productId: item.productId, variantId, qty: item.quantity })
+  }
+
+  const { data, error } = await supabase
+    .from('inventory_balances')
+    .select('product_id, variant_id, available_quantity, products(name)')
+    .eq('branch_id', branchId)
+    .in('product_id', [...new Set(items.map((item) => item.productId))])
+  if (error) throw error
+
+  const available = new Map<string, { name: string; qty: number }>()
+  for (const row of (data ?? []) as unknown as Array<{
+    product_id: string
+    variant_id: string | null
+    available_quantity: string | number
+    products: { name: string } | null
+  }>) {
+    available.set(`${row.product_id}:${row.variant_id ?? null}`, {
+      name: row.products?.name ?? 'this product',
+      qty: Number(row.available_quantity),
+    })
+  }
+
+  const short: { productId: string; name: string; available: number; requested: number }[] = []
+  for (const [key, want] of requested) {
+    const have = available.get(key)
+    if (!have || have.qty < want.qty) {
+      short.push({
+        productId: want.productId,
+        name: have?.name ?? '',
+        available: have?.qty ?? 0,
+        requested: want.qty,
+      })
+    }
+  }
+  if (short.length === 0) return
+
+  // Fill in names for products with no balance row at all.
+  const unnamed = short.filter((s) => !s.name).map((s) => s.productId)
+  if (unnamed.length > 0) {
+    const { data: names } = await supabase
+      .from('products')
+      .select('id, name')
+      .in('id', [...new Set(unnamed)])
+    const byId = new Map((names ?? []).map((row) => [row.id as string, row.name as string]))
+    for (const s of short) if (!s.name) s.name = byId.get(s.productId) ?? 'this product'
+  }
+
+  throw new InsufficientStockError(
+    short.map((s) => ({ name: s.name, available: s.available, requested: s.requested })),
+  )
+}
+
 export async function createSale(
   organizationId: string,
   input: CreateSaleInput,
@@ -132,6 +211,13 @@ export async function createSale(
       unitPrice: await resolveLinePrice(item.productId, item.variantId, parsed.branchId),
     })),
   )
+
+  // Name the products that are short BEFORE calling create_sale(): its P0001
+  // is quantity-only and aborts on the first failing line, so the cashier
+  // never learns which items to pull. This read is advisory — create_sale()
+  // still does the authoritative, row-locked deduction — so a race that slips
+  // between here and there just falls back to the generic P0001 message.
+  await assertStockAvailable(supabase, parsed.branchId, parsed.items)
 
   // The MANUAL (till) discount gates on discount.apply / discount.override and
   // the reason requirement. A redeemed coupon is separate: it is

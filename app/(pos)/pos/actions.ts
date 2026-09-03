@@ -1,6 +1,6 @@
 'use server'
 
-import { toErrorMessage } from '@/lib/errors'
+import { InsufficientStockError, toErrorMessage, type StockShortfall } from '@/lib/errors'
 
 import { revalidatePath } from 'next/cache'
 
@@ -149,6 +149,8 @@ export interface PosActionState {
   error: string | null
   saleId?: string
   total?: number
+  /** Present when the sale was blocked by insufficient stock — one entry per short line. */
+  stockShortfalls?: StockShortfall[]
 }
 
 const initialState: PosActionState = { error: null }
@@ -199,6 +201,9 @@ export async function checkoutAction(
     revalidatePath('/pos')
     return { error: null, saleId: sale.id, total: sale.total }
   } catch (error) {
+    if (error instanceof InsufficientStockError) {
+      return { error: error.message, stockShortfalls: error.shortfalls }
+    }
     return { error: errorMessage(error) }
   }
 }

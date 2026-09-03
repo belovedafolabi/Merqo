@@ -51,6 +51,8 @@ export default async function ReportPrintPage({
     <PrintReport
       result={result}
       organizationName={branding?.displayName ?? 'Merqo'}
+      logoUrl={branding?.logoUrl ?? null}
+      brandColor={branding?.primaryColor ?? null}
       // Only the Print button sets this. See PrintReport's own doc for why the
       // dialog is opt-in rather than automatic.
       autoPrint={resolvedSearchParams.print === '1'}

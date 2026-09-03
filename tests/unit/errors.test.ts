@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-import { toErrorMessage } from '@/lib/errors'
+import { InsufficientStockError, toErrorMessage } from '@/lib/errors'
 import { AuthorizationError } from '@/lib/auth/guard'
 import { RateLimitError } from '@/lib/rate-limit/limiter'
 
@@ -45,6 +45,21 @@ describe('toErrorMessage', () => {
   it('recognises AuthorizationError and RateLimitError', () => {
     expect(toErrorMessage(new AuthorizationError('sales.create'))).toMatch(/permission/i)
     expect(toErrorMessage(new RateLimitError('checkout'))).toMatch(/too many/i)
+  })
+
+  it('names the products on an InsufficientStockError', () => {
+    const error = new InsufficientStockError([
+      { name: 'Coke 50cl', available: 2, requested: 5 },
+      { name: 'Bread', available: 0, requested: 1 },
+    ])
+    expect(toErrorMessage(error)).toBe('Not enough stock for Coke 50cl, Bread.')
+    expect(error.shortfalls).toHaveLength(2)
+  })
+
+  it('still maps the DB P0001 code to the generic string (race fallback)', () => {
+    expect(toErrorMessage({ code: 'P0001', message: 'insufficient stock' })).toBe(
+      'Not enough stock for one or more items in this sale.',
+    )
   })
 
   it('passes through a plain Error message', () => {
