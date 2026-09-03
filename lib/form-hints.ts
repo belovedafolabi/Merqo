@@ -45,6 +45,8 @@ export const FORM_HINTS = {
     discountPercentage:
       'A percentage taken off the subtotal. May need a manager’s approval above a set limit.',
     discountReason: 'Why the discount is being given — kept on the sale record for auditing.',
+    coupon:
+      'A discount code the customer provides. It’s checked against the current cart and applied as a discount.',
     paymentReference:
       'An optional note such as a transfer reference or card authorisation code, printed on the receipt.',
   },

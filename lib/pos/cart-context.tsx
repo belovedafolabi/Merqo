@@ -28,10 +28,18 @@ export interface CartLine {
   quantity: number
 }
 
+/** A coupon the cashier has applied — its discount is a client preview; the
+ *  server re-validates the code and counts the redemption at checkout. */
+export interface AppliedCoupon {
+  code: string
+  discountAmount: number
+}
+
 interface CartState {
   lines: CartLine[]
   discount: CartDiscountInput
   discountReason: string
+  coupon: AppliedCoupon | null
   /**
    * One idempotency key per basket lifecycle. Stable across checkout
    * retries — so a sale that committed but whose Server Action still
@@ -50,6 +58,7 @@ interface CartState {
   updateQuantity: (productId: string, variantId: string | null, quantity: number) => void
   removeItem: (productId: string, variantId: string | null) => void
   setDiscount: (discount: CartDiscountInput, reason?: string) => void
+  setCoupon: (coupon: AppliedCoupon | null) => void
   loadLines: (lines: CartLine[]) => void
   clear: () => void
 }
@@ -64,6 +73,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([])
   const [discount, setDiscountState] = useState<CartDiscountInput>({})
   const [discountReason, setDiscountReason] = useState('')
+  const [coupon, setCouponState] = useState<AppliedCoupon | null>(null)
   const [checkoutKey, setCheckoutKey] = useState(() => crypto.randomUUID())
 
   const addItem = useCallback<CartState['addItem']>((item) => {
@@ -120,8 +130,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setDiscountReason(reason ?? '')
   }, [])
 
+  const setCoupon = useCallback<CartState['setCoupon']>((next) => {
+    setCouponState(next)
+  }, [])
+
   const loadLines = useCallback<CartState['loadLines']>((next) => {
     setLines(next)
+    setCouponState(null)
     setCheckoutKey(crypto.randomUUID())
   }, [])
 
@@ -129,6 +144,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLines([])
     setDiscountState({})
     setDiscountReason('')
+    setCouponState(null)
     setCheckoutKey(crypto.randomUUID())
   }, [])
 
@@ -137,11 +153,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       discount,
       discountReason,
+      coupon,
       checkoutKey,
       addItem,
       updateQuantity,
       removeItem,
       setDiscount,
+      setCoupon,
       loadLines,
       clear,
     }),
@@ -149,11 +167,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       discount,
       discountReason,
+      coupon,
       checkoutKey,
       addItem,
       updateQuantity,
       removeItem,
       setDiscount,
+      setCoupon,
       loadLines,
       clear,
     ],
@@ -170,16 +190,16 @@ export function useCart(): CartState {
 
 /** The cart's live preview totals — see this module's own doc comment for why these are a preview only. */
 export function useCartTotals(): SaleTotals {
-  const { lines, discount } = useCart()
+  const { lines, discount, coupon } = useCart()
   const { posConfig } = usePosSession()
 
   return useMemo(
     () =>
       calculateSaleTotals(
         lines.map((line) => ({ quantity: line.quantity, unitPrice: line.unitPrice })),
-        discount,
+        { ...discount, couponAmount: coupon?.discountAmount ?? 0 },
         posConfig,
       ),
-    [lines, discount, posConfig],
+    [lines, discount, coupon, posConfig],
   )
 }

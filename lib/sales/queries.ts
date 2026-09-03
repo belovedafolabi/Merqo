@@ -56,6 +56,8 @@ export interface Sale {
   branchName: string | null
   branchAddressLine: string | null
   branchContactPhone: string | null
+  /** The redeemed coupon's code, for the receipt's discount line. Null when no coupon. */
+  couponCode: string | null
   items: SaleItem[]
   payments: Payment[]
 }
@@ -72,6 +74,7 @@ interface SaleRow {
   total: string | number
   created_at: string
   created_by: string | null
+  coupon_id: string | null
 }
 
 interface SaleItemRow {
@@ -106,7 +109,7 @@ export async function getSale(saleId: string): Promise<Sale | null> {
   const { data: saleRow, error: saleError } = await supabase
     .from('sales')
     .select(
-      'id, branch_id, business_unit_id, subtotal, discount_amount, discount_reason, tax_amount, service_charge_amount, total, created_at, created_by',
+      'id, branch_id, business_unit_id, subtotal, discount_amount, discount_reason, tax_amount, service_charge_amount, total, created_at, created_by, coupon_id',
     )
     .eq('id', saleId)
     .maybeSingle<SaleRow>()
@@ -172,6 +175,16 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     .eq('id', saleRow.branch_id)
     .maybeSingle<{ name: string; address_line: string | null; contact_phone: string | null }>()
 
+  let couponCode: string | null = null
+  if (saleRow.coupon_id) {
+    const { data: couponRow } = await supabase
+      .from('coupons')
+      .select('code')
+      .eq('id', saleRow.coupon_id)
+      .maybeSingle<{ code: string }>()
+    couponCode = couponRow?.code ?? null
+  }
+
   return {
     id: saleRow.id,
     branchId: saleRow.branch_id,
@@ -179,6 +192,7 @@ export async function getSale(saleId: string): Promise<Sale | null> {
     branchName: branchRow?.name ?? null,
     branchAddressLine: branchRow?.address_line ?? null,
     branchContactPhone: branchRow?.contact_phone ?? null,
+    couponCode,
     subtotal: Number(saleRow.subtotal),
     discountAmount: Number(saleRow.discount_amount),
     discountReason: saleRow.discount_reason,

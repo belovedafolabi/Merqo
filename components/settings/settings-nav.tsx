@@ -18,6 +18,10 @@ const TABS = [
   // by construction — see 20260825100500), so this tab is unconditional
   // like every other one above it.
   { href: '/settings/subscription', label: 'Subscription', permission: null },
+  // Gated like Pricing below (hidden, not just disabled): a redeemed coupon
+  // needs only sales.create at the till, but this CRUD screen is
+  // coupons.manage — Owner and Branch Manager by default.
+  { href: '/settings/coupons', label: 'Coupons', permission: 'coupons.manage' as const },
   // Super Admin only — hidden via <Can>, unlike every tab above, because
   // showing it to an Owner who will only ever hit a permission error on the
   // page is worse than not showing it at all.

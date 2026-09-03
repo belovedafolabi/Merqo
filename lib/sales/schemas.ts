@@ -41,6 +41,16 @@ export const createSaleInputSchema = z.object({
     .max(500, 'Reason must be 500 characters or fewer.')
     .optional()
     .transform((value) => (value ? value : undefined)),
+  // A coupon code the cashier applied. The server re-validates it
+  // (lib/coupons/queries.ts) against the recomputed subtotal — the client's
+  // "apply" step is only a preview — and create_sale() locks and counts the
+  // redemption.
+  couponCode: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .transform((value) => (value ? value.toUpperCase() : undefined)),
   paymentMethod: z.enum(['cash', 'card', 'transfer', 'store_credit']),
   paymentReference: z
     .string()

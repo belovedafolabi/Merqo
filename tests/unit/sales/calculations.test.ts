@@ -64,6 +64,15 @@ describe('calculateDiscount', () => {
   it('zero subtotal produces zero discount regardless of request', () => {
     expect(calculateDiscount(0, { percentage: 50 })).toBe(0)
   })
+
+  it('sums a coupon amount with the manual discount', () => {
+    // 10% of 1000 = 100, plus a 150 coupon = 250
+    expect(calculateDiscount(1000, { percentage: 10, couponAmount: 150 })).toBe(250)
+    // coupon alone
+    expect(calculateDiscount(1000, { couponAmount: 150 })).toBe(150)
+    // the sum is still capped at the subtotal
+    expect(calculateDiscount(1000, { amount: 900, couponAmount: 500 })).toBe(1000)
+  })
 })
 
 describe('calculateTax', () => {

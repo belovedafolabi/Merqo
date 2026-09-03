@@ -131,7 +131,14 @@ export function ReceiptDocument({
         </div>
         {sale.discountAmount > 0 && (
           <div className="flex justify-between">
-            <span>Discount{sale.discountReason ? ` (${sale.discountReason})` : ''}</span>
+            <span>
+              Discount
+              {sale.couponCode
+                ? ` (${sale.couponCode})`
+                : sale.discountReason
+                  ? ` (${sale.discountReason})`
+                  : ''}
+            </span>
             <span className="tabular-nums">−{money(sale.discountAmount)}</span>
           </div>
         )}

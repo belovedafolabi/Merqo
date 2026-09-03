@@ -1,19 +1,22 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 import {
   ChevronDown,
   CreditCard,
   Landmark,
   Printer,
+  TicketPercent,
   TriangleAlert,
   Wallet,
+  X,
   Banknote,
 } from 'lucide-react'
 
 import {
   checkoutAction,
   getStoreCreditBalanceAction,
+  validateCouponAction,
   type PosActionState,
 } from '@/app/(pos)/pos/actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -81,7 +84,8 @@ export function CheckoutDrawer({
   onOpenChange: (open: boolean) => void
 }) {
   const { organizationId, branchId, businessUnitId } = usePosSession()
-  const { lines, discount, discountReason, checkoutKey, setDiscount, clear } = useCart()
+  const { lines, discount, discountReason, coupon, checkoutKey, setDiscount, setCoupon, clear } =
+    useCart()
   const totals = useCartTotals()
   const canApplyDiscount = usePermission('discount.apply', { organizationId, branchId })
   const isMobile = useIsMobile()
@@ -95,6 +99,9 @@ export function CheckoutDrawer({
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [couponPending, startCouponCheck] = useTransition()
 
   usePendingToast(pending, 'Completing sale…')
 
@@ -146,9 +153,32 @@ export function CheckoutDrawer({
     clear()
     setDiscountInput('')
     setDiscountReasonInput('')
+    setCouponInput('')
+    setCouponError(null)
     handleSelectCustomer(null)
     setPaymentMethod('cash')
     setDetailsOpen(false)
+  }
+
+  function applyCoupon() {
+    const code = couponInput.trim()
+    if (!code) return
+    setCouponError(null)
+    startCouponCheck(async () => {
+      const result = await validateCouponAction(organizationId, code, totals.subtotal)
+      if (result.ok && result.code) {
+        setCoupon({ code: result.code, discountAmount: result.discountAmount ?? 0 })
+        setCouponInput('')
+      } else {
+        setCoupon(null)
+        setCouponError(result.reason ?? 'That code could not be applied.')
+      }
+    })
+  }
+
+  function removeCoupon() {
+    setCoupon(null)
+    setCouponError(null)
   }
 
   // "Done" / "Print receipt" flip the parent's controlled `open` prop directly,
@@ -248,6 +278,7 @@ export function CheckoutDrawer({
               if (discount.percentage)
                 formData.set('discountPercentage', String(discount.percentage))
               if (discountReason) formData.set('discountReason', discountReason)
+              if (coupon) formData.set('couponCode', coupon.code)
               formAction(formData)
             }}
             className="flex min-h-0 flex-1 flex-col"
@@ -265,10 +296,20 @@ export function CheckoutDrawer({
                   <span>Subtotal</span>
                   <span className="tabular-nums">{currency(totals.subtotal)}</span>
                 </div>
-                {totals.discountAmount > 0 && (
+                {coupon && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Coupon ({coupon.code})</span>
+                    <span className="tabular-nums">
+                      −{currency(Math.min(coupon.discountAmount, totals.discountAmount))}
+                    </span>
+                  </div>
+                )}
+                {totals.discountAmount - (coupon?.discountAmount ?? 0) > 0.004 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount</span>
-                    <span className="tabular-nums">−{currency(totals.discountAmount)}</span>
+                    <span className="tabular-nums">
+                      −{currency(totals.discountAmount - Math.min(coupon?.discountAmount ?? 0, totals.discountAmount))}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
@@ -332,7 +373,7 @@ export function CheckoutDrawer({
                     variant="ghost"
                     className="h-10 w-full justify-between px-3 text-body-sm"
                   >
-                    Add customer, discount or note
+                    Add customer, coupon, discount or note
                     <ChevronDown
                       className={cn('size-4 transition-transform', detailsOpen && 'rotate-180')}
                     />
@@ -351,6 +392,56 @@ export function CheckoutDrawer({
                         : `Store credit available: ${currency(creditBalance)}`
                     }
                   />
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="checkout-coupon">
+                      Coupon code
+                      <InfoHint text={FORM_HINTS.checkout.coupon} />
+                    </Label>
+                    {coupon ? (
+                      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-body-sm">
+                        <span className="inline-flex items-center gap-2 font-medium">
+                          <TicketPercent className="size-4 text-muted-foreground" />
+                          {coupon.code}
+                          <span className="text-muted-foreground">
+                            −{currency(coupon.discountAmount)}
+                          </span>
+                        </span>
+                        <Button type="button" variant="ghost" size="sm" onClick={removeCoupon}>
+                          <X className="size-4" /> Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          id="checkout-coupon"
+                          value={couponInput}
+                          onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              applyCoupon()
+                            }
+                          }}
+                          placeholder="e.g. WELCOME10"
+                          autoCapitalize="characters"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={applyCoupon}
+                          disabled={couponPending || !couponInput.trim()}
+                        >
+                          {couponPending ? 'Checking…' : 'Apply'}
+                        </Button>
+                      </div>
+                    )}
+                    {couponError && (
+                      <p className="text-body-sm text-destructive" role="alert">
+                        {couponError}
+                      </p>
+                    )}
+                  </div>
 
                   {canApplyDiscount && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

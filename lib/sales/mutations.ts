@@ -10,6 +10,7 @@ import {
   listBusinessUnitCapabilities,
 } from '@/lib/business-structure/queries'
 import { calculateSaleTotals, type SaleLineItemCalcInput } from '@/lib/sales/calculations'
+import { findRedeemableCoupon } from '@/lib/coupons/queries'
 import {
   createSaleInputSchema,
   holdSaleInputSchema,
@@ -132,6 +133,11 @@ export async function createSale(
     })),
   )
 
+  // The MANUAL (till) discount gates on discount.apply / discount.override and
+  // the reason requirement. A redeemed coupon is separate: it is
+  // pre-authorized by whoever created it (coupons.manage), so it needs no
+  // discount permission and no reason, and is exempt from the policy-limit
+  // override check below.
   const discountRequested = (parsed.discountAmount ?? 0) > 0 || (parsed.discountPercentage ?? 0) > 0
   if (discountRequested) {
     await requirePermission('discount.apply', { organizationId, branchId: parsed.branchId })
@@ -141,18 +147,37 @@ export async function createSale(
     }
   }
 
-  const totals = calculateSaleTotals(
+  const manualOnly = calculateSaleTotals(
     priced,
     { amount: parsed.discountAmount, percentage: parsed.discountPercentage },
     posConfig,
   )
 
+  // Resolve the coupon against the pre-discount subtotal. Re-checked (and its
+  // redemption counted) under a row lock inside create_sale() — this is the
+  // friendly early failure and the amount source.
+  let couponId: string | null = null
+  let couponAmount = 0
+  if (parsed.couponCode) {
+    const result = await findRedeemableCoupon(organizationId, parsed.couponCode, manualOnly.subtotal)
+    if (!result.ok) throw new Error(result.reason)
+    couponId = result.coupon.id
+    couponAmount = result.discountAmount
+  }
+
+  const totals = calculateSaleTotals(
+    priced,
+    { amount: parsed.discountAmount, percentage: parsed.discountPercentage, couponAmount },
+    posConfig,
+  )
+
+  const manualDiscountAmount = manualOnly.discountAmount
   const exceedsPolicy =
-    totals.discountAmount > 0 &&
+    manualDiscountAmount > 0 &&
     (posConfig.discountRequiresAuthorization ||
-      (totals.subtotal > 0 &&
-        totals.discountAmount / totals.subtotal > posConfig.discountMaxPercentage / 100) ||
-      (posConfig.discountMaxAmount !== null && totals.discountAmount > posConfig.discountMaxAmount))
+      (manualOnly.subtotal > 0 &&
+        manualDiscountAmount / manualOnly.subtotal > posConfig.discountMaxPercentage / 100) ||
+      (posConfig.discountMaxAmount !== null && manualDiscountAmount > posConfig.discountMaxAmount))
 
   if (exceedsPolicy) {
     await requirePermission('discount.override', { organizationId, branchId: parsed.branchId })
@@ -197,6 +222,7 @@ export async function createSale(
     p_payment_amount: totals.total,
     p_payment_reference: parsed.paymentReference ?? null,
     p_customer_id: parsed.customerId ?? null,
+    p_coupon_id: couponId,
   })
   if (error) {
     // Milestone 16 observability spot-check: the single most important
@@ -237,6 +263,7 @@ export async function createSale(
         total: Number(sale.total),
         paymentMethod: parsed.paymentMethod,
         discountAmount: totals.discountAmount,
+        couponId,
         customerId: parsed.customerId ?? null,
       },
     },
