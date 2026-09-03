@@ -102,6 +102,24 @@ export function OrganizationProfileForm({
             />
           </div>
 
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="default-low-stock-threshold">
+              Default low-stock threshold
+              <InfoHint text={FORM_HINTS.organization.defaultLowStockThreshold} />
+            </Label>
+            <Input
+              id="default-low-stock-threshold"
+              name="defaultLowStockThreshold"
+              type="number"
+              min={0}
+              step="1"
+              inputMode="numeric"
+              placeholder="e.g. 5"
+              defaultValue={profile.defaultLowStockThreshold ?? ''}
+              className="max-w-40"
+            />
+          </div>
+
           <Button type="submit" disabled={pending} className="self-start">
             {pending ? 'Saving…' : 'Save'}
           </Button>

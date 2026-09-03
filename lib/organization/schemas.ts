@@ -30,5 +30,14 @@ export const organizationProfileInputSchema = z.object({
     .max(200)
     .optional()
     .transform((value) => (value ? value : undefined)),
+  // The organization-wide fallback low-stock threshold (20260904090000).
+  // null = "no default"; a value must be a non-negative number. The action
+  // does the string→number/null coercion from the form field, matching how
+  // the fields above are pre-shaped to `string | undefined` before parse.
+  defaultLowStockThreshold: z
+    .number()
+    .min(0, 'Enter zero or a positive number.')
+    .max(1e11)
+    .nullable(),
 })
 export type OrganizationProfileInput = z.infer<typeof organizationProfileInputSchema>

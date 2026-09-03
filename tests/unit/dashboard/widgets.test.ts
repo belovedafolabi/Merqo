@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -7,23 +7,33 @@ import { WIDGETS, WIDGET_IDS, WIDGET_LIST, findWidget } from '@/lib/dashboard/wi
 
 /**
  * lib/dashboard/widgets.ts and dashboard_widgets_widget_id_check
- * (20260903090400) are two copies of the same whitelist — see that module's
- * header. This makes them drift loudly, the same pattern
+ * (first defined in 20260903090400) are two copies of the same whitelist —
+ * see that module's header. This makes them drift loudly, the same pattern
  * tests/unit/receipts/templates.test.ts uses: parse the migration's actual
  * CHECK text rather than maintaining a third hand-written fixture.
+ *
+ * The constraint can be re-issued by a later migration when a widget is added
+ * (drop-and-re-add, one name) — so this reads the LAST migration, by filename
+ * order, that mentions the constraint, i.e. its effective definition after a
+ * full `supabase db reset`.
  */
 
-const MIGRATION_SQL = readFileSync(
-  join(process.cwd(), 'supabase', 'migrations', '20260903090400_create_dashboard_widgets.sql'),
-  'utf8',
-)
+const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations')
+
+const CHECK_RE = /dashboard_widgets_widget_id_check[\s\S]*?widget_id\s+in\s*\(([^)]+)\)/i
+
+function effectiveCheckSql(): string {
+  const file = readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+    .reverse()
+    .find((name) => CHECK_RE.test(readFileSync(join(MIGRATIONS_DIR, name), 'utf8')))
+  if (!file) throw new Error('no migration defines dashboard_widgets_widget_id_check')
+  return readFileSync(join(MIGRATIONS_DIR, file), 'utf8')
+}
 
 function sqlWidgetIds(): string[] {
-  const match =
-    /dashboard_widgets_widget_id_check\s+check\s*\(\s*widget_id\s+in\s*\(([^)]+)\)/i.exec(
-      MIGRATION_SQL,
-    )
-  const captured = match?.[1]
+  const captured = CHECK_RE.exec(effectiveCheckSql())?.[1]
   if (!captured)
     throw new Error('could not find dashboard_widgets_widget_id_check in the migration')
   return captured

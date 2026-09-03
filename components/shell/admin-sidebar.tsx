@@ -10,7 +10,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarInput,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -53,7 +52,6 @@ export function AdminSidebar({
           <span className="truncate text-sm font-semibold">{organizationName}</span>
         </div>
         <BusinessUnitSwitcher branchName={branchName} businessUnitName={businessUnitName} />
-        <SidebarInput placeholder="Search…" aria-label="Search" />
       </SidebarHeader>
 
       <SidebarContent>

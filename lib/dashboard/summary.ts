@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { DASHBOARD_TIME_ZONE } from '@/lib/dashboard/periods'
 
 /**
  * The Admin dashboard's sales figures — the three stat cards and the
@@ -83,6 +84,7 @@ export async function getDashboardSeries(
     p_branch_id: branchId,
     p_from: from.toISOString(),
     p_to: to.toISOString(),
+    p_tz: DASHBOARD_TIME_ZONE,
   })
 
   if (error) throw error

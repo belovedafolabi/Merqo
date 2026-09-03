@@ -151,6 +151,16 @@ export function CheckoutDrawer({
     setDetailsOpen(false)
   }
 
+  // "Done" / "Print receipt" flip the parent's controlled `open` prop directly,
+  // and vaul/Radix do NOT fire a Drawer's `onOpenChange` for a parent-driven
+  // close (only for Esc / overlay / swipe) — so the cart-clear that hung off
+  // that callback never ran and the basket survived into the next sale.
+  // Clearing here, on the actual button, is what empties the till.
+  function finish() {
+    resetAfterSale()
+    onOpenChange(false)
+  }
+
   const creditShortfall =
     payingWithCredit && creditBalance !== null && !canCoverAmount(creditBalance, totals.total)
   const blockedByCredit = payingWithCredit && (!customer || creditShortfall)
@@ -163,8 +173,10 @@ export function CheckoutDrawer({
         open={open}
         direction={direction}
         onOpenChange={(next) => {
-          if (!next) resetAfterSale()
-          onOpenChange(next)
+          // Esc / overlay / swipe dismissal of the success sheet: clear too, so
+          // every way out of this screen lands the cashier at an empty till.
+          if (!next) finish()
+          else onOpenChange(next)
         }}
       >
         <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
@@ -172,7 +184,7 @@ export function CheckoutDrawer({
             <DrawerTitle>Sale complete</DrawerTitle>
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4">
+          <div className="flex-1 overflow-y-auto scroll-smooth px-4">
             <ReceiptView saleId={state.saleId} />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
@@ -182,19 +194,18 @@ export function CheckoutDrawer({
               disabled={printing}
               onClick={() => {
                 setPrinting(true)
-                // Closing the drawer is what runs resetAfterSale(), so
-                // finishing the print clears the cart and dismisses the
-                // receipt in one step — the cashier is back at an empty till
-                // ready for the next customer without touching Done.
+                // Finishing the print clears the cart and dismisses the receipt
+                // in one step — the cashier is back at an empty till ready for
+                // the next customer without touching Done.
                 printReceiptInPlace(() => {
                   setPrinting(false)
-                  onOpenChange(false)
+                  finish()
                 })
               }}
             >
               <Printer /> {printing ? 'Printing…' : 'Print receipt'}
             </Button>
-            <Button size="touch" disabled={printing} onClick={() => onOpenChange(false)}>
+            <Button size="touch" disabled={printing} onClick={finish}>
               Done
             </Button>
           </DrawerFooter>
@@ -241,7 +252,7 @@ export function CheckoutDrawer({
             }}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-2">
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth px-4 pb-2">
               {state.error && (
                 <Alert variant="destructive" role="alert">
                   <TriangleAlert />

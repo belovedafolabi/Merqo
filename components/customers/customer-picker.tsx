@@ -7,6 +7,7 @@ import { searchCustomersAction } from '@/app/(app)/customers/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 import type { Customer } from '@/lib/customers/queries'
 
 /**
@@ -41,6 +42,7 @@ export function CustomerPicker({
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<Customer[]>([])
   const [isSearching, startSearch] = useTransition()
+  usePendingToast(isSearching, 'Searching customers…', 400)
   const inputId = useId()
 
   // Clearing results belongs in the handler that clears the term, not in the

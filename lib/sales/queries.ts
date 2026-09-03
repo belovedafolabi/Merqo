@@ -210,6 +210,45 @@ export async function getSale(saleId: string): Promise<Sale | null> {
 }
 
 /**
+ * Find one sale for the returns screen from whatever the cashier has on the
+ * receipt: either the full sale UUID or the 8-char "Receipt #" that
+ * `shortSaleRef()` prints (the leading hex of the UUID — there is no separate
+ * receipt-number column). A bare prefix is not a valid `uuid`, so
+ * `getSale()`'s `.eq('id', ...)` throws Postgres `22P02` on it; this resolves
+ * the prefix to a real id first, scoped to the caller's branch so two
+ * branches' receipts can't collide on the same 8 characters.
+ *
+ * Returns null for "no match" and for an ambiguous prefix (2+ sales share it)
+ * — the caller shows the same "Sale not found" state for both.
+ */
+export async function findSaleByRef(ref: string, branchId: string): Promise<Sale | null> {
+  const trimmed = ref.trim()
+  if (!trimmed) return null
+
+  // A full UUID (32 hex digits once separators are stripped) — look it up directly.
+  if (trimmed.replace(/[^0-9a-fA-F]/g, '').length === 32) {
+    return getSale(trimmed)
+  }
+
+  const range = uuidPrefixRange(trimmed)
+  if (!range) return null
+
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('sales')
+    .select('id')
+    .eq('branch_id', branchId)
+    .gte('id', range.lo)
+    .lt('id', range.hi)
+    .limit(2)
+  if (error) throw error
+
+  const matches = (data ?? []) as Array<{ id: string }>
+  if (matches.length !== 1) return null
+  return getSale(matches[0]!.id)
+}
+
+/**
  * A hex prefix of a UUID (4–32 chars, non-hex stripped — so "7EE1A301" or
  * "7ee1-a301" both work) → the half-open [lo, hi) id range that prefix
  * covers. Returns null for a prefix too short to be a useful filter.

@@ -61,7 +61,7 @@ export function AddWidgetDrawer({ widgets }: { widgets: ResolvedWidget[] }) {
           </DrawerDescription>
         </DrawerHeader>
 
-        <ul className="flex flex-col gap-1 overflow-y-auto px-4 pb-4">
+        <ul className="flex flex-col gap-1 overflow-y-auto scroll-smooth px-4 pb-4">
           {widgets.map((widget) => {
             const enabled = overrides[widget.id] ?? widget.enabled
             return (

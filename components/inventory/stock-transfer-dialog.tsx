@@ -145,7 +145,7 @@ export function StockTransferDialog({
             formData.set('items', JSON.stringify(validItems))
             formAction(formData)
           }}
-          className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
+          className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto scroll-smooth pr-1"
         >
           {state.error && (
             <Alert variant="destructive" role="alert">
@@ -159,18 +159,34 @@ export function StockTransferDialog({
               Destination branch
               <InfoHint text={FORM_HINTS.inventory.toBranch} />
             </Label>
-            <Select value={destinationBranchId} onValueChange={handleDestinationBranchChange}>
-              <SelectTrigger id="transfer-destination-branch" className="w-full">
-                <SelectValue placeholder="Select a branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {destinationBranches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {destinationBranches.length === 0 ? (
+              // A single-branch organisation has nowhere to transfer to. Radix
+              // Select with no items opens an empty, un-focusable popover — it
+              // reads as "the dropdown is broken". Say so plainly instead.
+              <>
+                <Select disabled>
+                  <SelectTrigger id="transfer-destination-branch" className="w-full">
+                    <SelectValue placeholder="No other branch available" />
+                  </SelectTrigger>
+                </Select>
+                <p className="text-caption text-muted-foreground">
+                  Stock transfers need a second branch. Add one under Business structure first.
+                </p>
+              </>
+            ) : (
+              <Select value={destinationBranchId} onValueChange={handleDestinationBranchChange}>
+                <SelectTrigger id="transfer-destination-branch" className="w-full">
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {destinationBranches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">

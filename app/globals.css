@@ -222,6 +222,22 @@
   body {
     @apply bg-background font-sans text-foreground;
   }
+  /*
+   * Site-wide smooth scrolling — anchor jumps, `scrollIntoView`, and the
+   * keyboard/"scroll to top" affordances ease rather than snap. A CSS rule,
+   * not a JS scroll library: nothing here needs momentum hijacking, and this
+   * stays out of the way of the router's own `{ scroll: false }` calls.
+   * Suppressed under `prefers-reduced-motion`, like every other motion in
+   * this file.
+   */
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
 }
 
 /* The only genuinely global print rules (Milestone 14). Everything

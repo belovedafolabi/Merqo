@@ -105,8 +105,11 @@ export async function listInventoryBalances(branchId: string): Promise<Inventory
 }
 
 /**
- * Below its configured threshold — a null threshold means "not configured",
- * never "low".
+ * Below its effective threshold, where the effective threshold is the row's
+ * own `low_stock_threshold` or — where that is null — the organization-wide
+ * `default_low_stock_threshold` (20260904090000). A row is only ever "low"
+ * when that coalesced value is non-null, so an org with no default and no
+ * per-row thresholds still reports nothing (today's behaviour).
  *
  * The predicate is `available_quantity`, not `quantity`. `reserved_quantity`
  * is stock already committed to a layaway or an open order, so it cannot be
@@ -117,18 +120,23 @@ export async function listInventoryBalances(branchId: string): Promise<Inventory
  * Milestone 12 made it the single rule everywhere — this query, the inventory
  * view's badge, and public.notify_low_stock() all read the same way.
  */
-export async function listLowStockBalances(branchId: string): Promise<InventoryBalance[]> {
+export async function listLowStockBalances(
+  branchId: string,
+  orgDefaultThreshold: number | null = null,
+): Promise<InventoryBalance[]> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('inventory_balances')
     .select(balanceSelect)
     .eq('branch_id', branchId)
-    .not('low_stock_threshold', 'is', null)
     .order('available_quantity', { ascending: true })
 
   if (error) throw error
   return ((data ?? []) as unknown as BalanceRow[])
-    .filter((row) => Number(row.available_quantity) <= Number(row.low_stock_threshold))
+    .filter((row) => {
+      const threshold = row.low_stock_threshold ?? orgDefaultThreshold
+      return threshold !== null && Number(row.available_quantity) <= Number(threshold)
+    })
     .map(mapBalanceRow)
 }
 

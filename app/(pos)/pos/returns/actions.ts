@@ -5,7 +5,13 @@ import { toErrorMessage } from '@/lib/errors'
 import { revalidatePath } from 'next/cache'
 
 import { createReturn, requestRefund, approveRefund } from '@/lib/sales/mutations'
-import { getSale, listPendingRefunds, type Sale, type PendingRefund } from '@/lib/sales/queries'
+import {
+  findSaleByRef,
+  listPendingRefunds,
+  type Sale,
+  type PendingRefund,
+} from '@/lib/sales/queries'
+import { logger } from '@/lib/logger'
 import type { ReturnLineItemInput } from '@/lib/sales/schemas'
 
 export interface ReturnsActionState {
@@ -20,8 +26,16 @@ function errorMessage(error: unknown): string {
   return toErrorMessage(error)
 }
 
-export async function findSaleAction(saleId: string): Promise<Sale | null> {
-  return getSale(saleId)
+export async function findSaleAction(ref: string, branchId: string): Promise<Sale | null> {
+  try {
+    return await findSaleByRef(ref, branchId)
+  } catch (error) {
+    // A malformed reference (or any lookup failure) is "not found" to the
+    // cashier, not a crashed screen — the previous version let a `22P02`
+    // from a short receipt code propagate as an unhandled rejection.
+    logger.warn('returns.find_sale_failed', { error: errorMessage(error) })
+    return null
+  }
 }
 
 export async function listPendingRefundsAction(branchId: string): Promise<PendingRefund[]> {

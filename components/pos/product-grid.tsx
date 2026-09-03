@@ -9,6 +9,7 @@ import { ProductTile } from '@/components/pos/product-tile'
 import { ProductShortcutStrips } from '@/components/pos/product-shortcut-strips'
 import { EmptyState } from '@/components/states/empty-state'
 import { useBarcodeScanner, isScanCaptureBlocked } from '@/hooks/use-barcode-scanner'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 import { logger } from '@/lib/logger'
 import { useCart } from '@/lib/pos/cart-context'
 import { usePosSession } from '@/lib/pos/session-context'
@@ -80,6 +81,9 @@ export function ProductGrid() {
   // actually resolved.
   const [lastSearchedQuery, setLastSearchedQuery] = useState('')
   const pending = query.trim() !== '' && query.trim() !== lastSearchedQuery
+
+  // A toast only when a search is actually slow — a snappy one never flashes it.
+  usePendingToast(pending, 'Searching products…', 400)
 
   // Keyed by the trimmed lowercase term. Backspacing through a word the
   // cashier just typed is then instant — the result for "brea" is already
@@ -230,7 +234,7 @@ export function ProductGrid() {
   const searching = query.trim() !== ''
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth p-4">
       <PosSearch
         value={query}
         onChange={setQuery}

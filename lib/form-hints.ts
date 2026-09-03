@@ -152,6 +152,8 @@ export const FORM_HINTS = {
     phone: 'A general contact number for the business.',
     email: 'A general contact email for the business.',
     address: 'The business’s main address.',
+    defaultLowStockThreshold:
+      'Any product whose available stock falls to this number is flagged as low — on the dashboard and by notification. A product with its own threshold set in Inventory uses that instead. Leave blank to disable.',
   },
   branding: {
     primaryColor: 'Your brand colour. It recolours buttons, links and highlights across the app.',

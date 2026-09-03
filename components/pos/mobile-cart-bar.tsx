@@ -52,7 +52,7 @@ export function MobileCartBar() {
           <DrawerHeader>
             <DrawerTitle>Cart</DrawerTitle>
           </DrawerHeader>
-          <div className="flex max-h-[70dvh] flex-col gap-4 overflow-y-auto px-4 pb-safe-b">
+          <div className="flex max-h-[70dvh] flex-col gap-4 overflow-y-auto scroll-smooth px-4 pb-safe-b">
             <HeldSalesTabs />
             <CartLines />
             <CartSummary />

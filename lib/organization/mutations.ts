@@ -25,6 +25,7 @@ export async function updateOrganizationProfile(
       contact_phone: input.contactPhone ?? null,
       contact_email: input.contactEmail ?? null,
       address_line: input.addressLine ?? null,
+      default_low_stock_threshold: input.defaultLowStockThreshold,
     })
     .eq('id', organizationId)
 

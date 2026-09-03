@@ -77,7 +77,7 @@ export function NotificationBellButton({
           <MarkAllReadButton organizationId={organizationId} disabled={drawerUnread === 0} />
         </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto px-4">
+        <div className="flex-1 overflow-y-auto scroll-smooth px-4">
           {notifications === null ? (
             <p className="py-6 text-center text-body-sm text-muted-foreground">Loading…</p>
           ) : (

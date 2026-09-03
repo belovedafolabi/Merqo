@@ -45,12 +45,17 @@ export function RolesView({
 
   const columns: DataTableColumn<RoleSummary>[] = [
     {
+      // Bounded + `whitespace-normal` (the base `<td>` is `whitespace-nowrap`):
+      // a long role description would otherwise force the column — and, before
+      // the shell learned to shrink, the whole page — as wide as the
+      // description's single unbroken line.
       header: 'Role',
+      className: 'max-w-[22rem] whitespace-normal',
       cell: (row) => (
         <div className="flex min-w-0 flex-col">
           <span className="font-medium">{row.name}</span>
           {row.description && (
-            <span className="truncate text-xs text-muted-foreground">{row.description}</span>
+            <span className="line-clamp-2 text-xs text-muted-foreground">{row.description}</span>
           )}
         </div>
       ),

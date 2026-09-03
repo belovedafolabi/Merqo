@@ -7,6 +7,7 @@ import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ export function SalesFilterBar() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
+  usePendingToast(pending, 'Updating results…', 400)
 
   const get = (key: string) => searchParams.get(key) ?? ''
   const hasAny = ['q', 'from', 'to', 'method'].some((key) => searchParams.get(key))
@@ -73,7 +75,11 @@ export function SalesFilterBar() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      {/* `min-w-0 w-full sm:w-auto` — a bare `flex flex-col` wrapper around a
+          mobile `<input type="date">` (which carries a UA intrinsic min width
+          for its spinner + calendar glyph) grows past the card's `p-4` on a
+          narrow screen. Same guard report-filter-bar.tsx already applies. */}
+      <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
         <Label htmlFor="sales-from">From</Label>
         <Input
           id="sales-from"
@@ -84,7 +90,7 @@ export function SalesFilterBar() {
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
         <Label htmlFor="sales-to">To</Label>
         <Input
           id="sales-to"
@@ -95,13 +101,13 @@ export function SalesFilterBar() {
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
         <Label htmlFor="sales-method">Payment</Label>
         <Select
           value={get('method') || ALL}
           onValueChange={(value) => update({ method: value === ALL ? null : value })}
         >
-          <SelectTrigger id="sales-method" className="w-40">
+          <SelectTrigger id="sales-method" className="w-full sm:w-40">
             <SelectValue placeholder="Any method" />
           </SelectTrigger>
           <SelectContent>
