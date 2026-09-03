@@ -84,3 +84,81 @@ export function TablePageSkeleton({ columns = 5, rows = 8 }: { columns?: number;
     </div>
   )
 }
+
+/** Header + a grid of card placeholders — for a screen that leads with cards
+ *  rather than a table (dashboard, reports index). */
+export function CardGridPageSkeleton({ cards = 6 }: { cards?: number }) {
+  return (
+    <div className="flex flex-1 flex-col">
+      <PageHeaderSkeleton />
+      <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
+        {Array.from({ length: cards }, (_, index) => (
+          <CardSkeleton key={index} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Header + a stack of form-field placeholders — for a create/detail/settings
+ *  screen. `framed` wraps it in a card, matching most of those layouts. */
+export function FormPageSkeleton({
+  fields = 6,
+  framed = true,
+}: {
+  fields?: number
+  framed?: boolean
+}) {
+  const body = (
+    <div className="flex flex-col gap-4">
+      {Array.from({ length: fields }, (_, index) => (
+        <div key={index} className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ))}
+      <Skeleton className="h-9 w-28" />
+    </div>
+  )
+  return (
+    <div className="flex flex-1 flex-col">
+      <PageHeaderSkeleton />
+      <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+        {framed ? (
+          <Card className="shadow-card">
+            <CardContent className="pt-6">{body}</CardContent>
+          </Card>
+        ) : (
+          body
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The POS terminal's own loading shape — a search bar over a tile grid, with
+ * the cart column on `lg`. app/(pos) has had no route-level loading UI at
+ * all, so a cold navigation to /pos flashed a blank inset.
+ */
+export function PosPageSkeleton() {
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <Skeleton className="h-12 w-full rounded-xl" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 12 }, (_, index) => (
+            <Skeleton key={index} className="h-28 rounded-xl" />
+          ))}
+        </div>
+      </div>
+      <div className="hidden w-80 shrink-0 flex-col gap-4 border-l p-4 lg:flex xl:w-96">
+        <Skeleton className="h-6 w-16" />
+        <Skeleton className="h-8 w-full" />
+        <div className="flex-1" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-11 w-full" />
+      </div>
+    </div>
+  )
+}

@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import {
   Banknote,
   Boxes,
@@ -54,6 +55,19 @@ const ICONS: Record<NavItem['icon'], LucideIcon> = {
 }
 
 /**
+ * A spinner that appears in place of the nav icon while THIS link's
+ * destination is being fetched — Next 16's useLinkStatus, per the bundled
+ * docs (node_modules/next/dist/docs/.../use-link-status.md). Every admin
+ * route now has a `loading.tsx`, so most navigations are instant and this
+ * never shows; it is the affordance for the occasional slow one (a cold
+ * report, an uncached list). `motion-reduce` drops the spin.
+ */
+function NavPendingIcon({ Icon }: { Icon: LucideIcon }) {
+  const { pending } = useLinkStatus()
+  return pending ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Icon />
+}
+
+/**
  * Renders one nav section, gating each item behind `<Can>` when it declares
  * a `permission` (see lib/shell/nav-items.ts for why most don't yet).
  * Active-item highlighting compares against the current pathname, per
@@ -75,7 +89,7 @@ export function NavList({ items }: { items: NavItem[] }) {
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
                   <Link href={item.href}>
-                    <Icon />
+                    <NavPendingIcon Icon={Icon} />
                     <span>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>

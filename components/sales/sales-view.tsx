@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/states/empty-state'
+import { SalesFilterBar } from '@/components/sales/sales-filter-bar'
 import { formatPaymentMethods, shortSaleRef, type SaleListEntry } from '@/lib/sales/sale-list'
+import type { SalesFilter } from '@/lib/sales/queries'
 
 function currency(value: number): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
@@ -29,9 +31,11 @@ function openReceipt(saleId: string): void {
 export function SalesView({
   initialSales,
   pageSize,
+  filter,
 }: {
   initialSales: SaleListEntry[]
   pageSize: number
+  filter: SalesFilter
 }) {
   const [sales, setSales] = useState(initialSales)
   const [exhausted, setExhausted] = useState(initialSales.length < pageSize)
@@ -88,14 +92,21 @@ export function SalesView({
     const last = sales[sales.length - 1]
     if (!last) return
     startTransition(async () => {
-      const more = await loadMoreSalesAction(last.createdAt)
+      const more = await loadMoreSalesAction(last.createdAt, filter)
       setSales((prev) => [...prev, ...more])
       if (more.length < pageSize) setExhausted(true)
     })
   }
 
+  const filtered =
+    Boolean(filter.search) ||
+    Boolean(filter.from) ||
+    Boolean(filter.to) ||
+    Boolean(filter.paymentMethod)
+
   return (
     <div className="flex flex-col gap-4">
+      <SalesFilterBar />
       <DataTable
         columns={columns}
         rows={sales}
@@ -103,8 +114,12 @@ export function SalesView({
         emptyState={
           <EmptyState
             icon={Receipt}
-            title="No sales yet"
-            description="Completed sales at this branch will appear here."
+            title={filtered ? 'No sales match these filters' : 'No sales yet'}
+            description={
+              filtered
+                ? 'Try a wider date range or clearing the filters.'
+                : 'Completed sales at this branch will appear here.'
+            }
           />
         }
       />

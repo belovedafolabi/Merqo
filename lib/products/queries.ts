@@ -189,6 +189,52 @@ export async function listProducts(
   )
 }
 
+export interface RecentProduct {
+  id: string
+  name: string
+  sku: string
+  basePrice: number
+  createdAt: string
+}
+
+/**
+ * The most recently added products in a business unit — the dashboard's
+ * "Recent products" widget. A dedicated slim query, not listProducts()
+ * sliced: listProducts() has no created_at in its select or ordering and
+ * carries cost price (which this never shows), so widening it for one widget
+ * would be the wrong trade.
+ */
+export async function listRecentProducts(
+  businessUnitId: string,
+  limit = 5,
+): Promise<RecentProduct[]> {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, sku, base_price, created_at')
+    .eq('business_unit_id', businessUnitId)
+    .is('archived_at', null)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (
+    (data ?? []) as Array<{
+      id: string
+      name: string
+      sku: string
+      base_price: string | number
+      created_at: string
+    }>
+  ).map((row) => ({
+    id: row.id,
+    name: row.name,
+    sku: row.sku,
+    basePrice: Number(row.base_price),
+    createdAt: row.created_at,
+  }))
+}
+
 export async function getProduct(
   organizationId: string,
   productId: string,

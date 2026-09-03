@@ -210,22 +210,65 @@ export async function getSale(saleId: string): Promise<Sale | null> {
 }
 
 /**
- * Completed sales for a branch, newest first — backs the /sales list screen
- * (the `sales.view` permission has been seeded since Milestone 08 but never
- * had a UI). Keeps to the same "separate queries, no fragile embed
- * disambiguation" shape as getSale(): the list is fetched with cheap
- * aggregate embeds (`sale_items(count)`, `payments(method)`, `returns(id)`),
- * then cashier display names are resolved in one batched `users` lookup
- * rather than an embed or an N+1.
+ * A hex prefix of a UUID (4–32 chars, non-hex stripped — so "7EE1A301" or
+ * "7ee1-a301" both work) → the half-open [lo, hi) id range that prefix
+ * covers. Returns null for a prefix too short to be a useful filter.
+ *
+ * `hi` is `lo` with its last supplied nibble incremented, carrying through
+ * `f`; a prefix of all `f`s has no upper bound, so `hi` is the max uuid.
+ */
+function uuidPrefixRange(input: string): { lo: string; hi: string } | null {
+  const hex = input.replace(/[^0-9a-fA-F]/g, '').toLowerCase()
+  if (hex.length < 4 || hex.length > 32) return null
+
+  const asUuid = (h: string) => {
+    const padded = h.padEnd(32, '0')
+    return `${padded.slice(0, 8)}-${padded.slice(8, 12)}-${padded.slice(12, 16)}-${padded.slice(16, 20)}-${padded.slice(20)}`
+  }
+
+  const chars = hex.split('')
+  let i = chars.length - 1
+  while (i >= 0 && chars[i] === 'f') {
+    chars[i] = '0'
+    i -= 1
+  }
+  const lo = asUuid(hex)
+  const hi =
+    i < 0
+      ? 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+      : asUuid(chars.map((c, idx) => (idx === i ? (parseInt(c, 16) + 1).toString(16) : c)).join(''))
+  return { lo, hi }
+}
+
+/** Filters the /sales list applies. All optional; an unset field is "no filter". */
+export interface SalesFilter {
+  /** Matches the receipt ref (a UUID prefix, case-insensitive) or the cashier name. */
+  search?: string
+  /** Inclusive lower bound on the sale date (an ISO date, local midnight). */
+  from?: string
+  /** Exclusive upper bound (the day AFTER the user's "to" date). */
+  to?: string
+  /** One of cash | card | transfer | store_credit. */
+  paymentMethod?: string
+}
+
+/**
+ * Completed sales for a branch, newest first — backs the /sales list screen.
+ * Keeps to the same "separate queries, no fragile embed disambiguation"
+ * shape as getSale(): the list is fetched with cheap aggregate embeds
+ * (`sale_items(count)`, `payments(method)`, `returns(id)`), then cashier
+ * display names are resolved in one batched `users` lookup.
  *
  * `before` is a simple keyset cursor (pass the last row's `createdAt`) for a
- * "Load more" button — DataTable has no built-in pagination.
+ * "Load more" button — DataTable has no built-in pagination. Filters compose
+ * with the cursor: "Load more" carries the same filter forward.
  */
 export async function listSales(
   branchId: string,
-  options: { limit?: number; before?: string } = {},
+  options: { limit?: number; before?: string; filter?: SalesFilter } = {},
 ): Promise<SaleListEntry[]> {
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 200)
+  const filter = options.filter ?? {}
   const supabase = await createServerSupabaseClient()
 
   let query = supabase
@@ -236,6 +279,47 @@ export async function listSales(
     .limit(limit)
 
   if (options.before) query = query.lt('created_at', options.before)
+  if (filter.from) query = query.gte('created_at', filter.from)
+  if (filter.to) query = query.lt('created_at', filter.to)
+
+  // A payment-method filter needs the embed to be an inner join so a sale
+  // with no matching payment row drops out entirely.
+  if (filter.paymentMethod) {
+    query = supabase
+      .from('sales')
+      .select(
+        'id, total, created_at, created_by, sale_items(count), payments!inner(method), returns(id)',
+      )
+      .eq('branch_id', branchId)
+      .eq('payments.method', filter.paymentMethod)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (options.before) query = query.lt('created_at', options.before)
+    if (filter.from) query = query.gte('created_at', filter.from)
+    if (filter.to) query = query.lt('created_at', filter.to)
+  }
+
+  // The search term matches the receipt ref (the UUID's leading hex, which is
+  // what shortSaleRef() prints) OR a cashier name. A uuid column has no
+  // `ilike`, so a hex prefix becomes a [lo, hi) range on `id`; the cashier
+  // half resolves matching user ids first, so both are one filter on `sales`
+  // rather than a join.
+  const term = filter.search?.trim()
+  if (term) {
+    const { data: matchingUsers } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('full_name', `%${term}%`)
+    const userIds = ((matchingUsers ?? []) as Array<{ id: string }>).map((u) => u.id)
+
+    const range = uuidPrefixRange(term)
+    const ors: string[] = []
+    if (range) ors.push(`and(id.gte.${range.lo},id.lt.${range.hi})`)
+    if (userIds.length > 0) ors.push(`created_by.in.(${userIds.join(',')})`)
+    // Nothing could match — short-circuit rather than send an empty `or()`.
+    if (ors.length === 0) return []
+    query = query.or(ors.join(','))
+  }
 
   const { data, error } = await query
   if (error) throw error
