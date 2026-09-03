@@ -1,6 +1,6 @@
 'use client'
 
-import type { DashboardSeriesPoint } from '@/lib/dashboard/summary'
+import type { DashboardSeriesPoint } from '@/lib/dashboard/types'
 import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
 
 /**

@@ -11,7 +11,7 @@ import {
   deltaLabel,
   type DashboardSummary,
   type DashboardSeriesPoint,
-} from '@/lib/dashboard/summary'
+} from '@/lib/dashboard/types'
 import type { DashboardPeriod } from '@/lib/dashboard/periods'
 import type { ResolvedWidget } from '@/lib/dashboard/layout'
 import type { InventoryBalance } from '@/lib/inventory/queries'

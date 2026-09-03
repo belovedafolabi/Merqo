@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
-import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/summary'
+import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/types'
 import type { DashboardPeriod } from '@/lib/dashboard/periods'
 
 /**

@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { calculateDiscount } from '@/lib/sales/calculations'
+import type { Coupon } from '@/lib/coupons/schemas'
 
 /**
  * Read side for coupons. RLS (`coupons_select`, 20260904090300 — any org
@@ -9,19 +10,7 @@ import { calculateDiscount } from '@/lib/sales/calculations'
  * lib/sales/mutations.ts run.
  */
 
-export interface Coupon {
-  id: string
-  code: string
-  discountType: 'percentage' | 'fixed'
-  discountValue: number
-  minimumPurchase: number
-  maxRedemptions: number | null
-  redemptionCount: number
-  startsAt: string | null
-  expiresAt: string | null
-  archivedAt: string | null
-  createdAt: string
-}
+export type { Coupon } from '@/lib/coupons/schemas'
 
 interface CouponRow {
   id: string

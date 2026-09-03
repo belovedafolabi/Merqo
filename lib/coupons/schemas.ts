@@ -1,6 +1,26 @@
 import { z } from 'zod'
 
 /**
+ * The mapped coupon shape — kept here in the pure (zod-only) module rather
+ * than in queries.ts so a client component (the Settings manager table) can
+ * import the type without pulling `next/headers` into the browser bundle.
+ * Same split as lib/dashboard/types.ts vs lib/dashboard/summary.ts.
+ */
+export interface Coupon {
+  id: string
+  code: string
+  discountType: 'percentage' | 'fixed'
+  discountValue: number
+  minimumPurchase: number
+  maxRedemptions: number | null
+  redemptionCount: number
+  startsAt: string | null
+  expiresAt: string | null
+  archivedAt: string | null
+  createdAt: string
+}
+
+/**
  * Shared client/server validation for a coupon. The table's own CHECK
  * constraints (20260904090300) are the last line — a blank code, a
  * percentage over 100, an end date before the start — this is the first,

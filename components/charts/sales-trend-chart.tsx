@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import { Package } from 'lucide-react'
 
-import type { DashboardSeriesPoint } from '@/lib/dashboard/summary'
+import type { DashboardSeriesPoint } from '@/lib/dashboard/types'
 import { EmptyState } from '@/components/states/empty-state'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
 

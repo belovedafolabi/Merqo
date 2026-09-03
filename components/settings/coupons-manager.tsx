@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TicketPercent } from 'lucide-react'
-import type { Coupon } from '@/lib/coupons/queries'
+import type { Coupon } from '@/lib/coupons/schemas'
 
 const initialState: CouponsActionState = { error: null }
 
