@@ -5,8 +5,6 @@ import { PermissionsProvider } from '@/lib/auth/permissions-context'
 import { getOnboardingState, getBusinessUnitPosConfig } from '@/lib/business-structure/queries'
 import { PosSessionProvider } from '@/lib/pos/session-context'
 import { CartProvider } from '@/lib/pos/cart-context'
-import { getTerminology } from '@/lib/terminology/queries'
-import { TerminologyProvider } from '@/lib/terminology/terminology-context'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { PosHeader } from '@/components/pos/pos-header'
 import { CustomerDisplayPublisher } from '@/components/pos/customer-display-publisher'
@@ -44,45 +42,40 @@ export default async function PosLayout({ children }: { children: React.ReactNod
     redirect('/onboarding')
   }
 
-  const [tourCompleted, terminology] = await Promise.all([
-    hasCompletedTour(),
-    getTerminology(onboardingState.businessUnit.id),
-  ])
+  const tourCompleted = await hasCompletedTour()
 
   const cashierName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Cashier'
 
   return (
     <PermissionsProvider grants={grants}>
-      <TerminologyProvider terminology={terminology}>
-        <PosSessionProvider
-          session={{
-            organizationId: onboardingState.organizationId,
-            branchId: onboardingState.branch.id,
-            businessUnitId: onboardingState.businessUnit.id,
-            posConfig,
-          }}
-        >
-          <CartProvider>
-            <BrandStyle />
-            {/* Mirrors the cart to any open customer-facing display. Renders
+      <PosSessionProvider
+        session={{
+          organizationId: onboardingState.organizationId,
+          branchId: onboardingState.branch.id,
+          businessUnitId: onboardingState.businessUnit.id,
+          posConfig,
+        }}
+      >
+        <CartProvider>
+          <BrandStyle />
+          {/* Mirrors the cart to any open customer-facing display. Renders
               nothing; must sit inside CartProvider to read it. */}
-            <CustomerDisplayPublisher />
-            {/* dvh, not svh: on mobile Safari svh is the SMALLEST viewport
+          <CustomerDisplayPublisher />
+          {/* dvh, not svh: on mobile Safari svh is the SMALLEST viewport
               (URL bar expanded), which left a gap under the till whenever
               the bar was collapsed. */}
-            <div className="flex min-h-dvh flex-col bg-background">
-              <PosHeader
-                cashierName={cashierName}
-                branchName={onboardingState.branch.name}
-                businessUnitName={onboardingState.businessUnit.name}
-              />
-              <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
-            </div>
-            <ProductTour area="pos" autoStart={!tourCompleted} />
-          </CartProvider>
-        </PosSessionProvider>
-      </TerminologyProvider>
+          <div className="flex min-h-dvh flex-col bg-background">
+            <PosHeader
+              cashierName={cashierName}
+              branchName={onboardingState.branch.name}
+              businessUnitName={onboardingState.businessUnit.name}
+            />
+            <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+          </div>
+          <ProductTour area="pos" autoStart={!tourCompleted} />
+        </CartProvider>
+      </PosSessionProvider>
     </PermissionsProvider>
   )
 }

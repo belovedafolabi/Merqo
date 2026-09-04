@@ -53,7 +53,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg outline-none data-[state=closed]:merqo-pop-out data-[state=open]:merqo-pop-in sm:max-w-lg',
+          'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg outline-none data-[state=closed]:merqo-pop-out data-[state=open]:merqo-pop-in sm:max-w-lg',
           className,
         )}
         {...props}
@@ -78,6 +78,26 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="dialog-header"
       className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * Wraps the scrollable middle of a tall dialog (a long field list, a long
+ * picker/toggle grid) so the header and footer — title, primary action —
+ * stay pinned in view while only this region scrolls. DialogContent itself
+ * also scrolls as a whole (overflow-y-auto, capped to the viewport height)
+ * as a safety net for dialogs that don't use this; a dialog that does gets
+ * the nicer pinned-chrome behavior instead. `-mx-6 px-6` bleeds to the
+ * dialog's own p-6 edge so the scrollbar and focus rings sit flush, not
+ * inset from it.
+ */
+function DialogBody({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn('-mx-6 max-h-[55vh] overflow-y-auto px-6', className)}
       {...props}
     />
   )
@@ -132,6 +152,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

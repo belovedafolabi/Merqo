@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -103,56 +104,58 @@ export function BusinessUnitFormDialog({
             </Alert>
           )}
 
-          {!businessUnit && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="branchId">
-                Branch
-                <InfoHint text={FORM_HINTS.businessUnit.branch} />
-              </Label>
-              <Select name="branchId" required>
-                <SelectTrigger id="branchId" className="w-full">
-                  <SelectValue placeholder="Select a branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeBranches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <DialogBody className="flex flex-col gap-4">
+            {!businessUnit && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="branchId">
+                  Branch
+                  <InfoHint text={FORM_HINTS.businessUnit.branch} />
+                </Label>
+                <Select name="branchId" required>
+                  <SelectTrigger id="branchId" className="w-full">
+                    <SelectValue placeholder="Select a branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeBranches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="business-unit-name">
-              Name
-              <InfoHint text={FORM_HINTS.businessUnit.name} />
-            </Label>
-            <Input
-              id="business-unit-name"
-              name="name"
-              defaultValue={businessUnit?.name}
-              required
-              autoFocus
-            />
-          </div>
-
-          {!businessUnit && (
             <div className="flex flex-col gap-2">
-              <Label>
-                Business type
-                <InfoHint text={FORM_HINTS.businessUnit.businessType} />
+              <Label htmlFor="business-unit-name">
+                Name
+                <InfoHint text={FORM_HINTS.businessUnit.name} />
               </Label>
-              <BusinessTypePicker businessTypes={businessTypes} name="businessTypeId" />
+              <Input
+                id="business-unit-name"
+                name="name"
+                defaultValue={businessUnit?.name}
+                required
+                autoFocus
+              />
             </div>
-          )}
-          {businessUnit && (
-            <p className="text-sm text-muted-foreground">
-              Business type: <span className="font-medium">{businessUnit.businessTypeName}</span>{' '}
-              (set at creation, not editable here)
-            </p>
-          )}
+
+            {!businessUnit && (
+              <div className="flex flex-col gap-2">
+                <Label>
+                  Business type
+                  <InfoHint text={FORM_HINTS.businessUnit.businessType} />
+                </Label>
+                <BusinessTypePicker businessTypes={businessTypes} name="businessTypeId" />
+              </div>
+            )}
+            {businessUnit && (
+              <p className="text-sm text-muted-foreground">
+                Business type: <span className="font-medium">{businessUnit.businessTypeName}</span>{' '}
+                (set at creation, not editable here)
+              </p>
+            )}
+          </DialogBody>
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>

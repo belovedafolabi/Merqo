@@ -77,7 +77,6 @@ export function ReceiptPrintPortal({
   templateId,
   branding,
   settings,
-  receiptLabel,
 }: {
   sale: Sale
   templateId: ReceiptTemplateId
@@ -86,7 +85,6 @@ export function ReceiptPrintPortal({
     ReceiptSettings,
     'headerText' | 'footerText' | 'showLogo' | 'showCashier' | 'orgAddressLine' | 'orgContactPhone'
   >
-  receiptLabel?: string
 }) {
   // Portals need a DOM node, which does not exist during the server render.
   // useSyncExternalStore rather than a useState/useEffect mount flag: the
@@ -117,7 +115,6 @@ export function ReceiptPrintPortal({
         templateId={templateId}
         branding={branding}
         settings={settings}
-        receiptLabel={receiptLabel}
       />
     </div>,
     document.body,

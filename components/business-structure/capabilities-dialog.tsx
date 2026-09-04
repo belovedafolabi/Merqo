@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -78,7 +79,9 @@ export function CapabilitiesDialog({
             </Alert>
           )}
 
-          <CapabilityToggleList capabilities={capabilities} />
+          <DialogBody>
+            <CapabilityToggleList capabilities={capabilities} />
+          </DialogBody>
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>
