@@ -7,6 +7,7 @@ import {
   initiateCheckoutAction,
   type SubscriptionActionState,
 } from '@/app/(app)/settings/subscription/actions'
+import { usePendingToast } from '@/hooks/use-pending-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -33,6 +34,9 @@ export function SubscriptionRenewForm({
   pricing: SubscriptionPriceOption[]
 }) {
   const [state, formAction, pending] = useActionState(initiateCheckoutAction, initialState)
+  // A pending toast only: on success this redirects to Paystack, so there is
+  // no settled state to show a success toast in.
+  usePendingToast(pending, 'Redirecting to Paystack…')
   const active = pricing.filter((option) => option.isActive)
   const [selected, setSelected] = useState<BillingPeriod | undefined>(active[0]?.billingPeriod)
   const groupId = useId()

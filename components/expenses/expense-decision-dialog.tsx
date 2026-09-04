@@ -8,6 +8,7 @@ import {
   voidExpenseAction,
   type ExpenseActionState,
 } from '@/app/(app)/expenses/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -91,6 +92,20 @@ export function ExpenseDecisionDialog({
     initialState,
   )
   const copy = COPY[decision]
+  useActionToast(state, pending, {
+    loading:
+      decision === 'approve'
+        ? 'Approving expense…'
+        : decision === 'reject'
+          ? 'Rejecting expense…'
+          : 'Voiding expense…',
+    success:
+      decision === 'approve'
+        ? 'Expense approved'
+        : decision === 'reject'
+          ? 'Expense rejected'
+          : 'Expense voided',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

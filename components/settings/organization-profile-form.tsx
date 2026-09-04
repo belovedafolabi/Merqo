@@ -7,6 +7,7 @@ import {
   updateOrganizationProfileAction,
   type SettingsActionState,
 } from '@/app/(app)/settings/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,6 +34,7 @@ export function OrganizationProfileForm({
   profile: OrganizationProfile
 }) {
   const [state, formAction, pending] = useActionState(updateOrganizationProfileAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving…', success: 'Organization details saved' })
 
   return (
     <Card className="max-w-xl">

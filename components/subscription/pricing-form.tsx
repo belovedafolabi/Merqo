@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { Check, TriangleAlert } from 'lucide-react'
 
 import { updatePriceAction, type PricingActionState } from '@/app/(app)/settings/pricing/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,6 +46,7 @@ function PricingRow({
   option: SubscriptionPriceOption
 }) {
   const [state, formAction, pending] = useActionState(updatePriceAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving price…', success: 'Price saved' })
   const [priceMajor, setPriceMajor] = useState(String(option.priceMinor / 100))
 
   return (

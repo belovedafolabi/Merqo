@@ -391,6 +391,14 @@ export interface CustomerActivityEntry {
   description: string
   /** Signed where a direction is meaningful (a spend is negative), else the record's face value. */
   amount: number | null
+  /**
+   * The sale a row opens to when clicked (Milestone 17 Part D). Set for `sale`
+   * rows (their own sale) and `return` rows (the *parent* sale — a return's own
+   * `id` is the return, and the receipt view already reflects returns against
+   * the sale). Absent for `store_credit` (no deeper screen) and `layaway`
+   * (which links to `/layaways/<id>` via the row's own `id` instead).
+   */
+  saleId?: string
 }
 
 /**
@@ -401,6 +409,73 @@ export interface CustomerActivityEntry {
  * milestone's Definition of Done is a single readable trail rather than four
  * separate tabs the reader has to interleave mentally.
  */
+export interface ActivitySaleRow {
+  id: string
+  total: string | number
+  created_at: string
+  returns: Array<{ id: string; reason: string; created_at: string }> | null
+}
+
+export interface ActivityLayawayRow {
+  id: string
+  reference: string
+  total_amount: string | number
+  status: string
+  created_at: string
+}
+
+/**
+ * Pure assembly of the four sources into one newest-first stream. Split out
+ * from the fetch so the shape rules — a `return` row carrying the *parent*
+ * sale's id, not its own; `store_credit` carrying no `saleId` — are unit
+ * testable without a database.
+ */
+export function assembleCustomerActivity(
+  saleRows: ActivitySaleRow[],
+  creditEntries: StoreCreditEntryRecord[],
+  layawayRows: ActivityLayawayRow[],
+  limit = 100,
+): CustomerActivityEntry[] {
+  const entries: CustomerActivityEntry[] = [
+    ...saleRows.map((row) => ({
+      id: row.id,
+      kind: 'sale' as const,
+      occurredAt: row.created_at,
+      description: 'Sale completed',
+      amount: Number(row.total),
+      saleId: row.id,
+    })),
+    ...saleRows.flatMap((row) =>
+      (row.returns ?? []).map((returnRow) => ({
+        id: returnRow.id,
+        kind: 'return' as const,
+        occurredAt: returnRow.created_at,
+        description: `Return — ${returnRow.reason}`,
+        amount: null,
+        // The parent sale, not returnRow.id — the receipt view shows the
+        // return against the original sale.
+        saleId: row.id,
+      })),
+    ),
+    ...creditEntries.map((entry) => ({
+      id: entry.id,
+      kind: 'store_credit' as const,
+      occurredAt: entry.createdAt,
+      description: storeCreditDescription(entry),
+      amount: entry.amount,
+    })),
+    ...layawayRows.map((row) => ({
+      id: row.id,
+      kind: 'layaway' as const,
+      occurredAt: row.created_at,
+      description: `Layaway ${row.reference} — ${row.status}`,
+      amount: Number(row.total_amount),
+    })),
+  ]
+
+  return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, limit)
+}
+
 export async function getCustomerTransactionHistory(
   customerId: string,
   limit = 100,
@@ -425,55 +500,12 @@ export async function getCustomerTransactionHistory(
   if (sales.error) throw sales.error
   if (layaways.error) throw layaways.error
 
-  const saleRows = (sales.data ?? []) as unknown as Array<{
-    id: string
-    total: string | number
-    created_at: string
-    returns: Array<{ id: string; reason: string; created_at: string }> | null
-  }>
-
-  const entries: CustomerActivityEntry[] = [
-    ...saleRows.map((row) => ({
-      id: row.id,
-      kind: 'sale' as const,
-      occurredAt: row.created_at,
-      description: 'Sale completed',
-      amount: Number(row.total),
-    })),
-    ...saleRows.flatMap((row) =>
-      (row.returns ?? []).map((returnRow) => ({
-        id: returnRow.id,
-        kind: 'return' as const,
-        occurredAt: returnRow.created_at,
-        description: `Return — ${returnRow.reason}`,
-        amount: null,
-      })),
-    ),
-    ...credit.map((entry) => ({
-      id: entry.id,
-      kind: 'store_credit' as const,
-      occurredAt: entry.createdAt,
-      description: storeCreditDescription(entry),
-      amount: entry.amount,
-    })),
-    ...(
-      (layaways.data ?? []) as unknown as Array<{
-        id: string
-        reference: string
-        total_amount: string | number
-        status: string
-        created_at: string
-      }>
-    ).map((row) => ({
-      id: row.id,
-      kind: 'layaway' as const,
-      occurredAt: row.created_at,
-      description: `Layaway ${row.reference} — ${row.status}`,
-      amount: Number(row.total_amount),
-    })),
-  ]
-
-  return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, limit)
+  return assembleCustomerActivity(
+    (sales.data ?? []) as unknown as ActivitySaleRow[],
+    credit,
+    (layaways.data ?? []) as unknown as ActivityLayawayRow[],
+    limit,
+  )
 }
 
 function storeCreditDescription(entry: StoreCreditEntryRecord): string {

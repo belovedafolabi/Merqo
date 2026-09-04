@@ -7,6 +7,7 @@ import {
   updateNotificationPreferencesAction,
   type SettingsActionState,
 } from '@/app/(app)/settings/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,10 @@ function EditablePreferenceRow({ preference }: { preference: NotificationPrefere
     updateNotificationPreferencesAction,
     initialState,
   )
+  useActionToast(state, pending, {
+    loading: 'Saving preference…',
+    success: 'Preference saved',
+  })
 
   return (
     <div className="flex flex-col gap-3 border-b pb-4 last:border-b-0 last:pb-0">

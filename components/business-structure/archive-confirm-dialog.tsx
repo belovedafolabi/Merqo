@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import type { BusinessStructureActionState } from '@/app/(app)/business-structure/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,6 +47,7 @@ export function ArchiveConfirmDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, { loading: 'Archiving…', success: 'Archived' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

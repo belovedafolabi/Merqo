@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, ExternalLink, TriangleAlert } from 'lucide-react'
 
 import { updateReceiptSettingsAction, type SettingsActionState } from '@/app/(app)/settings/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +31,7 @@ export function ReceiptSettingsForm({
   branding: Pick<OrganizationBranding, 'displayName' | 'logoUrl'> | null
 }) {
   const [state, formAction, pending] = useActionState(updateReceiptSettingsAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving…', success: 'Receipt settings saved' })
   const [templateId, setTemplateId] = useState<ReceiptTemplateId>(settings.templateId)
   const [showLogo, setShowLogo] = useState(settings.showLogo)
   const [headerText, setHeaderText] = useState(settings.headerText ?? '')

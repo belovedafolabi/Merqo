@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { Check, Copy, TriangleAlert } from 'lucide-react'
 
 import { inviteEmployeeAction, type EmployeeActionState } from '@/app/(app)/employees/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,6 +55,7 @@ export function InviteEmployeeDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(inviteEmployeeAction, initialState)
+  useActionToast(state, pending, { loading: 'Sending invitation…', success: 'Invitation created' })
   const [copied, setCopied] = useState(false)
 
   // Resets `copied` when the dialog closes, without an effect: this

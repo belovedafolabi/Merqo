@@ -5,7 +5,6 @@ import { toErrorMessage } from '@/lib/errors'
 import { revalidatePath } from 'next/cache'
 
 import { cancelLayaway, createLayaway, recordLayawayPayment } from '@/lib/customers/mutations'
-import { getLayaway, type LayawayDetail } from '@/lib/customers/queries'
 import type { LayawayLineItemInput } from '@/lib/customers/schemas'
 
 /**
@@ -99,9 +98,4 @@ export async function cancelLayawayAction(
   revalidatePath('/layaways')
   revalidatePath('/inventory')
   return initialState
-}
-
-/** Loads a layaway's items and installment history on demand for the detail sheet. */
-export async function getLayawayAction(layawayId: string): Promise<LayawayDetail | null> {
-  return getLayaway(layawayId)
 }

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Pencil, PlusCircle, Receipt, ScrollText, SlidersHorizontal, Wallet } from 'lucide-react'
 
+import { openReceipt } from '@/lib/sales/receipt-window'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +44,47 @@ const ACTIVITY_LABELS: Record<CustomerActivityEntry['kind'], string> = {
 }
 
 /**
+ * The first cell of an activity row, made the row's click target (Milestone 17
+ * Part D). `sale` and `return` open the receipt popup — a return against the
+ * original sale's receipt; `layaway` navigates to its detail page;
+ * `store_credit` has no deeper screen, so it stays plain text.
+ *
+ * The interactive element is the cell, not the whole `<DataTable>` row:
+ * components/ui/data-table.tsx is deliberately a plain table with no row-click
+ * prop, and widening its API for one screen is not worth it.
+ */
+export function ActivityDateCell({ row }: { row: CustomerActivityEntry }) {
+  const label = formatDateTime(row.occurredAt)
+  const linkClass =
+    'rounded-sm underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+
+  if ((row.kind === 'sale' || row.kind === 'return') && row.saleId) {
+    const saleId = row.saleId
+    return (
+      <button
+        type="button"
+        className={`text-left ${linkClass}`}
+        onClick={() => openReceipt(saleId)}
+      >
+        {label}
+        <span className="sr-only"> — view receipt</span>
+      </button>
+    )
+  }
+
+  if (row.kind === 'layaway') {
+    return (
+      <Link href={`/layaways/${row.id}`} className={linkClass}>
+        {label}
+        <span className="sr-only"> — open layaway</span>
+      </Link>
+    )
+  }
+
+  return <>{label}</>
+}
+
+/**
  * The customer detail screen (docs/milestones/09-customer-store-credit-and-
  * layaway.md Frontend Changes: detail screen, financial summary, store-credit
  * balance display, transaction history). Same tabbed, card-and-table shape as
@@ -77,7 +120,7 @@ export function CustomerDetailView({
     .reduce((sum, layaway) => sum + layaway.outstandingAmount, 0)
 
   const activityColumns: DataTableColumn<CustomerActivityEntry>[] = [
-    { header: 'Date', cell: (row) => formatDateTime(row.occurredAt) },
+    { header: 'Date', cell: (row) => <ActivityDateCell row={row} /> },
     { header: 'Type', cell: (row) => <Badge variant="outline">{ACTIVITY_LABELS[row.kind]}</Badge> },
     { header: 'Detail', cell: (row) => row.description },
     {

@@ -5,6 +5,7 @@ import { useActionState } from 'react'
 import { Bookmark, Trash2 } from 'lucide-react'
 
 import { archiveSavedReportAction, type ReportActionState } from '@/app/(app)/reports/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,6 +40,10 @@ export function SavedReportsList({
   reports: SavedReport[]
 }) {
   const [state, archiveAction, pending] = useActionState(archiveSavedReportAction, initialState)
+  useActionToast(state, pending, {
+    loading: 'Archiving report…',
+    success: 'Saved report archived',
+  })
 
   if (reports.length === 0) {
     return (

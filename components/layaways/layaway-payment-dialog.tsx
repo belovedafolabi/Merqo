@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { recordLayawayPaymentAction, type LayawayActionState } from '@/app/(app)/layaways/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +56,10 @@ export function LayawayPaymentDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(recordLayawayPaymentAction, initialState)
+  useActionToast(state, pending, {
+    loading: 'Recording payment…',
+    success: 'Payment recorded',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

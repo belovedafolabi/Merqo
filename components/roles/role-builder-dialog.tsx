@@ -8,6 +8,7 @@ import {
   updateRolePermissionsAction,
   type RolesActionState,
 } from '@/app/(app)/roles/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +56,10 @@ export function RoleBuilderDialog({
 }) {
   const action = editingRole ? updateRolePermissionsAction : createRoleAction
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: editingRole ? 'Saving role…' : 'Creating role…',
+    success: editingRole ? 'Role saved' : 'Role created',
+  })
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(initialSelectedKeys))
   const ownKeys = new Set(ownPermissionKeys)
 

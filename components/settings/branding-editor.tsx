@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { Check, TriangleAlert } from 'lucide-react'
 
 import { updateBrandingAction, type SettingsActionState } from '@/app/(app)/settings/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +31,7 @@ export function BrandingEditor({
   branding: OrganizationBranding
 }) {
   const [state, formAction, pending] = useActionState(updateBrandingAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving…', success: 'Branding saved' })
 
   return (
     <Card className="max-w-xl">

@@ -7,6 +7,7 @@ import {
   createStockAdjustmentAction,
   type InventoryActionState,
 } from '@/app/(app)/inventory/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,6 +60,7 @@ export function StockAdjustmentDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(createStockAdjustmentAction, initialState)
+  useActionToast(state, pending, { loading: 'Adjusting stock…', success: 'Stock adjusted' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

@@ -9,23 +9,12 @@ import { Button } from '@/components/ui/button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/states/empty-state'
 import { SalesFilterBar } from '@/components/sales/sales-filter-bar'
+import { openReceipt } from '@/lib/sales/receipt-window'
 import { formatPaymentMethods, shortSaleRef, type SaleListEntry } from '@/lib/sales/sale-list'
 import type { SalesFilter } from '@/lib/sales/queries'
 
 function currency(value: number): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
-}
-
-/** Opens the existing print/preview route in a small named popup — the same
- *  affordance the POS checkout uses for its receipt. */
-function openReceipt(saleId: string): void {
-  window
-    .open(
-      `/receipts/preview?saleId=${encodeURIComponent(saleId)}`,
-      'merqo-receipt',
-      'popup=yes,width=420,height=760',
-    )
-    ?.focus()
 }
 
 export function SalesView({

@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { saveReportAction, type ReportActionState } from '@/app/(app)/reports/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -60,6 +61,10 @@ export function SaveReportDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(saveReportAction, initialState)
+  useActionToast(state, pending, {
+    loading: savedReportId ? 'Updating saved report…' : 'Saving report…',
+    success: savedReportId ? 'Saved report updated' : 'Report saved',
+  })
   const [visibility, setVisibility] = useState<'private' | 'branch' | 'organization'>('private')
 
   useEffect(() => {

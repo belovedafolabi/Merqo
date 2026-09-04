@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { Menu, RotateCcw, User, Wifi } from 'lucide-react'
+import { RotateCcw, User, Wifi } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { OpenCustomerDisplayButton } from '@/components/pos/open-customer-display-button'
+import { PosMenuSheet } from '@/components/pos/pos-menu-sheet'
 
 /**
  * POS shell header — kept extremely compact per
@@ -11,13 +12,18 @@ import { OpenCustomerDisplayButton } from '@/components/pos/open-customer-displa
  * header"): business unit, cashier, customer, connection status, quick
  * actions, menu. `branchName` arrives from Milestone 05's onboarding state
  * (app/(pos)/layout.tsx); real customer data arrives with Milestone 09.
+ *
+ * Stays a server component: the menu is its own client island
+ * (components/pos/pos-menu-sheet.tsx).
  */
 export function PosHeader({
   cashierName,
   branchName,
+  businessUnitName,
 }: {
   cashierName: string
   branchName: string
+  businessUnitName: string
 }) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-card px-3 sm:px-4">
@@ -49,9 +55,11 @@ export function PosHeader({
         <Button variant="outline" size="touch" className="hidden rounded-full sm:inline-flex">
           Walk-in customer
         </Button>
-        <Button variant="ghost" size="icon-touch" aria-label="Menu">
-          <Menu />
-        </Button>
+        <PosMenuSheet
+          branchName={branchName}
+          businessUnitName={businessUnitName}
+          cashierName={cashierName}
+        />
       </div>
     </header>
   )

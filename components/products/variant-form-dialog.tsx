@@ -8,6 +8,7 @@ import {
   updateProductVariantAction,
   type ProductsActionState,
 } from '@/app/(app)/products/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Can } from '@/components/auth/can'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,10 @@ export function VariantFormDialog({
 }) {
   const action = variant ? updateProductVariantAction : createProductVariantAction
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: variant ? 'Saving variant…' : 'Creating variant…',
+    success: variant ? 'Variant saved' : 'Variant created',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

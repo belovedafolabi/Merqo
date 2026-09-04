@@ -9,6 +9,7 @@ import {
   updateProductAction,
   type ProductsActionState,
 } from '@/app/(app)/products/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Can } from '@/components/auth/can'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,10 @@ export function ProductFormDialog({
   const unitOptions = unitNames.includes(currentUnit) ? unitNames : [currentUnit, ...unitNames]
   const action = product ? updateProductAction : createProductAction
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: product ? 'Saving product…' : 'Creating product…',
+    success: product ? 'Product saved' : 'Product created',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

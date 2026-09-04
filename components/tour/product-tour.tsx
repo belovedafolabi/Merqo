@@ -9,6 +9,7 @@ import { useSidebarOptional } from '@/components/ui/sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { completeTourAction } from '@/app/(app)/tour-actions'
 import { ADMIN_TOUR_STEPS, POS_TOUR_STEPS, type TourStep } from '@/components/tour/steps'
+import { buildStepList } from '@/components/tour/tour-step-list'
 
 const SEEN_KEY = 'merqo.tour.seen'
 
@@ -89,6 +90,8 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       return
     }
 
+    const stepTitles = steps.map((step) => ({ title: step.popover.title }))
+
     const d = driver({
       showProgress: true,
       allowClose: true,
@@ -98,6 +101,18 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       doneBtnText: 'Done',
       popoverClass: 'merqo-tour',
       steps,
+      // Milestone 17 Part D: a clickable list of every step in this track,
+      // injected into the popover footer. Clicking one calls moveTo(i); the
+      // tour then continues linearly. driver.js tears the popover down between
+      // steps, so this runs fresh each render and needs no manual cleanup — but
+      // listeners must be attached to the new nodes every time, which
+      // buildStepList does.
+      onPopoverRender: (popover) => {
+        if (steps.length < MIN_REAL_STEPS) return
+        popover.footer.appendChild(
+          buildStepList(stepTitles, d.getActiveIndex() ?? 0, (index) => d.moveTo(index), isMobile),
+        )
+      },
       onDestroyed: () => {
         finish()
         // Don't burn the one-time tour on a degenerate run (targets missing).

@@ -8,6 +8,7 @@ import {
   updateCustomerAction,
   type CustomerActionState,
 } from '@/app/(app)/customers/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +56,10 @@ export function CustomerFormDialog({
     isEdit ? updateCustomerAction : createCustomerAction,
     initialState,
   )
+  useActionToast(state, pending, {
+    loading: isEdit ? 'Saving customer…' : 'Creating customer…',
+    success: isEdit ? 'Customer saved' : 'Customer created',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {
