@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { getReceiptContextAction, getSaleAction } from '@/app/(pos)/pos/actions'
 import { ReceiptDocument } from '@/components/receipts/receipt-document'
 import { ReceiptPrintPortal } from '@/components/receipts/receipt-print-portal'
-import { useTerminology } from '@/lib/terminology/terminology-context'
 import { DEFAULT_RECEIPT_TEMPLATE_ID } from '@/lib/receipts/templates'
 import type { OrganizationBranding } from '@/lib/branding/queries'
 import type { ReceiptSettings } from '@/lib/receipts/settings'
@@ -28,7 +27,6 @@ import type { Sale } from '@/lib/sales/queries'
  * directly).
  */
 export function ReceiptView({ saleId }: { saleId: string }) {
-  const t = useTerminology()
   const [sale, setSale] = useState<Sale | null>(null)
   const [branding, setBranding] = useState<OrganizationBranding | null>(null)
   const [settings, setSettings] = useState<ReceiptSettings | null>(null)
@@ -42,9 +40,7 @@ export function ReceiptView({ saleId }: { saleId: string }) {
   }, [saleId])
 
   if (!sale) {
-    return (
-      <p className="text-body-sm text-muted-foreground">Loading {t('receipt', { lower: true })}…</p>
-    )
+    return <p className="text-body-sm text-muted-foreground">Loading receipt…</p>
   }
 
   const templateId = settings?.templateId ?? DEFAULT_RECEIPT_TEMPLATE_ID
@@ -64,7 +60,6 @@ export function ReceiptView({ saleId }: { saleId: string }) {
         templateId={templateId}
         branding={branding}
         settings={resolvedSettings}
-        receiptLabel={t('receipt')}
       />
       {/* The print target. Rendering it here rather than in the drawer keeps
           the fetched sale in one place — printReceiptInPlace() only has to
@@ -74,7 +69,6 @@ export function ReceiptView({ saleId }: { saleId: string }) {
         templateId={templateId}
         branding={branding}
         settings={resolvedSettings}
-        receiptLabel={t('receipt')}
       />
     </>
   )

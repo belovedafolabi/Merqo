@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { BrandColorField } from '@/components/settings/brand-color-field'
+import { BrandPaletteSelect } from '@/components/settings/brand-palette-select'
 import { LogoUploadField } from '@/components/settings/logo-upload-field'
 import type { OrganizationBranding } from '@/lib/branding/queries'
 
@@ -76,18 +76,10 @@ export function BrandingEditor({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <BrandColorField
-              name="primaryColor"
-              label="Primary color"
-              defaultValue={branding.primaryColor}
-            />
-            <BrandColorField
-              name="secondaryColor"
-              label="Secondary color"
-              defaultValue={branding.secondaryColor}
-            />
-          </div>
+          <BrandPaletteSelect
+            defaultPrimary={branding.primaryColor}
+            defaultSecondary={branding.secondaryColor}
+          />
 
           <Button type="submit" disabled={pending} className="self-start">
             {pending ? 'Saving…' : 'Save'}
