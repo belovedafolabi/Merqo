@@ -106,13 +106,14 @@ describe('seed data (supabase/seed.sql)', () => {
   // (20260902090000) + 1 coupons.manage (20260904090300).
   it('loads exactly 61 permissions', async () => {
     const result = await pool.query(`select count(*)::int as count from public.permissions`)
-    expect(result.rows[0].count).toBe(61)
+    // +1 for Milestone 17 Part A's insights.view (20260905090200 / seed §5f).
+    expect(result.rows[0].count).toBe(62)
   })
 
-  // 57 (every pre-Milestone-13 permission incl. units.manage and
-  // coupons.manage) + subscription.view + subscription.renew — NOT the two
-  // platform.* keys, which seed.sql's §6 cross-join deliberately excludes
-  // from Owner (Super Admin only, per DECISIONS_AND_CONFLICTS.md §5).
+  // Every non-platform key: the pre-M13 set + subscription.view/renew +
+  // Milestone 17's insights.view. NOT the two platform.* keys, which seed.sql's
+  // §6 cross-join deliberately excludes from Owner (Super Admin only, per
+  // DECISIONS_AND_CONFLICTS.md §5).
   it('the Owner role holds every seeded permission except platform.*', async () => {
     const result = await pool.query(
       `select count(*)::int as count
@@ -120,7 +121,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'owner'`,
     )
-    expect(result.rows[0].count).toBe(59)
+    expect(result.rows[0].count).toBe(60)
   })
 
   it('the super_admin role holds every seeded permission, including platform.*', async () => {
@@ -130,7 +131,7 @@ describe('seed data (supabase/seed.sql)', () => {
        join public.roles r on r.id = rp.role_id
        where r.slug = 'super_admin'`,
     )
-    expect(result.rows[0].count).toBe(61)
+    expect(result.rows[0].count).toBe(62)
   })
 
   // Waiter/Kitchen Staff are still bare (the base till set is scoped to

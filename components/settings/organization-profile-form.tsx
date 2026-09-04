@@ -122,6 +122,48 @@ export function OrganizationProfileForm({
             />
           </div>
 
+          <fieldset className="flex flex-col gap-3 border-t pt-4">
+            <legend className="text-body-sm font-medium">Sales Insights</legend>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="insights-lead-days">
+                  Restock lead time (days)
+                  <InfoHint text="How many days of stock a restock suggestion aims to cover." />
+                </Label>
+                <Input
+                  id="insights-lead-days"
+                  name="insightsLeadDays"
+                  type="number"
+                  min={1}
+                  max={180}
+                  step="1"
+                  inputMode="numeric"
+                  required
+                  defaultValue={profile.insightsLeadDays}
+                  className="max-w-32"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="insights-reorder-threshold">
+                  Reorder when cover drops below (days)
+                  <InfoHint text="A product is flagged for restock when its days-of-cover falls under this." />
+                </Label>
+                <Input
+                  id="insights-reorder-threshold"
+                  name="insightsReorderThresholdDays"
+                  type="number"
+                  min={1}
+                  max={90}
+                  step="1"
+                  inputMode="numeric"
+                  required
+                  defaultValue={profile.insightsReorderThresholdDays}
+                  className="max-w-32"
+                />
+              </div>
+            </div>
+          </fieldset>
+
           <Button type="submit" disabled={pending} className="self-start">
             {pending ? 'Saving…' : 'Save'}
           </Button>

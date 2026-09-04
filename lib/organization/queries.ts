@@ -8,6 +8,9 @@ export interface OrganizationProfile {
   addressLine: string | null
   /** Org-wide fallback low-stock threshold (20260904090000); null = none. */
   defaultLowStockThreshold: number | null
+  /** Sales Insights knobs (20260905090100). */
+  insightsLeadDays: number
+  insightsReorderThresholdDays: number
 }
 
 interface OrganizationProfileRow {
@@ -16,6 +19,8 @@ interface OrganizationProfileRow {
   contact_email: string | null
   address_line: string | null
   default_low_stock_threshold: string | number | null
+  insights_lead_days: number
+  insights_reorder_threshold_days: number
 }
 
 export async function getOrganizationProfile(): Promise<OrganizationProfile | null> {
@@ -25,7 +30,9 @@ export async function getOrganizationProfile(): Promise<OrganizationProfile | nu
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('organizations')
-    .select('name, contact_phone, contact_email, address_line, default_low_stock_threshold')
+    .select(
+      'name, contact_phone, contact_email, address_line, default_low_stock_threshold, insights_lead_days, insights_reorder_threshold_days',
+    )
     .eq('id', organizationId)
     .single<OrganizationProfileRow>()
 
@@ -38,6 +45,8 @@ export async function getOrganizationProfile(): Promise<OrganizationProfile | nu
     addressLine: data.address_line,
     defaultLowStockThreshold:
       data.default_low_stock_threshold === null ? null : Number(data.default_low_stock_threshold),
+    insightsLeadDays: Number(data.insights_lead_days),
+    insightsReorderThresholdDays: Number(data.insights_reorder_threshold_days),
   }
 }
 

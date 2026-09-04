@@ -8,10 +8,10 @@ Playwright auth fixture — doing that once up front gives the other three a sta
 
 | Part | Status |
 |------|--------|
-| A — Sales Insights | Planned |
+| A — Sales Insights | **Shipped** — see "Part A as built" below |
 | B — Business-Type Refinements | Planned |
 | C — Session Lifecycle & Security | **Shipped** (#54) — see "Part C as built" below |
-| D — UX Fixes & Tour Navigation | **Shipped** — see "Part D as built" below |
+| D — UX Fixes & Tour Navigation | **Shipped** (#55) — see "Part D as built" below |
 
 ### Part C as built — deviations from the spec below
 
@@ -49,6 +49,42 @@ disagree, the list here is what shipped:
   window short enough to expire inside one test would expire every other authenticated spec too.
   The spec file is pinned to a single project: it is the only one that signs in for real, and
   fanning it across viewports would push one IP past the app's own 20-per-15-minute login limit.
+
+### Part A as built — deviations from the spec below
+
+Three migrations (`20260905090100`–`090300`), one new page, no new dependency.
+
+- **No business-unit switcher reused** — the spec said to reuse the existing one, but
+  `components/shell/business-unit-switcher.tsx` doesn't switch anything. `/insights` scopes via a
+  `?unit=` URL param with its own tiny `components/insights/insights-scope-bar.tsx` `<Select>`,
+  following the Reports "filters live in the URL" pattern. v1 is per-business-unit — no cross-unit
+  roll-up, no branch selector.
+- **Slow movers ranked by retail value (`on_hand × products.base_price`), never cost**
+  (user-confirmed). `products.view_cost_price` is Owner-only while `insights.view` is Owner +
+  Branch Manager, so a cost figure in a cached payload would leak. No cost value enters any
+  payload; no redaction logic needed.
+- **Cache key is `section` (`forecast` / `restock` / `slow_movers`), not `horizon`.** The forecast
+  payload carries all three horizons per product; restock and slow-movers aren't per-horizon, so a
+  horizon key would just duplicate rows. Still exactly three cache rows per business unit. The
+  horizon toggle is a pure client-side view over the one payload.
+- **`day_of_week` seasonality is business-unit-wide, not per-product** — "Fridays run ~1.6×" is a
+  store statement, and a per-product weekday factor on a single shop's data is noise. Clamped to
+  `[0.5, 2.0]`; `forecast_next_7d` = `base_velocity × Σ(all seven factors)` since seven consecutive
+  days cover each weekday once.
+- **The `"why"` strings are templated in `lib/insights/why.ts` (TS), not in SQL.** The cached
+  payload carries only numbers; the strings are assembled server-side on read, in one place, so
+  wording stays consistent and translatable.
+- **`sales_business_unit_created_at_idx` added** in migration 3 — `compute_sales_insights()`
+  filters `sales` by `business_unit_id`, and every existing sales index is keyed on `branch_id` /
+  `organization_id`, so `EXPLAIN` on the seeded set showed a seq scan.
+- **`getSalesInsights()` degrades rather than blanks** — on a compute error it serves whatever is
+  cached (possibly stale) instead of an empty page. The manual "Refresh now" affordance is
+  permission-gated and refuses when the newest row is under a minute old.
+- **Observability is a TS-side `logger.info('insights.computed', …)`** around the RPC call
+  (business unit, wall-clock ms, forecast row count) — Postgres-side structured logging isn't
+  available, so the SQL function itself emits nothing.
+- **`branding.test.ts` fails locally** on a Supabase-storage upload — the local storage container
+  wasn't running (known flaky stack); unrelated to Part A and green in CI.
 
 ### Part D as built — deviations from the spec below
 
