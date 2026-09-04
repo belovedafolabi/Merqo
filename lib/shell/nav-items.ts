@@ -49,6 +49,7 @@ export interface NavItem {
     | 'Users'
     | 'Wallet'
     | 'ScrollText'
+    | 'TrendingUp'
     | 'Banknote'
     | 'Building2'
     | 'Settings'
@@ -72,6 +73,14 @@ export const primaryNavItems: NavItem[] = [
   { label: 'Customers', href: '/customers', icon: 'Users', permission: { key: 'customers.view' } },
   { label: 'Layaways', href: '/layaways', icon: 'Wallet', permission: { key: 'layaway.view' } },
   { label: 'Reports', href: '/reports', icon: 'ScrollText', permission: { key: 'reports.view' } },
+  // Milestone 17 Part A. Gated on insights.view (Owner + Branch Manager by
+  // default) — the same audience as Reports, one row below it.
+  {
+    label: 'Insights',
+    href: '/insights',
+    icon: 'TrendingUp',
+    permission: { key: 'insights.view' },
+  },
   { label: 'Expenses', href: '/expenses', icon: 'Banknote', permission: { key: 'expense.view' } },
   {
     label: 'Business Structure',

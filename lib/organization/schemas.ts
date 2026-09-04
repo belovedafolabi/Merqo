@@ -39,5 +39,17 @@ export const organizationProfileInputSchema = z.object({
     .min(0, 'Enter zero or a positive number.')
     .max(1e11)
     .nullable(),
+  // Milestone 17 Part A — the two Sales Insights knobs (20260905090100).
+  // Bounds match the CHECK constraints on the columns.
+  insightsLeadDays: z
+    .number()
+    .int()
+    .min(1, 'Enter a value between 1 and 180.')
+    .max(180, 'Enter a value between 1 and 180.'),
+  insightsReorderThresholdDays: z
+    .number()
+    .int()
+    .min(1, 'Enter a value between 1 and 90.')
+    .max(90, 'Enter a value between 1 and 90.'),
 })
 export type OrganizationProfileInput = z.infer<typeof organizationProfileInputSchema>

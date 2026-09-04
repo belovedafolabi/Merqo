@@ -47,6 +47,8 @@ export async function updateOrganizationProfileAction(
       contactEmail: (formData.get('contactEmail') as string) || undefined,
       addressLine: (formData.get('addressLine') as string) || undefined,
       defaultLowStockThreshold: rawThreshold === '' ? null : Number(rawThreshold),
+      insightsLeadDays: Number(formData.get('insightsLeadDays')),
+      insightsReorderThresholdDays: Number(formData.get('insightsReorderThresholdDays')),
     })
   } catch (error) {
     return { error: errorMessage(error) }

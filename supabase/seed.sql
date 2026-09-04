@@ -297,6 +297,10 @@ insert into public.permissions (key, resource, action, description) values
   ('reports.view_financials', 'reports', 'view_financials', 'View cost-bearing and profit reports (COGS, gross profit, net profit, expense totals) — sensitive, since aggregate cost still exposes cost price.'),
   ('reports.view_all_branches', 'reports', 'view_all_branches', 'Run a report across every branch in the organization rather than a single one.'),
   ('reports.save', 'reports', 'save', 'Create, update, and archive a saved custom-report configuration.'),
+  -- Milestone 17 Part A. Also inserted in 20260905090200 so a live deploy picks
+  -- it up. Owner and Super Admin get it via the platform cross-joins below;
+  -- Branch Manager via the report-permissions allowlist further down.
+  ('insights.view', 'insights', 'view', 'View the Sales Insights page — per-product demand forecasts, restock suggestions, and slow-mover promo candidates.'),
   ('expense.view', 'expense', 'view', 'View recorded business expenses within an authorized branch.'),
   ('expense.create', 'expense', 'create', 'Record a business expense.'),
   ('expense.approve', 'expense', 'approve', 'Approve or reject a pending expense.'),
@@ -557,6 +561,10 @@ on conflict (role_id, permission_id) do nothing;
 with branch_manager_report_permissions (key) as (
   values
     ('reports.view'), ('reports.export'), ('reports.view_financials'), ('reports.save'),
+    -- Milestone 17 Part A: a Branch Manager runs their branch's day; the
+    -- Insights page is the same audience. Slow-mover ranking uses retail value,
+    -- never cost, so it exposes nothing reports.view_financials protects.
+    ('insights.view'),
     ('expense.view'), ('expense.create'), ('expense.approve')
 )
 insert into public.role_permissions (role_id, permission_id)

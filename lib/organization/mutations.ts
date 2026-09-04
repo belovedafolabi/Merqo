@@ -26,6 +26,8 @@ export async function updateOrganizationProfile(
       contact_email: input.contactEmail ?? null,
       address_line: input.addressLine ?? null,
       default_low_stock_threshold: input.defaultLowStockThreshold,
+      insights_lead_days: input.insightsLeadDays,
+      insights_reorder_threshold_days: input.insightsReorderThresholdDays,
     })
     .eq('id', organizationId)
 
