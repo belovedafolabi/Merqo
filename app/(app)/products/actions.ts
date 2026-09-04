@@ -225,6 +225,9 @@ export async function createProductAction(
       unitOfMeasurement: String(formData.get('unitOfMeasurement') ?? 'unit'),
       costPrice: optionalNumberField(formData, 'costPrice'),
       basePrice: numberField(formData, 'basePrice'),
+      // Milestone 17 Part B — the "This is a service" toggle (Switch submits
+      // "on"). Absent for a normal product, so track_inventory stays true.
+      trackInventory: formData.get('isService') ? false : undefined,
     })
     productId = created.id
   } catch (error) {
@@ -233,7 +236,8 @@ export async function createProductAction(
 
   revalidatePath('/products')
 
-  if (openingStock > 0) {
+  // A service line item has no stock, so ignore any opening-stock field.
+  if (openingStock > 0 && !formData.get('isService')) {
     // Routed through createStockAdjustment rather than a raw movement so its
     // own `inventory.adjust` check, audit event and low-stock notification
     // all apply. The branch is the onboarding branch — the same one the

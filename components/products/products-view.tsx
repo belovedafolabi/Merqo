@@ -57,6 +57,7 @@ export function ProductsView({
   categories,
   categorySuggestions,
   units,
+  servicesEnabled = false,
 }: {
   organizationId: string
   businessUnitId: string
@@ -64,6 +65,8 @@ export function ProductsView({
   categories: Category[]
   categorySuggestions: string[]
   units: UnitOfMeasure[]
+  /** Milestone 17 Part B — the `services` capability is on for this unit. */
+  servicesEnabled?: boolean
 }) {
   const [dialog, setDialog] = useState<DialogState>(null)
   const closeDialog = () => setDialog(null)
@@ -208,6 +211,7 @@ export function ProductsView({
         businessUnitId={businessUnitId}
         categories={activeCategories}
         unitNames={activeUnitNames}
+        servicesEnabled={servicesEnabled}
         product={dialog?.kind === 'product-edit' ? dialog.product : null}
         open={dialog?.kind === 'product-create' || dialog?.kind === 'product-edit'}
         onOpenChange={(open) => !open && closeDialog()}

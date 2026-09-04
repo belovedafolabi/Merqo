@@ -19,6 +19,16 @@ const MIN_REAL_STEPS = 2
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Polls for `selector` to appear, up to `timeoutMs`. Returns whether it did. */
+async function waitForSelector(selector: string, timeoutMs = 1500): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (document.querySelector(selector)) return true
+    await sleep(60)
+  }
+  return document.querySelector(selector) !== null
+}
+
 /**
  * The in-app product tour (driver.js). On the ADMIN shell it auto-starts once
  * for a user whose users.tour_completed_at is null (passed in as `autoStart`);
@@ -54,11 +64,14 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
     setRunning(true)
 
     // On a phone, the Admin nav is inside a closed Sheet — open it so its
-    // steps have targets, and remember we did so we can close it after.
+    // steps have targets, and remember we did so we can close it after. Poll
+    // for a real nav target rather than guessing at the Sheet's mount+animate
+    // time (a fixed 350ms was too short on a slow device — the nav steps got
+    // filtered out and the menu looked like it never opened).
     const openedMobileNav = area === 'admin' && isMobile && !!sidebar && !sidebar.openMobile
     if (openedMobileNav) {
       sidebar!.setOpenMobile(true)
-      await sleep(350)
+      await waitForSelector('[data-tour="business-unit-switcher"], nav a[href="/products"]')
     }
 
     const { driver } = await import('driver.js')
@@ -101,15 +114,16 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       doneBtnText: 'Done',
       popoverClass: 'merqo-tour',
       steps,
-      // Milestone 17 Part D: a clickable list of every step in this track,
-      // injected into the popover footer. Clicking one calls moveTo(i); the
-      // tour then continues linearly. driver.js tears the popover down between
-      // steps, so this runs fresh each render and needs no manual cleanup — but
-      // listeners must be attached to the new nodes every time, which
-      // buildStepList does.
+      // Milestone 17 Part D: a clickable list of every step in this track.
+      // Appended to the popover WRAPPER (below the footer), not into the footer
+      // itself — the footer is a flex row of "1 of N" + Back/Next, and adding a
+      // full-width block there knocked those out of line. driver.js tears the
+      // popover down between steps, so this runs fresh each render and needs no
+      // manual cleanup — but listeners are attached to the new nodes every
+      // time, which buildStepList does.
       onPopoverRender: (popover) => {
         if (steps.length < MIN_REAL_STEPS) return
-        popover.footer.appendChild(
+        popover.wrapper.appendChild(
           buildStepList(stepTitles, d.getActiveIndex() ?? 0, (index) => d.moveTo(index), isMobile),
         )
       },

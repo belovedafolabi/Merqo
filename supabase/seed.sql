@@ -38,8 +38,16 @@ insert into public.capabilities (key, name) values
   ('expiry_tracking', 'Expiry Tracking'),
   ('service_charge', 'Service Charge'),
   ('layaway', 'Layaway'),
-  ('store_credit', 'Store Credit')
+  ('store_credit', 'Store Credit'),
+  -- Milestone 17 Part B (also in 20260906090400).
+  ('services', 'Services'),
+  ('quick_sale', 'Quick Sale'),
+  ('weighed_items', 'Weighed Items')
 on conflict (key) do nothing;
+
+update public.capabilities set description = 'Sell non-stock service line items — a haircut, a room-service charge, a delivery fee. A service product is not tracked in inventory.' where key = 'services' and description is null;
+update public.capabilities set description = 'A fast keypad checkout mode for busy counters where most items are not scanned.' where key = 'quick_sale' and description is null;
+update public.capabilities set description = 'Allow fractional quantities on a line, for goods priced by weight.' where key = 'weighed_items' and description is null;
 
 -- =============================================================================
 -- 3. Default capability matrix per business type (business_type_capabilities).
@@ -89,7 +97,17 @@ with matrix (business_type_slug, capability_key) as (
 
     -- General retail / Other — INFERRED: conservative baseline, no assumptions beyond core POS.
     ('general_retail', 'products'), ('general_retail', 'inventory'),
-    ('other', 'products'), ('other', 'inventory')
+    ('other', 'products'), ('other', 'inventory'),
+
+    -- Milestone 17 Part B — services / quick_sale / weighed_items (also in
+    -- 20260906090400). Everything not listed here is filled false by the
+    -- cross-join below.
+    ('restaurant', 'services'), ('beauty_salons_barbers', 'services'),
+    ('hotels', 'services'), ('general_retail', 'services'),
+    ('convenience_store', 'quick_sale'), ('bakeries', 'quick_sale'),
+    ('general_retail', 'quick_sale'), ('supermarket', 'quick_sale'),
+    ('bakeries', 'weighed_items'), ('supermarket', 'weighed_items'),
+    ('wholesalers', 'weighed_items')
 )
 insert into public.business_type_capabilities (business_type_id, capability_id, default_enabled)
 select bt.id, c.id, true
@@ -715,6 +733,90 @@ select bt.id, s.name, s.sort_order
 from suggestions s
 join public.business_types bt on bt.slug = s.business_type_slug
 on conflict (business_type_id, name) do nothing;
+
+-- =============================================================================
+-- 9b. Milestone 17 Part B — per-business-type terminology
+--     (business_type_terminology, 20260906090100). Only the types whose
+--     vocabulary genuinely differs; the rest fall back to GENERIC_TERMS in
+--     lib/terminology/types.ts. Also seeded in the migration.
+-- =============================================================================
+with terms (business_type_slug, term_key, singular, plural) as (
+  values
+    ('restaurant', 'sale', 'Bill', 'Bills'),
+    ('restaurant', 'customer', 'Guest', 'Guests'),
+    ('restaurant', 'product', 'Menu item', 'Menu items'),
+    ('restaurant', 'cart', 'Order', 'Orders'),
+    ('restaurant', 'catalog', 'Menu', 'Menus'),
+    ('beauty_salons_barbers', 'sale', 'Ticket', 'Tickets'),
+    ('beauty_salons_barbers', 'customer', 'Client', 'Clients'),
+    ('beauty_salons_barbers', 'product', 'Service', 'Services'),
+    ('beauty_salons_barbers', 'cart', 'Ticket', 'Tickets'),
+    ('beauty_salons_barbers', 'catalog', 'Service menu', 'Service menus'),
+    ('hotels', 'sale', 'Folio', 'Folios'),
+    ('hotels', 'customer', 'Guest', 'Guests'),
+    ('hotels', 'product', 'Charge', 'Charges'),
+    ('hotels', 'cart', 'Folio', 'Folios'),
+    ('wholesalers', 'sale', 'Order', 'Orders'),
+    ('wholesalers', 'customer', 'Account', 'Accounts'),
+    ('wholesalers', 'cart', 'Order', 'Orders'),
+    ('pharmacy', 'sale', 'Sale', 'Sales'),
+    ('pharmacy', 'customer', 'Patient', 'Patients'),
+    ('hardware_building_materials', 'sale', 'Order', 'Orders'),
+    ('hardware_building_materials', 'cart', 'Order', 'Orders')
+)
+insert into public.business_type_terminology (business_type_id, term_key, singular, plural)
+select bt.id, t.term_key, t.singular, t.plural
+from terms t
+join public.business_types bt on bt.slug = t.business_type_slug
+on conflict (business_type_id, term_key) do nothing;
+
+-- =============================================================================
+-- 9c. Milestone 17 Part B — onboarding presets (business_type_presets,
+--     20260906090200). Applied ONCE at the end of onboarding by
+--     applyBusinessTypePresets(); never a runtime gate. Also seeded in the
+--     migration.
+-- =============================================================================
+with widget_presets (business_type_slug, payload) as (
+  values
+    ('supermarket', '["sales_summary","sales_overview","low_stock","recent_sales"]'::jsonb),
+    ('convenience_store', '["sales_summary","sales_overview","low_stock","recent_sales"]'::jsonb),
+    ('restaurant', '["sales_summary","sales_overview","recent_sales","top_products"]'::jsonb),
+    ('pharmacy', '["sales_summary","sales_overview","low_stock","recent_products"]'::jsonb),
+    ('clothing_fashion', '["sales_summary","sales_overview","top_products","low_stock"]'::jsonb),
+    ('electronics', '["sales_summary","sales_overview","top_products","low_stock"]'::jsonb),
+    ('hardware_building_materials', '["sales_summary","sales_overview","low_stock","recent_sales"]'::jsonb),
+    ('beauty_salons_barbers', '["sales_summary","sales_overview","recent_sales","top_products"]'::jsonb),
+    ('hotels', '["sales_summary","sales_overview","recent_sales"]'::jsonb),
+    ('bakeries', '["sales_summary","sales_overview","low_stock","top_products"]'::jsonb),
+    ('wholesalers', '["sales_summary","sales_performance","top_products","recent_sales"]'::jsonb),
+    ('general_retail', '["sales_summary","sales_overview","low_stock","recent_sales"]'::jsonb),
+    ('other', '["sales_summary","sales_overview","low_stock","recent_sales"]'::jsonb)
+),
+report_presets (business_type_slug, payload) as (
+  values
+    ('supermarket', '["sales-summary","sales-by-product","inventory-low-stock"]'::jsonb),
+    ('convenience_store', '["sales-summary","sales-by-product","inventory-low-stock"]'::jsonb),
+    ('restaurant', '["sales-summary","sales-by-product","discounts"]'::jsonb),
+    ('pharmacy', '["sales-summary","sales-by-product","inventory-expiry","inventory-low-stock"]'::jsonb),
+    ('clothing_fashion', '["sales-summary","sales-by-product","customer-layaways"]'::jsonb),
+    ('electronics', '["sales-summary","sales-by-product","inventory-stock"]'::jsonb),
+    ('hardware_building_materials', '["sales-summary","sales-by-product","inventory-stock"]'::jsonb),
+    ('beauty_salons_barbers', '["sales-summary","sales-by-product","discounts"]'::jsonb),
+    ('hotels', '["sales-summary","sales-by-product"]'::jsonb),
+    ('bakeries', '["sales-summary","sales-by-product","inventory-low-stock"]'::jsonb),
+    ('wholesalers', '["sales-summary","sales-by-product","customer-transactions"]'::jsonb),
+    ('general_retail', '["sales-summary","sales-by-product","inventory-low-stock"]'::jsonb),
+    ('other', '["sales-summary","sales-by-product"]'::jsonb)
+)
+insert into public.business_type_presets (business_type_id, preset_kind, payload)
+select bt.id, 'dashboard_widgets', wp.payload
+from widget_presets wp
+join public.business_types bt on bt.slug = wp.business_type_slug
+union all
+select bt.id, 'pinned_reports', rp.payload
+from report_presets rp
+join public.business_types bt on bt.slug = rp.business_type_slug
+on conflict (business_type_id, preset_kind) do nothing;
 
 -- =============================================================================
 -- System units of measurement (units_of_measure, 20260902090000). The

@@ -11,6 +11,7 @@ import {
 } from '@/app/(app)/products/actions'
 import { useActionToast } from '@/hooks/use-action-toast'
 import { Can } from '@/components/auth/can'
+import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -56,6 +57,7 @@ export function ProductFormDialog({
   businessUnitId,
   categories,
   unitNames,
+  servicesEnabled = false,
   product,
   open,
   onOpenChange,
@@ -65,6 +67,8 @@ export function ProductFormDialog({
   categories: Category[]
   /** Active unit-of-measure names (system + this org's custom) for the Select. */
   unitNames: string[]
+  /** Milestone 17 Part B — offer a "this is a service" toggle (track_inventory = false). */
+  servicesEnabled?: boolean
   product?: Product | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -125,6 +129,21 @@ export function ProductFormDialog({
             </Label>
             <Input id="product-name" name="name" defaultValue={product?.name} required autoFocus />
           </div>
+
+          {/* Milestone 17 Part B: only for a NEW product on a unit with the
+              `services` capability. A service is not stock-tracked — POS sells
+              it with no balance, and create_sale() skips the deduction. */}
+          {servicesEnabled && !product && (
+            <label className="flex items-center justify-between gap-4 rounded-lg border bg-muted/40 p-3">
+              <span className="flex flex-col gap-0.5">
+                <span className="text-body-sm font-medium">This is a service</span>
+                <span className="text-caption text-muted-foreground">
+                  Not stocked — no opening stock, no low-stock alerts, sells with no balance.
+                </span>
+              </span>
+              <Switch name="isService" value="on" />
+            </label>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">

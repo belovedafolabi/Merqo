@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { Package } from 'lucide-react'
 
 import { requirePermission } from '@/lib/auth/guard'
-import { getOnboardingState } from '@/lib/business-structure/queries'
+import { getOnboardingState, listBusinessUnitCapabilities } from '@/lib/business-structure/queries'
 import { listCategories, listCategorySuggestions, listProducts } from '@/lib/products/queries'
 import { listUnitsOfMeasure } from '@/lib/units/queries'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
@@ -69,11 +69,12 @@ async function ProductsPageContent({
   businessUnitId: string
   businessTypeId: string
 }) {
-  const [products, categories, categorySuggestions, units] = await Promise.all([
+  const [products, categories, categorySuggestions, units, capabilities] = await Promise.all([
     listProducts(organizationId, businessUnitId),
     listCategories(businessUnitId),
     listCategorySuggestions(businessTypeId),
     listUnitsOfMeasure(organizationId),
+    listBusinessUnitCapabilities(businessUnitId),
   ])
 
   return (
@@ -84,6 +85,7 @@ async function ProductsPageContent({
       categories={categories}
       categorySuggestions={categorySuggestions}
       units={units}
+      servicesEnabled={capabilities.some((c) => c.key === 'services' && c.enabled)}
     />
   )
 }

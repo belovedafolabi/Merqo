@@ -2,6 +2,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
 
 import { requirePermission } from '@/lib/auth/guard'
 import { recordAuditEvent } from '@/lib/auth/audit'
+import { applyBusinessTypePresets } from '@/lib/business-structure/presets'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils'
 import {
@@ -334,6 +335,31 @@ export async function completeOnboarding(organizationId: string): Promise<void> 
     .eq('id', organizationId)
   if (error) throw error
 
+  // Milestone 17 Part B — apply the new business unit's type presets, ONCE.
+  // A one-time onboarding convenience, never re-applied. Best-effort: a preset
+  // failure must not fail the whole onboarding.
+  let presetsApplied: { widgetsApplied: number; reportsApplied: number } | null = null
+  const { data: unit } = await supabase
+    .from('business_units')
+    .select('id, business_type_id, branches!inner(organization_id)')
+    .eq('branches.organization_id', organizationId)
+    .is('archived_at', null)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<{ id: string; business_type_id: string }>()
+
+  if (unit) {
+    try {
+      presetsApplied = await applyBusinessTypePresets(supabase, {
+        businessUnitId: unit.id,
+        businessTypeId: unit.business_type_id,
+        userId: user.id,
+      })
+    } catch {
+      // logged inside applyBusinessTypePresets; never block onboarding
+    }
+  }
+
   await recordAuditEvent(
     {
       organizationId,
@@ -341,6 +367,7 @@ export async function completeOnboarding(organizationId: string): Promise<void> 
       action: 'organization.onboarding_completed',
       resourceType: 'organization',
       resourceId: organizationId,
+      metadata: presetsApplied ? { presetsApplied } : undefined,
     },
     supabase,
   )

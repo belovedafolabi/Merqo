@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ArrowRight, Boxes, Calculator, Receipt, Users, Wrench } from 'lucide-react'
+import { ArrowRight, Boxes, Calculator, Pin, Receipt, Users, Wrench } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import {
   REPORT_CATEGORY_LABELS,
   STANDARD_REPORTS,
+  findStandardReport,
   type ReportCategory,
   type StandardReportDef,
 } from '@/lib/reports/catalog'
@@ -26,10 +27,22 @@ const CATEGORY_ICONS: Record<ReportCategory, typeof Receipt> = {
  * exists and that they are not trusted with it, which is information the
  * catalog has no reason to volunteer.
  */
-export function ReportCatalog({ grantedPermissions }: { grantedPermissions: readonly string[] }) {
+export function ReportCatalog({
+  grantedPermissions,
+  pinnedReportIds = [],
+}: {
+  grantedPermissions: readonly string[]
+  /** Milestone 17 Part B — this unit's pinned reports, surfaced first. */
+  pinnedReportIds?: readonly string[]
+}) {
   const visible = STANDARD_REPORTS.filter(
     (report) => !report.permission || grantedPermissions.includes(report.permission),
   )
+  const isVisible = (report: StandardReportDef) => visible.includes(report)
+
+  const pinned = pinnedReportIds
+    .map((id) => findStandardReport(id))
+    .filter((report): report is StandardReportDef => report !== undefined && isVisible(report))
 
   const categories = (['sales', 'financial', 'inventory', 'customer'] as const).filter((category) =>
     visible.some((report) => report.category === category),
@@ -37,6 +50,19 @@ export function ReportCatalog({ grantedPermissions }: { grantedPermissions: read
 
   return (
     <div className="flex flex-col gap-6">
+      {pinned.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="flex items-center gap-1.5 text-body-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            <Pin className="size-3.5" /> Pinned
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pinned.map((report) => (
+              <ReportTile key={`pinned-${report.id}`} report={report} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {categories.map((category) => (
         <section key={category} className="flex flex-col gap-3">
           <h2 className="text-body-sm font-semibold tracking-wide text-muted-foreground uppercase">

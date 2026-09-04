@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { useCart, useCartTotals } from '@/lib/pos/cart-context'
 import { usePosSession } from '@/lib/pos/session-context'
 import { usePermission } from '@/lib/auth/permissions-context'
+import { useTerminology } from '@/lib/terminology/terminology-context'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { usePendingToast } from '@/hooks/use-pending-toast'
 import { ReceiptView } from '@/components/pos/receipt-view'
@@ -89,6 +90,7 @@ export function CheckoutDrawer({
   const totals = useCartTotals()
   const canApplyDiscount = usePermission('discount.apply', { organizationId, branchId })
   const isMobile = useIsMobile()
+  const t = useTerminology()
 
   const [state, formAction, pending] = useActionState(checkoutAction, initialState)
   const [discountInput, setDiscountInput] = useState('')
@@ -211,7 +213,7 @@ export function CheckoutDrawer({
       >
         <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
           <DrawerHeader>
-            <DrawerTitle>Sale complete</DrawerTitle>
+            <DrawerTitle>{t('sale')} complete</DrawerTitle>
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto scroll-smooth px-4">
@@ -233,7 +235,7 @@ export function CheckoutDrawer({
                 })
               }}
             >
-              <Printer /> {printing ? 'Printing…' : 'Print receipt'}
+              <Printer /> {printing ? 'Printing…' : `Print ${t('receipt', { lower: true })}`}
             </Button>
             <Button size="touch" disabled={printing} onClick={finish}>
               Done
@@ -392,7 +394,7 @@ export function CheckoutDrawer({
                     variant="ghost"
                     className="h-10 w-full justify-between px-3 text-body-sm"
                   >
-                    Add customer, coupon, discount or note
+                    Add {t('customer', { lower: true })}, coupon, discount or note
                     <ChevronDown
                       className={cn('size-4 transition-transform', detailsOpen && 'rotate-180')}
                     />
@@ -404,10 +406,10 @@ export function CheckoutDrawer({
                     selected={customer}
                     onSelect={handleSelectCustomer}
                     onQuickAdd={() => setQuickAddOpen(true)}
-                    label="Customer (optional)"
+                    label={`${t('customer')} (optional)`}
                     helperText={
                       creditBalance === null
-                        ? 'Attach a customer to record this sale against them, or to pay with store credit.'
+                        ? `Attach a ${t('customer', { lower: true })} to record this ${t('sale', { lower: true })} against them, or to pay with store credit.`
                         : `Store credit available: ${currency(creditBalance)}`
                     }
                   />

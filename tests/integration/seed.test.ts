@@ -32,12 +32,13 @@ describe('seed data (supabase/seed.sql)', () => {
     )
   })
 
-  it('loads exactly 7 capabilities', async () => {
+  // +3 for Milestone 17 Part B: services, quick_sale, weighed_items.
+  it('loads exactly 10 capabilities', async () => {
     const result = await pool.query(`select count(*)::int as count from public.capabilities`)
-    expect(result.rows[0].count).toBe(7)
+    expect(result.rows[0].count).toBe(10)
   })
 
-  it('loads the expected 7 capability keys', async () => {
+  it('loads the expected 10 capability keys', async () => {
     const result = await pool.query(`select key from public.capabilities order by key`)
     expect(result.rows.map((row) => row.key)).toEqual(
       [
@@ -46,17 +47,20 @@ describe('seed data (supabase/seed.sql)', () => {
         'inventory',
         'layaway',
         'products',
+        'quick_sale',
         'service_charge',
+        'services',
         'store_credit',
+        'weighed_items',
       ].sort(),
     )
   })
 
-  it('loads a complete 13x7 = 91-row business_type_capabilities matrix', async () => {
+  it('loads a complete 13x10 = 130-row business_type_capabilities matrix', async () => {
     const result = await pool.query(
       `select count(*)::int as count from public.business_type_capabilities`,
     )
-    expect(result.rows[0].count).toBe(91)
+    expect(result.rows[0].count).toBe(130)
   })
 
   // Scoped to is_system_role = true, not a bare count(*) on the table: since
