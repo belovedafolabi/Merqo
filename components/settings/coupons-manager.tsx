@@ -9,6 +9,7 @@ import {
   updateCouponAction,
   type CouponsActionState,
 } from '@/app/(app)/settings/coupons/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -159,6 +160,7 @@ export function CouponsManager({
 
 function ArchiveButton({ organizationId, couponId }: { organizationId: string; couponId: string }) {
   const [state, formAction, pending] = useActionState(archiveCouponAction, initialState)
+  useActionToast(state, pending, { loading: 'Archiving coupon…', success: 'Coupon archived' })
   return (
     <form action={formAction}>
       <input type="hidden" name="organizationId" value={organizationId} />
@@ -194,6 +196,10 @@ function CouponDialog({
     [editing],
   )
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: editing ? 'Saving coupon…' : 'Creating coupon…',
+    success: editing ? 'Coupon saved' : 'Coupon created',
+  })
   const [discountType, setDiscountType] = useState<Coupon['discountType']>(
     coupon?.discountType ?? 'percentage',
   )

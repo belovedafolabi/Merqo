@@ -8,6 +8,7 @@ import {
   updateBusinessUnitAction,
   type BusinessStructureActionState,
 } from '@/app/(app)/business-structure/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -58,6 +59,10 @@ export function BusinessUnitFormDialog({
 }) {
   const action = businessUnit ? updateBusinessUnitAction : createBusinessUnitAction
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: businessUnit ? 'Saving business unit…' : 'Creating business unit…',
+    success: businessUnit ? 'Business unit saved' : 'Business unit created',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

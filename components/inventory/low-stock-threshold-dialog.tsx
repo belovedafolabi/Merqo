@@ -7,6 +7,7 @@ import {
   updateLowStockThresholdAction,
   type InventoryActionState,
 } from '@/app/(app)/inventory/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,6 +46,7 @@ export function LowStockThresholdDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(updateLowStockThresholdAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving threshold…', success: 'Threshold saved' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

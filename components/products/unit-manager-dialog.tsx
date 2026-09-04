@@ -9,6 +9,7 @@ import {
   updateUnitAction,
   type ProductsActionState,
 } from '@/app/(app)/products/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,7 @@ export function UnitManagerDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [createState, createAction, createPending] = useActionState(createUnitAction, initialState)
+  useActionToast(createState, createPending, { loading: 'Adding unit…', success: 'Unit added' })
   const [archiving, setArchiving] = useState<UnitOfMeasure | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -170,6 +172,7 @@ function UnitRow({
   onArchive: () => void
 }) {
   const [state, formAction, pending] = useActionState(updateUnitAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving unit…', success: 'Unit saved' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

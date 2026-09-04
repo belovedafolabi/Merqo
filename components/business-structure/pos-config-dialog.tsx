@@ -7,6 +7,7 @@ import {
   updateBusinessUnitPosConfigAction,
   type BusinessStructureActionState,
 } from '@/app/(app)/business-structure/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,6 +40,10 @@ export function PosConfigDialog({
     updateBusinessUnitPosConfigAction,
     initialState,
   )
+  useActionToast(state, pending, {
+    loading: 'Saving configuration…',
+    success: 'Configuration saved',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

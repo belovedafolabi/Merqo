@@ -8,6 +8,7 @@ import {
   listBranchProductOptionsAction,
   type InventoryActionState,
 } from '@/app/(app)/inventory/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,6 +71,10 @@ export function StockTransferDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(initiateStockTransferAction, initialState)
+  useActionToast(state, pending, {
+    loading: 'Starting transfer…',
+    success: 'Transfer started',
+  })
   const [destinationBranchId, setDestinationBranchId] = useState('')
   const [destinationOptions, setDestinationOptions] = useState<BranchProductOption[]>([])
   const [items, setItems] = useState<DraftItem[]>([emptyDraftItem()])

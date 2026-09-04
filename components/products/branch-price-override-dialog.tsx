@@ -8,6 +8,7 @@ import {
   upsertBranchPriceOverrideAction,
   type ProductsActionState,
 } from '@/app/(app)/products/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -61,6 +62,11 @@ export function BranchPriceOverrideDialog({
     removeBranchPriceOverrideAction,
     initialState,
   )
+  useActionToast(state, pending, { loading: 'Saving override…', success: 'Price override saved' })
+  useActionToast(removeState, removePending, {
+    loading: 'Removing override…',
+    success: 'Price override removed',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) onOpenChange(false)

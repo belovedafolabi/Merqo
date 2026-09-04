@@ -8,6 +8,7 @@ import {
   updateBranchAction,
   type BusinessStructureActionState,
 } from '@/app/(app)/business-structure/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -41,6 +42,10 @@ export function BranchFormDialog({
 }) {
   const action = branch ? updateBranchAction : createBranchAction
   const [state, formAction, pending] = useActionState(action, initialState)
+  useActionToast(state, pending, {
+    loading: branch ? 'Saving branch…' : 'Creating branch…',
+    success: branch ? 'Branch saved' : 'Branch created',
+  })
 
   // useActionState returns a fresh state object every time the action runs,
   // even when its value is {error: null} again — so `state !== initialState`

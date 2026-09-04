@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { cancelLayawayAction, type LayawayActionState } from '@/app/(app)/layaways/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,6 +45,7 @@ export function LayawayCancelDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(cancelLayawayAction, initialState)
+  useActionToast(state, pending, { loading: 'Cancelling layaway…', success: 'Layaway cancelled' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

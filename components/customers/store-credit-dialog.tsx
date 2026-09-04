@@ -8,6 +8,7 @@ import {
   issueStoreCreditAction,
   type CustomerActionState,
 } from '@/app/(app)/customers/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -56,6 +57,10 @@ export function StoreCreditDialog({
     mode === 'issue' ? issueStoreCreditAction : adjustStoreCreditAction,
     initialState,
   )
+  useActionToast(state, pending, {
+    loading: mode === 'issue' ? 'Issuing store credit…' : 'Adjusting store credit…',
+    success: mode === 'issue' ? 'Store credit issued' : 'Store credit adjusted',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

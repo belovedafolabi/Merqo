@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { PackageSearch, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
   findSaleAction,
@@ -10,6 +11,7 @@ import {
   decideRefundAction,
   listPendingRefundsAction,
 } from '@/app/(pos)/pos/returns/actions'
+import { notifyPending } from '@/lib/toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -31,6 +33,27 @@ import type { PendingRefund } from '@/lib/sales/queries'
 
 function money(value: number): string {
   return value.toLocaleString(undefined, { style: 'currency', currency: 'NGN' })
+}
+
+/**
+ * Milestone 17 Part D. This screen drives its actions through `useTransition`
+ * + `setError`, not `useActionState`, so it can't use `useActionToast`. This
+ * is the equivalent: a pending toast for the duration, then a success or error
+ * toast on settle. Actions here return `{ error }` rather than throwing.
+ */
+async function runWithToast<T extends { error?: string | null }>(
+  messages: { loading: string; success: string },
+  run: () => Promise<T>,
+): Promise<T> {
+  const dismiss = notifyPending(messages.loading)
+  try {
+    const result = await run()
+    if (result.error) toast.error(result.error)
+    else toast.success(messages.success)
+    return result
+  } finally {
+    dismiss()
+  }
 }
 
 /**
@@ -96,12 +119,9 @@ export function ReturnsScreen() {
     }
     setError(null)
     startTransition(async () => {
-      const result = await createReturnAction(
-        organizationId,
-        branchId,
-        sale.id,
-        returnReason,
-        items,
+      const result = await runWithToast(
+        { loading: 'Processing return…', success: 'Return processed' },
+        () => createReturnAction(organizationId, branchId, sale.id, returnReason, items),
       )
       if (result.error) {
         setError(result.error)
@@ -127,14 +147,18 @@ export function ReturnsScreen() {
     }
     setError(null)
     startTransition(async () => {
-      const result = await requestRefundAction(
-        organizationId,
-        branchId,
-        sale.id,
-        lastReturnId,
-        amount,
-        refundMethod,
-        refundReason,
+      const result = await runWithToast(
+        { loading: 'Requesting refund…', success: 'Refund requested' },
+        () =>
+          requestRefundAction(
+            organizationId,
+            branchId,
+            sale.id,
+            lastReturnId,
+            amount,
+            refundMethod,
+            refundReason,
+          ),
       )
       if (result.error) {
         setError(result.error)
@@ -306,8 +330,13 @@ export function ReturnsScreen() {
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
-                        await decideRefundAction(organizationId, branchId, refund.id, true)
-                        setPendingRefunds((prev) => prev.filter((r) => r.id !== refund.id))
+                        const result = await runWithToast(
+                          { loading: 'Approving refund…', success: 'Refund approved' },
+                          () => decideRefundAction(organizationId, branchId, refund.id, true),
+                        )
+                        if (!result.error) {
+                          setPendingRefunds((prev) => prev.filter((r) => r.id !== refund.id))
+                        }
                       })
                     }
                   >
@@ -320,8 +349,13 @@ export function ReturnsScreen() {
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
-                        await decideRefundAction(organizationId, branchId, refund.id, false)
-                        setPendingRefunds((prev) => prev.filter((r) => r.id !== refund.id))
+                        const result = await runWithToast(
+                          { loading: 'Rejecting refund…', success: 'Refund rejected' },
+                          () => decideRefundAction(organizationId, branchId, refund.id, false),
+                        )
+                        if (!result.error) {
+                          setPendingRefunds((prev) => prev.filter((r) => r.id !== refund.id))
+                        }
                       })
                     }
                   >

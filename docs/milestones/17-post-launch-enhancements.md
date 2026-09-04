@@ -10,8 +10,8 @@ Playwright auth fixture — doing that once up front gives the other three a sta
 |------|--------|
 | A — Sales Insights | Planned |
 | B — Business-Type Refinements | Planned |
-| C — Session Lifecycle & Security | **Shipped** — see "Part C as built" below |
-| D — UX Fixes & Tour Navigation | Planned |
+| C — Session Lifecycle & Security | **Shipped** (#54) — see "Part C as built" below |
+| D — UX Fixes & Tour Navigation | **Shipped** — see "Part D as built" below |
 
 ### Part C as built — deviations from the spec below
 
@@ -49,6 +49,52 @@ disagree, the list here is what shipped:
   window short enough to expire inside one test would expire every other authenticated spec too.
   The spec file is pinned to a single project: it is the only one that signs in for real, and
   fanning it across viewports would push one IP past the app's own 20-per-15-minute login limit.
+
+### Part D as built — deviations from the spec below
+
+Four independent items, one PR. No migration, no new dependency.
+
+- **D1 vehicle is `hooks/use-action-toast.ts`, not the spec's `withToast(actionFn, …)` wrapper.**
+  Every form in this repo is `useActionState` + `<form action>`; a promise-wrapping function has
+  nowhere to attach. The hook observes `(state, pending)` and fires the settle toast on the
+  **falling edge** of `pending` — `useActionState` commits `state` and `pending:false` together,
+  so that edge is the reliable signal; identity-comparing `state` against `initialState` is not.
+- **`TOAST_DELAY_MS = 300` is now a real constant** in `lib/toast.ts`, and `usePendingToast`'s
+  default changed from `0` to it. The spec claimed a 300ms default already existed; it didn't. The
+  five call sites relying on the old default (sign-in, sign-up, onboarding finish, logo upload ×2,
+  checkout) are all genuinely >300ms operations, so observable behaviour is unchanged.
+- **D1 report export is now `fetch` + blob**, replacing plain `<a download>` links. The links had
+  no progress feedback and, worse, no error surface — a 403/500 from the route was JSON the
+  browser rendered nowhere. "Print / PDF" stays a link (it opens a print *view* in a new tab,
+  which a blob download can't do).
+- **D1 skipped paths:** debounced search/filter bars keep their existing `usePendingToast(…, 400)`
+  and gain no settle toast (the spec's explicit carve-out); onboarding wizard steps, the invite
+  accept form, and the Paystack renew form redirect on success, so they get a pending toast only
+  (or keep what they had); per-row notification read-toggles are left as-is (trivial toggles with
+  the row itself as feedback).
+- **D3 builds `app/(app)/layaways/[layawayId]/page.tsx`.** The spec assumed a `?open=<id>` deep
+  link, but `layaways-view.tsx` has no detail dialog to open — only create/payment/cancel. The
+  new route consumes `getLayaway()`, which was live but unreferenced; **`getLayawayAction` (dead
+  code) was deleted** rather than left behind.
+- **D3 makes the row's first cell interactive, not the whole `<DataTable>` row.**
+  `components/ui/data-table.tsx` is deliberately plain (no `onRowClick`); widening its API for one
+  screen isn't worth it. `openReceipt` moved to `lib/sales/receipt-window.ts` so the Sales list
+  and the customer activity table share one implementation. `assembleCustomerActivity` was split
+  out of `getCustomerTransactionHistory` as a pure function so the `saleId` rules (a `return`
+  row carries the *parent* sale's id) are unit-testable without a database.
+- **D2 omits the business-unit switcher** the spec listed for the POS menu sheet — it doesn't
+  switch anything, and its one link goes to `/business-structure`, which a cashier can't open.
+  The current unit shows as static text. "Back to Admin dashboard" is ungated because `/dashboard`
+  itself is (`nav-items.ts` gives it `permission: null`). The sheet carries the POS shell's first
+  sign-out control. `pos-header.tsx` stays a server component; the sheet is its own client island.
+- **D4 injects the jump list via driver.js `onPopoverRender`** into the popover footer, built from
+  the same post-filter `steps` array. `buildStepList` is plain DOM (`components/tour/tour-step-list.tsx`),
+  not React, since driver.js owns and re-renders the popover. On mobile it collapses to a
+  `<details>`. `steps.ts`, `SEEN_KEY`, `MIN_REAL_STEPS`, `markDone()`, and the auto-start gate are
+  untouched.
+- **Two pre-existing E2E failures** (`journey-sale-to-report`, `dashboard-and-drawers` sales
+  filter) are unrelated — both fail identically on a stashed baseline; `journey-sale-to-report`
+  is an `/inventory` page error-boundary, not anything Part D touched.
 
 ## How This Document Differs From Milestones 01–16
 

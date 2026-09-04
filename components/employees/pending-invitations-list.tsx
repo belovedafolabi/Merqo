@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { Mail } from 'lucide-react'
 
 import { revokeInvitationAction, type EmployeeActionState } from '@/app/(app)/employees/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -19,7 +20,8 @@ function RevokeButton({
   organizationId: string
   invitationId: string
 }) {
-  const [, formAction, pending] = useActionState(revokeInvitationAction, initialState)
+  const [state, formAction, pending] = useActionState(revokeInvitationAction, initialState)
+  useActionToast(state, pending, { loading: 'Revoking invitation…', success: 'Invitation revoked' })
 
   return (
     <form

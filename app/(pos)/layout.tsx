@@ -66,7 +66,11 @@ export default async function PosLayout({ children }: { children: React.ReactNod
               (URL bar expanded), which left a gap under the till whenever
               the bar was collapsed. */}
           <div className="flex min-h-dvh flex-col bg-background">
-            <PosHeader cashierName={cashierName} branchName={onboardingState.branch.name} />
+            <PosHeader
+              cashierName={cashierName}
+              branchName={onboardingState.branch.name}
+              businessUnitName={onboardingState.businessUnit.name}
+            />
             <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
           </div>
           <ProductTour area="pos" autoStart={!tourCompleted} />

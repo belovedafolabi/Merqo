@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { Plus, Trash2, TriangleAlert } from 'lucide-react'
 
 import { createLayawayAction, type LayawayActionState } from '@/app/(app)/layaways/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -69,6 +70,7 @@ export function LayawayFormDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(createLayawayAction, initialState)
+  useActionToast(state, pending, { loading: 'Creating layaway…', success: 'Layaway created' })
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [items, setItems] = useState<DraftItem[]>([emptyDraftItem()])
   const [quickAddOpen, setQuickAddOpen] = useState(false)

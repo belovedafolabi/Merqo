@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { createExpenseAction, type ExpenseActionState } from '@/app/(app)/expenses/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,6 +53,7 @@ export function ExpenseFormDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(createExpenseAction, initialState)
+  useActionToast(state, pending, { loading: 'Recording expense…', success: 'Expense recorded' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) {

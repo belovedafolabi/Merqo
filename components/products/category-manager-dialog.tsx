@@ -9,6 +9,7 @@ import {
   updateCategoryAction,
   type ProductsActionState,
 } from '@/app/(app)/products/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,10 @@ export function CategoryManagerDialog({
     createCategoryAction,
     initialState,
   )
+  useActionToast(createState, createPending, {
+    loading: 'Adding category…',
+    success: 'Category added',
+  })
   const [archiving, setArchiving] = useState<Category | null>(null)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
 
@@ -198,6 +203,7 @@ function CategoryRow({
   onArchive: () => void
 }) {
   const [state, formAction, pending] = useActionState(updateCategoryAction, initialState)
+  useActionToast(state, pending, { loading: 'Saving category…', success: 'Category saved' })
 
   // Calls the onStopEdit *prop* (owned by the parent's editingCategoryId
   // state), not a local setState — a prop callback isn't a hook setter the

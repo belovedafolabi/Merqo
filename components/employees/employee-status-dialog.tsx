@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { setEmployeeActiveAction, type EmployeeActionState } from '@/app/(app)/employees/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +38,10 @@ export function EmployeeStatusDialog({
 }) {
   const [state, formAction, pending] = useActionState(setEmployeeActiveAction, initialState)
   const isDeactivating = employee.deactivatedAt === null
+  useActionToast(state, pending, {
+    loading: isDeactivating ? 'Deactivating…' : 'Reactivating…',
+    success: isDeactivating ? 'Employee deactivated' : 'Employee reactivated',
+  })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) onOpenChange(false)

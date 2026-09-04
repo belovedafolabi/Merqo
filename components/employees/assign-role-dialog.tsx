@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react'
 import { TriangleAlert } from 'lucide-react'
 
 import { assignRoleAction, type RolesActionState } from '@/app/(app)/roles/actions'
+import { useActionToast } from '@/hooks/use-action-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -56,6 +57,7 @@ export function AssignRoleDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState(assignRoleAction, initialState)
+  useActionToast(state, pending, { loading: 'Assigning role…', success: 'Role assigned' })
 
   useEffect(() => {
     if (state !== initialState && state.error === null) onOpenChange(false)
