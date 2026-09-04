@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-import { readE2EFixture } from '../helpers/fixture'
-
 /**
  * Milestone 17 Part D. The POS header's menu button was dead markup — no
  * onClick, no drawer. It now opens a right-side sheet that is, on a phone, the
@@ -10,12 +8,19 @@ import { readE2EFixture } from '../helpers/fixture'
  *
  * Pinned to one phone project: the sheet's phone-only section is the point,
  * and on desktop those actions already sit in the header.
+ *
+ * The Sign out control is NOT exercised here: the app's signOut() is
+ * `scope: 'global'`, so clicking it would revoke the shared storageState
+ * session for every other phone-project spec in the run — even from a fresh
+ * context. Its wiring is a plain `<form action={signOut}>`, the sheet-open
+ * test asserts the button is present, and tests/e2e/authenticated/
+ * session-timeout.spec.ts already proves signOut ends a session.
  */
 
 test.beforeEach(() => {
   test.skip(
     test.info().project.name !== 'phone-auth',
-    'The sheet phone-section only matters below sm; one project keeps the sign-out test from re-signing-in on every viewport.',
+    'The sheet phone-section only matters below sm.',
   )
 })
 
@@ -48,26 +53,4 @@ test('Returns in the sheet navigates to the POS returns screen', async ({ page }
   await page.getByRole('button', { name: 'Menu' }).click()
   await page.getByRole('dialog').getByRole('link', { name: 'Returns' }).click()
   await expect(page).toHaveURL(/\/pos\/returns$/)
-})
-
-test('Sign out from the sheet ends the session', async ({ browser, baseURL }) => {
-  // A fresh context: signOut() revokes the session globally, which would
-  // poison the shared storageState for every other phone-project spec.
-  const fixture = await readE2EFixture()
-  const context = await browser.newContext({ baseURL, storageState: undefined })
-  try {
-    const page = await context.newPage()
-    await page.goto('/sign-in')
-    await page.getByLabel('Email').fill(fixture.email)
-    await page.getByLabel('Password').fill(fixture.password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/dashboard', { timeout: 30_000 })
-
-    await page.goto('/pos')
-    await page.getByRole('button', { name: 'Menu' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Sign out' }).click()
-    await expect(page).toHaveURL(/\/sign-in/)
-  } finally {
-    await context.close()
-  }
 })
