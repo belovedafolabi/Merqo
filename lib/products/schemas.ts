@@ -69,6 +69,10 @@ export const productInputSchema = z.object({
   // cost_price column untouched rather than defaulting a hidden field to 0.
   costPrice: money('Cost price cannot be negative.').optional(),
   basePrice: money('Base price cannot be negative.'),
+  // Milestone 17 Part B: false marks a non-stock service line item. Optional
+  // and defaulted so every existing caller and every non-service product is
+  // unchanged (the DB column also defaults true).
+  trackInventory: z.boolean().optional(),
 })
 export type ProductInput = z.infer<typeof productInputSchema>
 

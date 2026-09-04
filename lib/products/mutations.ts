@@ -150,6 +150,9 @@ export async function createProduct(
         // milestone's Security Requirements).
         cost_price: parsed.costPrice ?? 0,
         base_price: parsed.basePrice,
+        // Milestone 17 Part B — defaults true (a stock-tracked product) at the
+        // DB and here; only an explicit `false` (a service line item) opts out.
+        track_inventory: parsed.trackInventory ?? true,
         created_by: user.id,
       })
       .select('id')

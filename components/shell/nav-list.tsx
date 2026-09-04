@@ -23,6 +23,7 @@ import {
 
 import { Can } from '@/components/auth/can'
 import { useCurrentOrganizationId } from '@/lib/auth/permissions-context'
+import { useTerminology } from '@/lib/terminology/terminology-context'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -76,9 +77,21 @@ function NavPendingIcon({ Icon }: { Icon: LucideIcon }) {
  * docs/UXUI_Design_System_Specification.md §12/§53 (visible current
  * location, not color-only — `isActive` also drives `font-medium`).
  */
+/**
+ * Milestone 17 Part B — a few nav labels take the business unit's terminology
+ * ("Sales" → "Bills" for a restaurant). Only the three whose noun has a
+ * term_key; the rest are fixed.
+ */
+const NAV_LABEL_TERM: Record<string, 'sale' | 'product' | 'customer'> = {
+  '/sales': 'sale',
+  '/products': 'product',
+  '/customers': 'customer',
+}
+
 export function NavList({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
   const organizationId = useCurrentOrganizationId()
+  const t = useTerminology()
 
   return (
     <SidebarGroup>
@@ -87,12 +100,14 @@ export function NavList({ items }: { items: NavItem[] }) {
           {items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
             const Icon = ICONS[item.icon]
+            const termKey = NAV_LABEL_TERM[item.href]
+            const label = termKey ? t(termKey, { plural: true }) : item.label
             const button = (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
                   <Link href={item.href}>
                     <NavPendingIcon Icon={Icon} />
-                    <span>{item.label}</span>
+                    <span>{label}</span>
                   </Link>
                 </SidebarMenuButton>
                 {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}

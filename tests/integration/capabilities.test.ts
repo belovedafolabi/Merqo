@@ -55,8 +55,8 @@ describe('capability engine (business_type_capabilities -> business_unit_capabil
         `select count(*)::int as count from public.business_unit_capabilities where business_unit_id = $1`,
         [businessUnit.rows[0].id],
       )
-      // Exactly 7 rows — one per capability in the curated catalog.
-      expect(capabilityCount.rows[0].count).toBe(7)
+      // One row per capability in the catalogue (10 after Milestone 17 Part B).
+      expect(capabilityCount.rows[0].count).toBe(10)
 
       const enabled = await client.query(
         `select c.key from public.business_unit_capabilities buc

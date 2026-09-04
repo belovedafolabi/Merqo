@@ -103,20 +103,41 @@ interface StockCheckItem {
  * to inventory_balances.available_quantity, and throws
  * InsufficientStockError listing every line that comes up short. A missing
  * balance row counts as zero available.
+ *
+ * Milestone 17 Part B: a product with `track_inventory = false` (a service
+ * line item) is dropped from the check entirely — it has no stock, and
+ * create_sale() skips its deduction for the same reason.
  */
 async function assertStockAvailable(
   supabase: SupabaseClient,
   branchId: string,
   items: StockCheckItem[],
 ): Promise<void> {
+  const productIds = [...new Set(items.map((item) => item.productId))]
+
+  const { data: trackRows, error: trackError } = await supabase
+    .from('products')
+    .select('id, track_inventory')
+    .in('id', productIds)
+  if (trackError) throw trackError
+
+  const nonTracked = new Set(
+    ((trackRows ?? []) as Array<{ id: string; track_inventory: boolean }>)
+      .filter((row) => row.track_inventory === false)
+      .map((row) => row.id),
+  )
+
   const requested = new Map<string, { productId: string; variantId: string | null; qty: number }>()
   for (const item of items) {
+    if (nonTracked.has(item.productId)) continue
     const variantId = item.variantId ?? null
     const key = `${item.productId}:${variantId}`
     const existing = requested.get(key)
     if (existing) existing.qty += item.quantity
     else requested.set(key, { productId: item.productId, variantId, qty: item.quantity })
   }
+
+  if (requested.size === 0) return
 
   const { data, error } = await supabase
     .from('inventory_balances')

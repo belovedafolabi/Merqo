@@ -39,6 +39,11 @@ export function ReceiptDocument({
   templateId,
   branding,
   settings,
+  // Milestone 17 Part B — the word for the document, from the business unit's
+  // terminology ("Receipt", "Bill", "Ticket", "Folio"). Defaults to "Receipt"
+  // so the template picker's static thumbnails and any un-threaded caller are
+  // unaffected.
+  receiptLabel = 'Receipt',
 }: {
   sale: Sale
   templateId: keyof typeof RECEIPT_TEMPLATES
@@ -47,6 +52,7 @@ export function ReceiptDocument({
     ReceiptSettings,
     'headerText' | 'footerText' | 'showLogo' | 'showCashier' | 'orgAddressLine' | 'orgContactPhone'
   >
+  receiptLabel?: string
 }) {
   const template = RECEIPT_TEMPLATES[templateId]
   const compact = template.density === 'compact'
@@ -192,7 +198,7 @@ export function ReceiptDocument({
       )}
 
       <p className={`text-caption text-muted-foreground ${compact ? 'mt-1' : 'mt-2'}`}>
-        {formatDateTime(sale.createdAt)} · Receipt #{sale.id.slice(0, 8).toUpperCase()}
+        {formatDateTime(sale.createdAt)} · {receiptLabel} #{sale.id.slice(0, 8).toUpperCase()}
         {(settings.showCashier || template.showReceiptMeta) && sale.createdByName
           ? ` · Served by ${sale.createdByName}`
           : ''}

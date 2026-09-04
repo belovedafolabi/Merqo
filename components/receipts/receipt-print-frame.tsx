@@ -19,6 +19,7 @@ export function ReceiptPrintFrame({
   templateId,
   branding,
   settings,
+  receiptLabel,
   autoPrint,
   paperWidthMm,
 }: {
@@ -26,6 +27,7 @@ export function ReceiptPrintFrame({
   templateId: ReceiptTemplateId
   branding: Pick<OrganizationBranding, 'displayName' | 'logoUrl'> | null
   settings: ReceiptSettings
+  receiptLabel?: string
   autoPrint: boolean
   paperWidthMm: ReceiptPaperWidthMm
 }) {
@@ -59,6 +61,7 @@ export function ReceiptPrintFrame({
         templateId={templateId}
         branding={branding}
         settings={settings}
+        receiptLabel={receiptLabel}
       />
     </div>
   )

@@ -5,6 +5,8 @@ import { getCurrentUserContext } from '@/lib/auth/context'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
 import { getOrganizationBranding } from '@/lib/branding/queries'
 import { getOnboardingState } from '@/lib/business-structure/queries'
+import { getTerminology } from '@/lib/terminology/queries'
+import { TerminologyProvider } from '@/lib/terminology/terminology-context'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
 import { SidebarCloseOnNavigate } from '@/components/shell/sidebar-close-on-navigate'
@@ -43,49 +45,52 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/onboarding')
   }
 
+  const terminology = await getTerminology(onboardingState.businessUnit?.id)
   const userName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'User'
 
   return (
     <PermissionsProvider grants={grants}>
-      <BrandStyle />
-      {/* `overflow-x-clip` — a shell-level backstop against any page whose
+      <TerminologyProvider terminology={terminology}>
+        <BrandStyle />
+        {/* `overflow-x-clip` — a shell-level backstop against any page whose
           content still manages to exceed the viewport width (the fix belongs
           at each offender, but the shell should never let the whole page
           scroll sideways on a phone). Clip, not hidden: no scroll container,
           no effect on `position: sticky` descendants. */}
-      <div className="bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3">
-        <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
-          {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
+        <div className="bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3">
+          <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
+            {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
               On mobile <Sidebar> renders its children inside a Radix Sheet,
               which only mounts them while the Sheet is open — so mounting
               this there made its "close on navigate" effect fire the instant
               the menu opened, closing it again in the same commit. Out here
               it stays mounted for the life of the shell and only reacts to a
               real pathname change. */}
-          <SidebarCloseOnNavigate />
-          <AdminSidebar
-            organizationName={branding?.displayName ?? 'Merqo'}
-            userName={userName}
-            userEmail={user.email ?? ''}
-            branchName={onboardingState.branch?.name ?? null}
-            businessUnitName={onboardingState.businessUnit?.name ?? null}
-          />
-          <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">
-            {/* Off the shell's critical path: the expiry banner's
+            <SidebarCloseOnNavigate />
+            <AdminSidebar
+              organizationName={branding?.displayName ?? 'Merqo'}
+              userName={userName}
+              userEmail={user.email ?? ''}
+              branchName={onboardingState.branch?.name ?? null}
+              businessUnitName={onboardingState.businessUnit?.name ?? null}
+            />
+            <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">
+              {/* Off the shell's critical path: the expiry banner's
                 subscription_access_state query streams in rather than
                 blocking first paint — same treatment AdminTopbar gives the
                 notification bell. */}
-            <Suspense fallback={null}>
-              <SubscriptionExpiryBanner />
-            </Suspense>
-            {children}
-          </SidebarInset>
-          {/* Inside SidebarProvider so the tour can open the mobile nav Sheet
+              <Suspense fallback={null}>
+                <SubscriptionExpiryBanner />
+              </Suspense>
+              {children}
+            </SidebarInset>
+            {/* Inside SidebarProvider so the tour can open the mobile nav Sheet
               (whose nav links are otherwise unmounted) before building its
               step list. */}
-          <ProductTour area="admin" autoStart={!tourCompleted} />
-        </SidebarProvider>
-      </div>
+            <ProductTour area="admin" autoStart={!tourCompleted} />
+          </SidebarProvider>
+        </div>
+      </TerminologyProvider>
     </PermissionsProvider>
   )
 }

@@ -5,6 +5,8 @@ import { getCurrentUserContext } from '@/lib/auth/context'
 import { requirePermission } from '@/lib/auth/guard'
 import { resolvePermission } from '@/lib/auth/permissions'
 import { getCurrentOrganizationId } from '@/lib/auth/context'
+import { getOnboardingState } from '@/lib/business-structure/queries'
+import { getPinnedReports } from '@/lib/reports/pinned'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { EmptyState } from '@/components/states/empty-state'
 import { ReportCatalog } from '@/components/reports/report-catalog'
@@ -24,7 +26,10 @@ export default async function ReportsPage() {
   // route error boundary is the right place to say so.
   await requirePermission('reports.view', { organizationId })
 
-  const { grants } = await getCurrentUserContext()
+  const [{ grants }, onboardingState] = await Promise.all([
+    getCurrentUserContext(),
+    getOnboardingState(),
+  ])
   const granted = [
     'reports.view',
     'reports.export',
@@ -32,6 +37,7 @@ export default async function ReportsPage() {
     'reports.view_all_branches',
     'reports.save',
   ].filter((key) => resolvePermission(grants, key, { organizationId }))
+  const pinnedReportIds = await getPinnedReports(onboardingState.businessUnit?.id)
 
   const visibleCount = STANDARD_REPORTS.filter(
     (report) => !report.permission || granted.includes(report.permission),
@@ -48,7 +54,7 @@ export default async function ReportsPage() {
             description="Your role does not include access to any reports yet. Ask an administrator for reporting permissions."
           />
         ) : (
-          <ReportCatalog grantedPermissions={granted} />
+          <ReportCatalog grantedPermissions={granted} pinnedReportIds={pinnedReportIds} />
         )}
       </div>
     </div>

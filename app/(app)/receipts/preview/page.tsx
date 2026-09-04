@@ -13,6 +13,7 @@ import {
   type ReceiptTemplateId,
 } from '@/lib/receipts/templates'
 import { getSale } from '@/lib/sales/queries'
+import { getTerminology } from '@/lib/terminology/queries'
 import { ReceiptPrintFrame } from '@/components/receipts/receipt-print-frame'
 
 /**
@@ -60,7 +61,11 @@ export default async function ReceiptPreviewPage({
   const resolvedSearchParams = await searchParams
   const requestedTemplateId = resolvedSearchParams.templateId
 
-  const [branding, settings] = await Promise.all([getOrganizationBranding(), getReceiptSettings()])
+  const [branding, settings, terminology] = await Promise.all([
+    getOrganizationBranding(),
+    getReceiptSettings(),
+    getTerminology(onboardingState.businessUnit?.id),
+  ])
 
   const templateId: ReceiptTemplateId = (RECEIPT_TEMPLATE_IDS as readonly string[]).includes(
     requestedTemplateId ?? '',
@@ -90,6 +95,7 @@ export default async function ReceiptPreviewPage({
       templateId={templateId}
       branding={branding}
       settings={settings}
+      receiptLabel={terminology.receipt.singular}
       autoPrint={resolvedSearchParams.print === '1'}
       paperWidthMm={paperWidthMm}
     />
