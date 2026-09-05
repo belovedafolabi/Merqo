@@ -21,8 +21,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
  * No business-unit switcher: components/shell/business-unit-switcher.tsx does
  * not actually switch anything (its one item links to /business-structure,
  * which a cashier can't open), so the current unit is shown as static text.
- * "Back to Admin dashboard" is ungated because /dashboard itself is
- * (lib/shell/nav-items.ts gives it `permission: null`).
+ *
+ * "Back to Admin dashboard" is shown only when `canReachAdmin` — a
+ * till-only operator (Cashier / Waiter / Kitchen Staff) has no business on
+ * the admin side, and the item read as noise for every non-manager. The
+ * flag is computed from the user's grants in app/(pos)/layout.tsx.
  *
  * Kept a server-free client island so components/pos/pos-header.tsx stays a
  * server component: Radix's SheetTrigger supplies `aria-expanded`,
@@ -32,10 +35,12 @@ export function PosMenuSheet({
   branchName,
   businessUnitName,
   cashierName,
+  canReachAdmin,
 }: {
   branchName: string
   businessUnitName: string
   cashierName: string
+  canReachAdmin: boolean
 }) {
   return (
     <Sheet>
@@ -76,13 +81,16 @@ export function PosMenuSheet({
             <HeldSalesTabs />
           </div>
 
-          <div className="my-1 border-t" />
-
-          <Button asChild variant="ghost" className="w-full justify-start gap-2">
-            <Link href="/dashboard">
-              <LayoutDashboard className="size-4" /> Back to Admin dashboard
-            </Link>
-          </Button>
+          {canReachAdmin && (
+            <>
+              <div className="my-1 border-t" />
+              <Button asChild variant="ghost" className="w-full justify-start gap-2">
+                <Link href="/dashboard">
+                  <LayoutDashboard className="size-4" /> Back to Admin dashboard
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="border-t p-2">

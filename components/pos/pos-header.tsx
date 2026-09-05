@@ -20,10 +20,12 @@ export function PosHeader({
   cashierName,
   branchName,
   businessUnitName,
+  canReachAdmin,
 }: {
   cashierName: string
   branchName: string
   businessUnitName: string
+  canReachAdmin: boolean
 }) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-card px-3 sm:px-4">
@@ -59,6 +61,7 @@ export function PosHeader({
           branchName={branchName}
           businessUnitName={businessUnitName}
           cashierName={cashierName}
+          canReachAdmin={canReachAdmin}
         />
       </div>
     </header>

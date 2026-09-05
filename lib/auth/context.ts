@@ -93,8 +93,30 @@ export const getCurrentUserContext = cache(async () => {
  * site (lib/business-structure/queries.ts, alongside
  * lib/branding/queries.ts's pre-existing inline version) made the one-liner
  * worth sharing.
+ *
+ * Fallback for the grantless case: a user whose only role carries zero
+ * permissions (the seeded `waiter` / `kitchen_staff` roles — "permissions
+ * arrive when restaurant order-taking ships" — or any custom role with none
+ * selected) has an empty `grants` array, which used to resolve the org to
+ * null and bounce them to /onboarding from both shell layouts even though
+ * their org is fully set up. They are still a member of exactly one
+ * organization via a `user_roles` row (organization_id is NOT NULL there),
+ * and user_roles_select (20260822094800) exposes a user's own rows to them
+ * regardless of permissions. Every downstream RLS helper
+ * (user_has_org_access etc.) is org-membership based, not permission based,
+ * so once the id resolves the rest of the shell works.
  */
 export const getCurrentOrganizationId = cache(async (): Promise<string | null> => {
-  const { grants } = await getCurrentUserContext()
-  return grants[0]?.organizationId ?? null
+  const { user, grants } = await getCurrentUserContext()
+  if (grants[0]?.organizationId) return grants[0].organizationId
+  if (!user) return null
+
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase
+    .from('user_roles')
+    .select('organization_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle<{ organization_id: string }>()
+  return data?.organization_id ?? null
 })

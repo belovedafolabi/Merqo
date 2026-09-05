@@ -47,6 +47,34 @@ describe('authorization guard — permission resolution against real data', () =
     expect(grants).toHaveLength(0)
   })
 
+  it('a member holding only a permission-less role has zero grants but can still read its own org membership', async () => {
+    // lib/auth/context.ts#getCurrentOrganizationId falls back from grants[0]
+    // to a user_roles self-read for exactly this case (the seeded waiter /
+    // kitchen_staff roles carry no permissions) — so both shell layouts stop
+    // bouncing such a user to /onboarding. This proves the fallback's data
+    // source is reachable by the user themselves.
+    const owner = await createTestUser()
+    const { organizationId } = await bootstrapOrganization(owner, 'Permissionless Role Org')
+
+    const waiter = await createTestUser()
+    const waiterRole = await pool.query(`select id from public.roles where slug = 'waiter'`)
+    await pool.query(
+      `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,
+      [waiter.userId, waiterRole.rows[0].id, organizationId],
+    )
+
+    expect(await fetchPermissionGrants(waiter.client)).toHaveLength(0)
+
+    const { data, error } = await waiter.client
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', waiter.userId)
+      .limit(1)
+      .maybeSingle<{ organization_id: string }>()
+    expect(error).toBeNull()
+    expect(data?.organization_id).toBe(organizationId)
+  })
+
   it('a Branch Manager is allowed business_units.create but not organizations.update', async () => {
     const owner = await createTestUser()
     const { organizationId } = await bootstrapOrganization(owner, 'Branch Manager Test Org')

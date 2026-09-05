@@ -12,6 +12,20 @@ import { ProductTour } from '@/components/tour/product-tour'
 import { hasCompletedTour } from '@/lib/tour/queries'
 
 /**
+ * A user who holds any of these is a manager/owner, not a till-only
+ * operator — the "Back to Admin dashboard" item in the POS menu sheet is
+ * shown only to them. Cashier / Salesperson / Pharmacist hold none of these
+ * (reports.export is withheld from till roles by design — supabase/seed.sql),
+ * and Waiter / Kitchen Staff hold no permissions at all.
+ */
+const ADMIN_ACCESS_KEYS = new Set([
+  'business_units.view',
+  'employees.view',
+  'organizations.update',
+  'reports.export',
+])
+
+/**
  * POS shell — structurally separate route tree from app/(app), per
  * docs/milestones/04-design-system-and-app-shell.md's Technical Requirement.
  * Deliberately stays on the light neutral theme (no dark canvas, no
@@ -46,6 +60,7 @@ export default async function PosLayout({ children }: { children: React.ReactNod
 
   const cashierName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Cashier'
+  const canReachAdmin = grants.some((grant) => ADMIN_ACCESS_KEYS.has(grant.permissionKey))
 
   return (
     <PermissionsProvider grants={grants}>
@@ -70,6 +85,7 @@ export default async function PosLayout({ children }: { children: React.ReactNod
               cashierName={cashierName}
               branchName={onboardingState.branch.name}
               businessUnitName={onboardingState.businessUnit.name}
+              canReachAdmin={canReachAdmin}
             />
             <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
           </div>
