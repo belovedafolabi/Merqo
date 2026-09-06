@@ -181,6 +181,11 @@ export async function listProducts(
     )
     .eq('business_unit_id', businessUnitId)
     .order('archived_at', { ascending: true, nullsFirst: true })
+    // Newest first (name as tiebreaker): with the list now paginated
+    // (25/page in PaginatedDataTable), a just-created product has to land on
+    // page 1 or it looks like the create silently failed. The other admin
+    // list views already sort newest-first for the same reason.
+    .order('created_at', { ascending: false })
     .order('name')
 
   if (error) throw error
