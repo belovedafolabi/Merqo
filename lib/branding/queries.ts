@@ -59,3 +59,22 @@ export const getResolvedBrandTokens = cache(async (): Promise<BrandTokens> => {
     secondaryColor: branding?.secondaryColor ?? null,
   })
 })
+
+/**
+ * Brand tokens for the pre-session auth screens, where getCurrentOrganizationId()
+ * is null. Single-tenant-per-deployment, so the deployment_branding()
+ * RPC (20260908090400, anon-executable) returns the one organization's two
+ * brand colours — nothing else — and the same contrast-fallback resolver
+ * runs on them. Used only by components/branding/deployment-brand-style.tsx.
+ */
+export const getDeploymentBrandTokens = cache(async (): Promise<BrandTokens> => {
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase.rpc('deployment_branding')
+  const row = (
+    data as { primary_color: string | null; secondary_color: string | null }[] | null
+  )?.[0]
+  return resolveBrandTokens({
+    primaryColor: row?.primary_color ?? null,
+    secondaryColor: row?.secondary_color ?? null,
+  })
+})

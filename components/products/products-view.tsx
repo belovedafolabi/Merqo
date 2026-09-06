@@ -7,7 +7,8 @@ import { FolderCog, MoreHorizontal, Package, Plus, Ruler, Search } from 'lucide-
 import { archiveProductAction } from '@/app/(app)/products/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { type DataTableColumn } from '@/components/ui/data-table'
+import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,7 +189,7 @@ export function ProductsView({
           </div>
         </div>
 
-        <DataTable
+        <PaginatedDataTable
           columns={columns}
           rows={filteredProducts}
           getRowKey={(row) => row.id}

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { StatCard } from '@/components/ui/stat-card'
@@ -217,7 +218,7 @@ export function LayawaysView({
               <CardTitle>Paid and cancelled</CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
+              <PaginatedDataTable
                 columns={closedColumns}
                 rows={closed}
                 getRowKey={(row) => row.id}

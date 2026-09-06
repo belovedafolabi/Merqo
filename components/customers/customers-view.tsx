@@ -6,7 +6,8 @@ import { Search, UserPlus, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { type DataTableColumn } from '@/components/ui/data-table'
+import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/states/empty-state'
 import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
@@ -93,7 +94,7 @@ export function CustomersView({
           <CardTitle>Customers</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
+          <PaginatedDataTable
             columns={columns}
             rows={filtered}
             getRowKey={(row) => row.id}

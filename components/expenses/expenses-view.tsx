@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import { StatCard } from '@/components/ui/stat-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/states/empty-state'
@@ -192,7 +193,7 @@ export function ExpensesView({
               <CardTitle>All expenses</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <DataTable
+              <PaginatedDataTable
                 columns={columns}
                 rows={expenses}
                 getRowKey={(row) => row.id}

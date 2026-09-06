@@ -5,7 +5,7 @@ import { useActionState } from 'react'
 import { confirmPasswordReset, type AuthActionState } from '@/app/(auth)/actions'
 import { AuthCard } from '@/components/auth/auth-card'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Button } from '@/components/ui/button'
 
 const initialState: AuthActionState = { error: null }
@@ -23,10 +23,9 @@ export default function ResetPasswordPage() {
       <form action={formAction} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">New password</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={6}

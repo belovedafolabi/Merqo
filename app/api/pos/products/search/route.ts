@@ -39,16 +39,20 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const businessUnitId = searchParams.get('businessUnitId')?.trim()
   const term = searchParams.get('q')?.trim() ?? ''
+  // Post-MS17: a "browse this category" request from the POS chip row — no
+  // term, just a category id. Anything else with no term is still an empty
+  // result (the till never lists the whole catalogue unprompted).
+  const categoryId = searchParams.get('categoryId')?.trim() || undefined
 
   if (!businessUnitId) {
     return NextResponse.json({ error: 'businessUnitId is required.' }, { status: 400 })
   }
-  if (!term) {
+  if (!term && !categoryId) {
     return NextResponse.json({ products: [] }, { headers: { 'cache-control': 'no-store' } })
   }
 
   try {
-    const products = await posSearchProducts(businessUnitId, term)
+    const products = await posSearchProducts(businessUnitId, term, 100, categoryId)
     return NextResponse.json({ products }, { headers: { 'cache-control': 'no-store' } })
   } catch (error) {
     logger.error('pos.search_failed', {

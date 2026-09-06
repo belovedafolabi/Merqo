@@ -128,6 +128,14 @@
   --sidebar-primary: var(--brand-primary);
   --sidebar-primary-foreground: var(--brand-primary-foreground);
   --sidebar-ring: var(--brand-primary);
+
+  /* Admin dark-mode backdrop (Milestone 17-post: the Light/Dark toggle §14
+     anticipated). Pushed a notch below --card (0.19) / --background (0.13)
+     so the floating-cards depth the light shell's dark canvas gives still
+     reads once the cards themselves are dark. */
+  --admin-canvas-from: oklch(0.11 0.015 155);
+  --admin-canvas-via: oklch(0.08 0.012 155);
+  --admin-canvas-to: oklch(0.05 0.008 155);
 }
 
 @theme inline {
@@ -331,10 +339,15 @@
    * plain muted text — no gradient, no animation.
    */
   .merqo-toast-loading [data-title] {
+    /* The moving highlight band is brand-tinted (--brand-primary is the org's
+       colour under BrandStyle, the deployment's under DeploymentBrandStyle on
+       the auth screens), mixed toward the readable base so it never becomes a
+       literal swatch. The two ends stay --popover-foreground so the title is
+       legible the moment the sweep is elsewhere. */
     background: linear-gradient(
       110deg,
       color-mix(in oklch, var(--popover-foreground) 40%, transparent) 35%,
-      var(--popover-foreground) 50%,
+      color-mix(in oklch, var(--brand-primary) 80%, var(--popover-foreground)) 50%,
       color-mix(in oklch, var(--popover-foreground) 40%, transparent) 65%
     );
     background-size: 220% auto;
@@ -399,6 +412,36 @@
 @media (prefers-reduced-motion: reduce) {
   .toaster [data-sonner-toast][data-mounted='true'] {
     animation: merqo-fade-in 0.12s linear;
+  }
+}
+
+/*
+ * Every toast — success/error/info/warning, not only the loading variant's
+ * title text-shimmer — gets one diagonal sheen sweep as it mounts, reusing
+ * merqo-sheen-sweep. `inset: 0` + `border-radius: inherit` so it exactly
+ * covers the toast and never extends the scroll area (same rationale as
+ * `.shimmer-sheen::after`); `pointer-events: none` so it never eats a click
+ * on the toast's action/close. Sonner already gives `[data-sonner-toast]`
+ * `position: relative`. Suppressed under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .toaster [data-sonner-toast][data-mounted='true']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      color-mix(in oklch, var(--popover-foreground) 14%, transparent) 50%,
+      transparent 60%
+    );
+    background-size: 260% 100%;
+    background-position: 180% 0;
+    opacity: 0;
+    animation: merqo-sheen-sweep 0.9s ease-out 0.05s;
   }
 }
 

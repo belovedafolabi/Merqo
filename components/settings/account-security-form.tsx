@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 
 const initialState: AuthActionState = { error: null }
@@ -65,10 +65,9 @@ function ChangePasswordCard({ email }: { email: string }) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="currentPassword">Current password</Label>
-            <Input
+            <PasswordInput
               id="currentPassword"
               name="currentPassword"
-              type="password"
               autoComplete="current-password"
               required
             />
@@ -76,10 +75,9 @@ function ChangePasswordCard({ email }: { email: string }) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="newPassword">New password</Label>
-            <Input
+            <PasswordInput
               id="newPassword"
               name="newPassword"
-              type="password"
               autoComplete="new-password"
               minLength={6}
               required

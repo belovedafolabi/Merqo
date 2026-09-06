@@ -1,11 +1,15 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { getCurrentUserContext } from '@/lib/auth/context'
 import { PermissionsProvider } from '@/lib/auth/permissions-context'
 import { getOrganizationBranding } from '@/lib/branding/queries'
 import { getOnboardingState } from '@/lib/business-structure/queries'
+import { getThemePreference, THEME_COOKIE } from '@/lib/theme/preferences'
+import { cn } from '@/lib/utils'
 import { BrandStyle } from '@/components/branding/brand-style'
+import { ThemeSync } from '@/components/theme/theme-sync'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
 import { SidebarCloseOnNavigate } from '@/components/shell/sidebar-close-on-navigate'
 import { SubscriptionExpiryBanner } from '@/components/subscription/expiry-banner'
@@ -34,26 +38,43 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // this shell's nav to point at yet — send them to finish onboarding
   // first, same check app/(pos)/layout.tsx makes. Branding is fetched
   // alongside (independent) so the two don't serialize.
-  const [onboardingState, branding, tourCompleted] = await Promise.all([
-    getOnboardingState(),
-    getOrganizationBranding(),
-    hasCompletedTour(),
-  ])
+  const [onboardingState, branding, tourCompleted, themePreference, cookieStore] =
+    await Promise.all([
+      getOnboardingState(),
+      getOrganizationBranding(),
+      hasCompletedTour(),
+      getThemePreference(),
+      cookies(),
+    ])
   if (!onboardingState.onboardingCompletedAt) {
     redirect('/onboarding')
   }
 
   const userName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'User'
 
+  // Stamp `.dark` on the shell root from the stored preference (+ the
+  // client-kept merqo_theme cookie for a 'system' user), so an explicit
+  // choice and a returning 'system' user paint with no flash. <ThemeSync>
+  // corrects the class for a 'system' user on a fresh device and on OS
+  // scheme changes. Scoped to this <div> — the POS and auth shells never get
+  // it, keeping them on the fixed light theme.
+  const serverDark =
+    themePreference === 'dark' ||
+    (themePreference === 'system' && cookieStore.get(THEME_COOKIE)?.value === 'dark')
+
   return (
     <PermissionsProvider grants={grants}>
       <BrandStyle />
+      <ThemeSync preference={themePreference} />
       {/* `overflow-x-clip` — a shell-level backstop against any page whose
           content still manages to exceed the viewport width (the fix belongs
           at each offender, but the shell should never let the whole page
           scroll sideways on a phone). Clip, not hidden: no scroll container,
           no effect on `position: sticky` descendants. */}
-      <div className="bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3">
+      <div
+        data-theme-pref={themePreference}
+        className={cn('bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3', serverDark && 'dark')}
+      >
         <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
           {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
               On mobile <Sidebar> renders its children inside a Radix Sheet,
