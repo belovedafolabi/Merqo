@@ -62,15 +62,21 @@ export async function posSearchProducts(
   businessUnitId: string,
   term: string,
   limit = 50,
+  categoryId?: string,
 ): Promise<PosProduct[]> {
   const trimmed = term.trim()
-  if (!trimmed) return []
+  // A bare category browse (empty term + a category) is allowed — an empty
+  // p_term is '%%' in the RPC and matches every product, so the category
+  // predicate then lists the whole category. Everything else still needs a
+  // term.
+  if (!trimmed && !categoryId) return []
 
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase.rpc('pos_search_products', {
     p_business_unit_id: businessUnitId,
     p_term: trimmed,
     p_limit: limit,
+    p_category_id: categoryId ?? null,
   })
   if (error) throw error
   return ((data ?? []) as PosProductRow[]).map(mapPosProduct)

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { pool } from './helpers/db'
-import { bootstrapOrganization, createTestUser } from './helpers/supabase'
+import { bootstrapOrganization, createAnonClient, createTestUser } from './helpers/supabase'
 
 /**
  * Milestone 11's Security Requirements: "Logo/branding asset uploads
@@ -86,6 +86,20 @@ describe('branding + receipt settings — organizations_update gates every new c
       .eq('id', fixture.organizationId)
     expect(error).not.toBeNull()
     expect(error?.message).toContain('organizations_receipt_template_id_check')
+  })
+
+  it('deployment_branding() gives an anon (pre-session) caller the brand colours, though organizations itself stays hidden', async () => {
+    const anon = createAnonClient()
+
+    const direct = await anon.from('organizations').select('primary_color').limit(1)
+    expect(direct.data ?? []).toEqual([])
+
+    const { data, error } = await anon.rpc('deployment_branding')
+    expect(error).toBeNull()
+    expect(data).toHaveLength(1)
+    expect(data![0]).toHaveProperty('primary_color')
+    expect(data![0]).toHaveProperty('secondary_color')
+    expect(data![0]).toHaveProperty('display_name')
   })
 })
 

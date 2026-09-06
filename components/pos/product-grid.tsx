@@ -26,41 +26,18 @@ import { lookupBarcodeAction } from '@/app/(pos)/pos/actions'
  * handler when the search box has focus, and Milestone 14's document-level
  * useBarcodeScanner() when it does not — the common case in a real shift,
  * where the cashier last touched a product tile or the cart.
- */
-/**
- * Steps DOWN at `lg`, which looks like a mistake until you account for the
- * cart: that is exactly the breakpoint where CartPanel appears and claims
- * ~320px, so the grid's own content box shrinks even though the window grew.
- * Holding the column count constant across it squeezed tiles to ~215px and
- * truncated their names — the tablet-width failure Milestone 14 targets.
+ *
+ * The category chip row (All + every category, from `categories`) is now
+ * shown at ALL times, not only while a term is present. With the box empty,
+ * "All" keeps the recently-/most-sold strips; picking a category browses it
+ * (a term-less fetch scoped by category_id). While searching, the chips
+ * filter the result set exactly as before.
  */
 const TILE_GRID_CLASS =
   'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
 
-/**
- * Search debounce. Was 250ms; dropped to 120 once the search moved off a
- * serialized Server Action onto an abortable fetch (app/api/pos/products/
- * search) — the old value was partly compensating for the fact that stale
- * in-flight actions could not be cancelled, so a short debounce meant several
- * of them queued. With cancellation, 120ms is long enough to coalesce a fast
- * typist's burst and short enough to feel immediate.
- */
 const SEARCH_DEBOUNCE_MS = 120
 
-/**
- * Focuses the search box only on a device with a real pointer — i.e. a
- * desktop or a till with a keyboard attached.
- *
- * On a phone or tablet, focusing an input summons the on-screen keyboard,
- * which eats half the viewport. Milestone 14 scopes exactly this ("on-screen
- * keyboard behavior"), and the reason it is now safe to stop auto-focusing
- * is useBarcodeScanner: a scan no longer requires the search box to hold
- * focus, so the autofocus was buying nothing on touch devices and costing
- * them most of their screen.
- *
- * `(pointer: fine)` rather than a width query on purpose — this is a
- * question about the input device, not the viewport size.
- */
 function focusSearchIfKeyboardDevice(input: HTMLInputElement | null): void {
   if (!input) return
   if (typeof window.matchMedia !== 'function') return
@@ -68,7 +45,12 @@ function focusSearchIfKeyboardDevice(input: HTMLInputElement | null): void {
   input.focus()
 }
 
-export function ProductGrid() {
+export interface PosCategory {
+  id: string
+  name: string
+}
+
+export function ProductGrid({ categories }: { categories: PosCategory[] }) {
   const { businessUnitId } = usePosSession()
   const { addItem } = useCart()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -76,24 +58,30 @@ export function ProductGrid() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PosProduct[]>([])
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
-  // Derived, not a separate toggled boolean: "pending" is just "the trimmed
-  // query hasn't been searched yet" — comparing against the last query that
-  // actually resolved.
   const [lastSearchedQuery, setLastSearchedQuery] = useState('')
+  // Mirrors lastSearchedQuery: the category whose browse fetch has resolved.
+  // "browse pending" is derived from it rather than a setState in the effect
+  // body (which the project lint forbids).
+  const [lastBrowsedCategory, setLastBrowsedCategory] = useState<string | null>(null)
   const pending = query.trim() !== '' && query.trim() !== lastSearchedQuery
 
-  // A toast only when a search is actually slow — a snappy one never flashes it.
   usePendingToast(pending, 'Searching products…', 400)
 
-  // Keyed by the trimmed lowercase term. Backspacing through a word the
-  // cashier just typed is then instant — the result for "brea" is already
-  // here when they delete the "d". Lives in a ref so filling it never itself
-  // triggers a render.
+  const searching = query.trim() !== ''
+  const browsing = !searching && categoryFilter !== null
+  const browsePending = browsing && categoryFilter !== lastBrowsedCategory
+
+  const selectCategory = (id: string | null) => {
+    setCategoryFilter(id)
+    // Drop the previous category's tiles so they don't flash under the new
+    // chip while its fetch is in flight.
+    if (!searching) setResults([])
+  }
+
   const cacheRef = useRef<Map<string, PosProduct[]>>(new Map())
-  // The in-flight request for the current keystroke, aborted when the next
-  // one starts so a slow earlier response can never paint over a newer one.
   const abortRef = useRef<AbortController | null>(null)
 
+  // Search-as-you-type. Unchanged: only runs while a term is present.
   useEffect(() => {
     const term = query.trim()
     if (!term) return
@@ -138,41 +126,62 @@ export function ProductGrid() {
     return () => clearTimeout(timeout)
   }, [query, businessUnitId])
 
-  // The category chips: distinct categories present in the current result
-  // set. Shown only once there is more than one to choose between.
-  const resultCategories = useMemo(() => {
-    const seen = new Map<string, string>()
-    for (const product of results) {
-      if (product.categoryId && product.categoryName && !seen.has(product.categoryId)) {
-        seen.set(product.categoryId, product.categoryName)
-      }
-    }
-    return [...seen.entries()].map(([id, name]) => ({ id, name }))
-  }, [results])
+  // Category browse — term-less, scoped by category_id. Fires when the box is
+  // empty and a specific chip is active (including after clearing a search
+  // while a chip stays selected).
+  useEffect(() => {
+    if (!browsing || categoryFilter === null) return
 
-  // A filter that no longer matches any category in the current results (the
-  // cashier changed the query) self-heals to "All" here, rather than an
-  // effect resetting it on every keystroke — which would be a setState in an
-  // effect body, and this project's lint forbids that.
-  const activeCategory =
-    categoryFilter && resultCategories.some((category) => category.id === categoryFilter)
-      ? categoryFilter
-      : null
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
+    fetch(
+      `/api/pos/products/search?businessUnitId=${encodeURIComponent(
+        businessUnitId,
+      )}&categoryId=${encodeURIComponent(categoryFilter)}`,
+      { signal: controller.signal },
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error(`browse ${response.status}`)
+        return response.json() as Promise<{ products: PosProduct[] }>
+      })
+      .then(({ products }) => {
+        setResults(products)
+        setLastBrowsedCategory(categoryFilter)
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setLastBrowsedCategory(categoryFilter)
+        logger.error('pos.browse_request_failed', {
+          error: error instanceof Error ? error.message : String(error),
+        })
+        toast.error('Could not load that category', { description: 'Try again in a moment.' })
+      })
+
+    return () => controller.abort()
+  }, [browsing, categoryFilter, businessUnitId])
+
+  // While searching the chips filter the current result set; while browsing
+  // the server already scoped it.
   const visibleResults = useMemo(
     () =>
-      activeCategory ? results.filter((product) => product.categoryId === activeCategory) : results,
-    [results, activeCategory],
+      searching && categoryFilter
+        ? results.filter((product) => product.categoryId === categoryFilter)
+        : results,
+    [results, searching, categoryFilter],
   )
 
   const addProductToCart = useCallback(
     (product: { id: string; name: string; basePrice: number }) => {
       addItem({ productId: product.id, name: product.name, unitPrice: product.basePrice })
       setQuery('')
-      setResults([])
+      // Keep a category browse on screen so the next item from the same
+      // category is one tap away; a search clears back to the strips.
+      if (searching) setResults([])
       focusSearchIfKeyboardDevice(inputRef.current)
     },
-    [addItem],
+    [addItem, searching],
   )
 
   const runScan = useCallback(
@@ -186,16 +195,10 @@ export function ProductGrid() {
         return
       }
 
-      // Previously a silent no-op, which was indistinguishable from a scanner
-      // that had not fired at all. sonner's region is aria-live, so this is
-      // announced rather than conveyed by colour alone.
       logger.warn('pos.scan_no_match', { businessUnitId, length: barcode.length })
       toast.error(`No product matches barcode ${barcode}`, {
         description: 'Search by name or SKU instead.',
       })
-
-      // Fall back to the ordinary debounced search, which also matches the
-      // barcode column — a partially-read code still surfaces its near-matches.
       setQuery(barcode)
     },
     [businessUnitId, addProductToCart],
@@ -203,15 +206,10 @@ export function ProductGrid() {
 
   useBarcodeScanner({ onScan: runScan })
 
-  // Replaces PosSearch's own autoFocus attribute, which fired unconditionally
-  // and raised the on-screen keyboard the instant /pos loaded on a phone.
   useEffect(() => {
     focusSearchIfKeyboardDevice(inputRef.current)
   }, [])
 
-  // "Type anywhere to search": on a keyboard device, a printable keystroke
-  // while nothing else is focused pulls focus into the search box so the
-  // cashier never has to click it first.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -231,7 +229,8 @@ export function ProductGrid() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const searching = query.trim() !== ''
+  const showStrips = !searching && !browsing
+  const showGrid = searching || browsing
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth p-4">
@@ -242,61 +241,73 @@ export function ProductGrid() {
         inputRef={inputRef}
       />
 
-      {!searching && <ProductShortcutStrips onSelect={addProductToCart} />}
-
-      {searching && resultCategories.length > 1 && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter results by category">
+      {categories.length > 0 && (
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={searching ? 'Filter results by category' : 'Browse a category'}
+        >
           <CategoryChip
             label="All"
-            active={activeCategory === null}
-            onClick={() => setCategoryFilter(null)}
+            active={categoryFilter === null}
+            onClick={() => selectCategory(null)}
           />
-          {resultCategories.map((category) => (
+          {categories.map((category) => (
             <CategoryChip
               key={category.id}
               label={category.name}
-              active={activeCategory === category.id}
-              onClick={() => setCategoryFilter(category.id)}
+              active={categoryFilter === category.id}
+              onClick={() => selectCategory(category.id)}
             />
           ))}
         </div>
       )}
 
-      {!searching ? (
-        <div className="flex flex-1 items-center justify-center">
-          <EmptyState
-            icon={Package}
-            title="Search or scan a product"
-            description="Matching products appear here as you type or scan a barcode."
-          />
-        </div>
-      ) : visibleResults.length === 0 && !pending ? (
-        <div className="flex flex-1 items-center justify-center">
-          <EmptyState
-            icon={Package}
-            title="No products found"
-            description={`No match for "${query}".`}
-          />
-        </div>
-      ) : (
-        <div className={TILE_GRID_CLASS}>
-          {visibleResults.map((product) => (
-            <ProductTile
-              key={product.id}
-              product={{
-                id: product.id,
-                name: product.name,
-                sku: product.sku ?? undefined,
-                price: product.basePrice.toLocaleString(undefined, {
-                  style: 'currency',
-                  currency: 'NGN',
-                }),
-              }}
-              onSelect={() => addProductToCart(product)}
+      {showStrips && (
+        <>
+          <ProductShortcutStrips onSelect={addProductToCart} />
+          <div className="flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={Package}
+              title="Search, scan, or pick a category"
+              description="Products appear here as you type or scan, or when you choose a category above."
             />
-          ))}
-        </div>
+          </div>
+        </>
       )}
+
+      {showGrid &&
+        (visibleResults.length === 0 && !pending && !browsePending ? (
+          <div className="flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={Package}
+              title={searching ? 'No products found' : 'No products in this category'}
+              description={
+                searching
+                  ? `No match for "${query}".`
+                  : 'Add products to this category to see them here.'
+              }
+            />
+          </div>
+        ) : (
+          <div className={TILE_GRID_CLASS}>
+            {visibleResults.map((product) => (
+              <ProductTile
+                key={product.id}
+                product={{
+                  id: product.id,
+                  name: product.name,
+                  sku: product.sku ?? undefined,
+                  price: product.basePrice.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'NGN',
+                  }),
+                }}
+                onSelect={() => addProductToCart(product)}
+              />
+            ))}
+          </div>
+        ))}
     </div>
   )
 }

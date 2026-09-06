@@ -58,7 +58,7 @@ async function signedInState(browser: Browser, baseURL: string | undefined): Pro
     const page = await context.newPage()
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(fixture.email)
-    await page.getByLabel('Password').fill(fixture.password)
+    await page.getByLabel('Password', { exact: true }).fill(fixture.password)
 
     const remember = page.getByRole('switch', { name: 'Remember me for 30 days' })
     await remember.click()

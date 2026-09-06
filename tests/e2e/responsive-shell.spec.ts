@@ -34,7 +34,7 @@ for (const viewport of VIEWPORTS) {
 
       await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
       await expect(page.getByLabel('Email')).toBeVisible()
-      await expect(page.getByLabel('Password')).toBeVisible()
+      await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
 
       const hasHorizontalOverflow = await page.evaluate(

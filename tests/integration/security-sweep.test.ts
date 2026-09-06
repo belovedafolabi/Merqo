@@ -47,11 +47,11 @@ const POLICYLESS_TABLES_ALLOWED: Record<string, string> = {
 }
 
 /**
- * Functions `anon` may execute. These five are the entire unauthenticated
- * attack surface of the database, and each exists because something must
- * happen before a session does.
+ * Functions `anon` may execute. These are the entire unauthenticated attack
+ * surface of the database, and each exists because something must happen
+ * before a session does.
  *
- * Milestone 15 finding 1 removed a sixth — record_audit_event() — whose full
+ * Milestone 15 finding 1 removed one — record_audit_event() — whose full
  * argument surface let any holder of the public anon key forge audit rows for
  * any organization.
  */
@@ -66,6 +66,8 @@ const ANON_EXECUTABLE_FUNCTIONS: Record<string, string> = {
     'The rate limiter itself (20260826090100) — the login, password-reset and unauthenticated-audit buckets all run before any session exists.',
   record_unauthenticated_audit_event:
     'The narrowed replacement for record_audit_event (20260826090200, Milestone 15 finding 1): allow-listed action, derived resource type, organization hardcoded null, user from auth.uid(), rate-limited in SQL.',
+  deployment_branding:
+    'Post-MS17: the pre-session auth screens tint their brand glow / shimmer to the deployment. Single-tenant-per-deployment, so this returns the one org’s two brand colours + display name (20260908090400) — no id, no address, no tenant data.',
 }
 
 /**

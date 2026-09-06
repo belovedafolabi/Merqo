@@ -8,6 +8,7 @@ import { AuthCard } from '@/components/auth/auth-card'
 import { AuthReasonAlert } from '@/components/auth/auth-reason-alert'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { usePendingToast } from '@/hooks/use-pending-toast'
@@ -48,13 +49,7 @@ export default function SignInPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
+          <PasswordInput id="password" name="password" autoComplete="current-password" required />
         </div>
 
         {/* Milestone 17 Part C. Off by default, and the label says what that

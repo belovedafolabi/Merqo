@@ -6,7 +6,8 @@ import { ArrowLeftRight, Boxes, PackagePlus, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { type DataTableColumn } from '@/components/ui/data-table'
+import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import { Input } from '@/components/ui/input'
 import { StatCard } from '@/components/ui/stat-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -214,7 +215,7 @@ export function InventoryView({
               <CardTitle>Stock on hand</CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
+              <PaginatedDataTable
                 columns={balanceColumns}
                 rows={filteredBalances}
                 getRowKey={(row) => row.id}
@@ -236,7 +237,7 @@ export function InventoryView({
               <CardTitle>Movement history</CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
+              <PaginatedDataTable
                 columns={movementColumns}
                 rows={movements}
                 getRowKey={(row) => row.id}

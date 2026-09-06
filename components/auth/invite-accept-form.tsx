@@ -7,6 +7,7 @@ import { acceptInvitationAction, type InviteActionState } from '@/app/(auth)/inv
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 
 const initialState: InviteActionState = { error: null }
@@ -51,10 +52,9 @@ export function InviteAcceptForm({ token, email }: { token: string; email: strin
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="invite-password">Password</Label>
-        <Input
+        <PasswordInput
           id="invite-password"
           name="password"
-          type="password"
           required
           minLength={8}
           autoComplete={hasAccount ? 'current-password' : 'new-password'}
