@@ -54,9 +54,9 @@ async function seed(client: Parameters<Parameters<typeof withTransaction>[0]>[0]
   ).rows[0].id
   await client.query(
     `insert into public.products (business_unit_id, category_id, name, sku, base_price, cost_price) values
-       ($1, $2, 'Chapman', $3, 1800, 700),
-       ($1, $2, 'Zobo', $4, 1200, 400),
-       ($1, $5, 'Jollof Rice', $6, 4500, 1800)`,
+       ($1, $2, 'Apple Juice', $3, 1800, 700),
+       ($1, $2, 'Orange Juice', $4, 1200, 400),
+       ($1, $5, 'Fried Rice', $6, 4500, 1800)`,
     [bu, drinks, `SKU-${suffix}-1`, `SKU-${suffix}-2`, mains, `SKU-${suffix}-3`],
   )
   return { bu, drinks, mains }
@@ -70,36 +70,42 @@ describe('pos_search_products p_category_id', () => {
         `select name from public.pos_search_products($1, '', 50, $2) order by name`,
         [bu, drinks],
       )
-      expect(rows.map((r) => r.name)).toEqual(['Chapman', 'Zobo'])
+      expect(rows.map((r) => r.name)).toEqual(['Apple Juice', 'Orange Juice'])
     })
   })
 
   it('term + category intersects both', async () => {
     await withTransaction(async (client) => {
       const { bu, drinks, mains } = await seed(client)
-      // "o" matches Chapman/Zobo/Jollof; scoped to Drinks it drops Jollof.
+      // "juice" matches the two drinks, never the main.
       const drinksHits = await client.query(
-        `select name from public.pos_search_products($1, 'o', 50, $2) order by name`,
+        `select name from public.pos_search_products($1, 'juice', 50, $2) order by name`,
         [bu, drinks],
       )
-      expect(drinksHits.rows.map((r) => r.name)).toEqual(['Chapman', 'Zobo'])
+      expect(drinksHits.rows.map((r) => r.name)).toEqual(['Apple Juice', 'Orange Juice'])
 
       const mainsHits = await client.query(
-        `select name from public.pos_search_products($1, 'o', 50, $2)`,
+        `select name from public.pos_search_products($1, 'juice', 50, $2)`,
         [bu, mains],
       )
-      expect(mainsHits.rows.map((r) => r.name)).toEqual(['Jollof Rice'])
+      expect(mainsHits.rows).toEqual([])
     })
   })
 
-  it('null category is unchanged (all matches)', async () => {
+  it('null category is unchanged (term matches across categories)', async () => {
     await withTransaction(async (client) => {
       const { bu } = await seed(client)
-      const { rows } = await client.query(
-        `select count(*)::int as n from public.pos_search_products($1, 'o', 50, null)`,
+      const juice = await client.query(
+        `select count(*)::int as n from public.pos_search_products($1, 'juice', 50, null)`,
         [bu],
       )
-      expect(rows[0].n).toBe(3)
+      expect(juice.rows[0].n).toBe(2)
+
+      const rice = await client.query(
+        `select count(*)::int as n from public.pos_search_products($1, 'rice', 50, null)`,
+        [bu],
+      )
+      expect(rice.rows[0].n).toBe(1)
     })
   })
 })

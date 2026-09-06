@@ -38,7 +38,7 @@ test('a new account can sign up and complete onboarding to a working dashboard',
   await page.getByLabel('Organization name').fill(`Onboarding Co ${runId.slice(0, 8)}`)
   await page.getByLabel('Your full name').fill('Onboarding Tester')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Create account' }).click()
 
   // Local config disables email confirmation, so signUp() returns a session

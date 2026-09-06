@@ -40,7 +40,7 @@ async function signInAndSaveState(
     const page = await context.newPage()
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(credentials.email)
-    await page.getByLabel('Password').fill(credentials.password)
+    await page.getByLabel('Password', { exact: true }).fill(credentials.password)
 
     // Milestone 17 Part C: tick "remember me" so the saved storageState carries
     // the `long` session policy. Without it every authenticated project would
