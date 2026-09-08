@@ -32,12 +32,12 @@ import { FORM_HINTS } from '@/lib/form-hints'
 const initialState: RolesActionState = { error: null }
 
 /**
- * Grants an EXISTING employee an additional role at a chosen scope — the
- * milestone's "role assignment screen/flow" bullet, distinct from inviting
- * (which assigns exactly one role, at invite time, to someone new). Reuses
- * assignRoleAction (app/(app)/roles/actions.ts), the same action the invite
- * acceptance path's underlying RPC mirrors, so both paths are gated by the
- * identical RLS escalation guard (user_grants_cover_role).
+ * Sets an EXISTING employee's role at a chosen scope — the milestone's "role
+ * assignment screen/flow" bullet, distinct from inviting (which sets the role
+ * at invite time for someone new). One role per user (migration
+ * 20260908090700), so this REPLACES whatever role they currently hold. Reuses
+ * assignRoleAction (app/(app)/roles/actions.ts), gated by the same RLS
+ * escalation guard (user_grants_cover_role) as the invite-acceptance path.
  */
 export function AssignRoleDialog({
   organizationId,
@@ -68,10 +68,11 @@ export function AssignRoleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign a role to {employee.fullName}</DialogTitle>
+          <DialogTitle>Set {employee.fullName}’s role</DialogTitle>
           <DialogDescription>
-            Grants an additional role at the scope you choose — existing role assignments are
-            untouched.
+            Each member has one role. Choosing a role here replaces{' '}
+            <span className="font-medium">{employee.assignment.roleName}</span> at the scope you
+            pick.
           </DialogDescription>
         </DialogHeader>
 

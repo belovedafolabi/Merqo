@@ -26,16 +26,14 @@ interface Fixture {
 
 let fixture: Fixture
 
-async function assignCashier(organizationId: string, userId: string): Promise<void> {
-  const roleResult = await pool.query(`select id from public.roles where slug = 'cashier'`)
-  await pool.query(
-    `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,
-    [userId, roleResult.rows[0].id, organizationId],
-  )
-  // Cashier is seeded with zero permissions (least privilege) — give it one
-  // so "can this user still read something" has something to read. Attached
-  // to a fixture-only custom role rather than mutating the seeded Cashier
-  // row, which every other test file also relies on being pristine.
+/**
+ * Gives the user a single low-privilege role carrying exactly one readable
+ * permission (`branches.view`), so "can this user still read something" has
+ * something to read. One role per user (migration 20260908090700), so this is
+ * one `user_roles` row — a fixture-only custom role rather than the seeded
+ * Cashier, which every other test file relies on staying pristine.
+ */
+async function assignLowPrivilegeRole(organizationId: string, userId: string): Promise<void> {
   const grantRole = await pool.query(
     `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
     [
@@ -79,7 +77,7 @@ describe('employee deactivation — invalidates an already-live session', () => 
 
   it('a live session loses all access the instant it is deactivated, and regains it on reactivation', async () => {
     const employee = await createTestUser()
-    await assignCashier(fixture.organizationId, employee.userId)
+    await assignLowPrivilegeRole(fixture.organizationId, employee.userId)
 
     // CONTROL — asserted first. Without this, "grants come back empty" could
     // just as easily mean "grants were always empty" (a broken fixture), and
@@ -129,7 +127,7 @@ describe('employee deactivation — invalidates an already-live session', () => 
 
   it('a deactivated user cannot see it coming: user_shares_org_with still resolves for an active viewer', async () => {
     const employee = await createTestUser()
-    await assignCashier(fixture.organizationId, employee.userId)
+    await assignLowPrivilegeRole(fixture.organizationId, employee.userId)
 
     await fixture.owner.client.rpc('set_employee_active', {
       p_user_id: employee.userId,
@@ -162,10 +160,10 @@ describe('employee deactivation — invalidates an already-live session', () => 
 
   it('a user without employees.deactivate cannot deactivate anyone', async () => {
     const employee = await createTestUser()
-    await assignCashier(fixture.organizationId, employee.userId)
+    await assignLowPrivilegeRole(fixture.organizationId, employee.userId)
 
     const bystander = await createTestUser()
-    await assignCashier(fixture.organizationId, bystander.userId)
+    await assignLowPrivilegeRole(fixture.organizationId, bystander.userId)
 
     const { error } = await bystander.client.rpc('set_employee_active', {
       p_user_id: employee.userId,
@@ -183,7 +181,7 @@ describe('employee deactivation — invalidates an already-live session', () => 
       `OtherOrg${suffix}`,
     )
     const outsider = await createTestUser()
-    await assignCashier(otherOrgId, outsider.userId)
+    await assignLowPrivilegeRole(otherOrgId, outsider.userId)
 
     const { error } = await fixture.owner.client.rpc('set_employee_active', {
       p_user_id: outsider.userId,
