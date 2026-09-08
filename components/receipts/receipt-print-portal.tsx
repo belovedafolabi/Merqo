@@ -52,8 +52,7 @@ const PORTAL_CLASS = 'receipt-print-portal'
 export function printReceiptInPlace(onDone?: () => void): void {
   let settled = false
   const timers: ReturnType<typeof setTimeout>[] = []
-  const printMql =
-    typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
+  const printMql = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
 
   function cleanup() {
     window.removeEventListener('afterprint', onAfterPrint)
@@ -151,8 +150,7 @@ export function ReceiptPrintPortal({
   // mobile engines that never fire `afterprint`; `removeClass` refuses to run
   // while the print surface is still matching.
   useEffect(() => {
-    const printMql =
-      typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
+    const printMql = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
     function addClass() {
       document.body.classList.add(RECEIPT_PRINTING_CLASS)
     }
