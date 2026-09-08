@@ -28,12 +28,14 @@ interface AccessStateRow {
  * not a session-refresh artifact.
  */
 
-async function assignCashier(organizationId: string, userId: string): Promise<void> {
-  const roleResult = await pool.query(`select id from public.roles where slug = 'cashier'`)
-  await pool.query(
-    `insert into public.user_roles (user_id, role_id, organization_id) values ($1, $2, $3)`,
-    [userId, roleResult.rows[0].id, organizationId],
-  )
+/**
+ * One low-privilege role (one `user_roles` row — one role per user, migration
+ * 20260908090700) carrying a single readable permission (`branches.view`), so
+ * "can this user still read something" has something to read. A fixture-only
+ * custom role, not the seeded Cashier, which other test files rely on staying
+ * pristine.
+ */
+async function assignLowPrivilegeRole(organizationId: string, userId: string): Promise<void> {
   const grantRole = await pool.query(
     `insert into public.roles (name, slug, is_system_role, organization_id) values ($1, $2, false, $3) returning id`,
     [
@@ -88,7 +90,7 @@ describe('subscription lock — organization_access_permitted()', () => {
   it("expiry reduces the Owner's grants to exactly subscription.view/subscription.renew, and a cashier's to zero", async () => {
     const { organizationId, owner } = await makeFixture()
     const cashier = await createTestUser()
-    await assignCashier(organizationId, cashier.userId)
+    await assignLowPrivilegeRole(organizationId, cashier.userId)
 
     // CONTROL — asserted before expiry, same discipline as deactivation.test.ts.
     const liveOwnerGrants = await fetchPermissionGrants(owner.client)
