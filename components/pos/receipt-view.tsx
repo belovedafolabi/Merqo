@@ -26,17 +26,32 @@ import type { Sale } from '@/lib/sales/queries'
  * client leaf inside checkout-drawer.tsx, which cannot reach next/headers
  * directly).
  */
-export function ReceiptView({ saleId }: { saleId: string }) {
+export function ReceiptView({
+  saleId,
+  onReady,
+}: {
+  saleId: string
+  /** Fires once the sale has loaded and the receipt (incl. its print copy) is
+   *  rendered — the caller gates "Print receipt" on this to avoid printing a
+   *  blank page. */
+  onReady?: () => void
+}) {
   const [sale, setSale] = useState<Sale | null>(null)
   const [branding, setBranding] = useState<OrganizationBranding | null>(null)
   const [settings, setSettings] = useState<ReceiptSettings | null>(null)
 
   useEffect(() => {
-    getSaleAction(saleId).then(setSale)
+    getSaleAction(saleId).then((loaded) => {
+      setSale(loaded)
+      if (loaded) onReady?.()
+    })
     getReceiptContextAction().then(({ branding, settings }) => {
       setBranding(branding)
       setSettings(settings)
     })
+    // onReady is a stable inline callback from the parent; re-running on its
+    // identity would refetch the sale for nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleId])
 
   if (!sale) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 
 import { ReceiptDocument } from '@/components/receipts/receipt-document'
@@ -30,34 +30,54 @@ const PORTAL_CLASS = 'receipt-print-portal'
  * screen in the checkout drawer by the time this runs, so there is nothing
  * left to fetch.
  *
- * `onDone` fires after the dialog closes. `afterprint` is the real signal,
- * but Safari has historically not fired it reliably, so a timeout backstop
- * guarantees the caller's cleanup (clearing the cart, closing the drawer)
- * still happens.
+ * `onDone` fires only once the print UI is genuinely gone — i.e. after the
+ * window regains focus, not on bare `afterprint`. Chromium fires `afterprint`
+ * while the print preview is still on screen; tearing down there (removing the
+ * isolation class, unmounting the portalled receipt) let Chrome re-compose the
+ * preview from the now-unhidden page — the whole POS, checkout drawer on top.
+ * That was the "print shows the checkout drawer" bug.
+ *
+ * The isolation class is added and removed by <ReceiptPrintPortal>'s own
+ * `beforeprint`/`afterprint` handlers, so a native Ctrl+P is covered too; this
+ * function only triggers the print and defers `onDone` until it is safe.
  */
 export function printReceiptInPlace(onDone?: () => void): void {
-  const body = document.body
   let settled = false
+  const timers: ReturnType<typeof setTimeout>[] = []
 
-  function finish() {
+  function settle() {
     if (settled) return
     settled = true
-    window.removeEventListener('afterprint', finish)
-    clearTimeout(backstop)
-    body.classList.remove(RECEIPT_PRINTING_CLASS)
+    window.removeEventListener('afterprint', onAfterPrint)
+    window.removeEventListener('focus', settle)
+    timers.forEach(clearTimeout)
     onDone?.()
   }
 
-  const backstop = setTimeout(finish, 60_000)
-  window.addEventListener('afterprint', finish)
+  function onAfterPrint() {
+    // Chrome/Edge fire this with the preview still visible. Wait for the
+    // window to regain focus (dialog really dismissed); a short backstop
+    // covers engines where the focus event doesn't arrive cleanly.
+    if (document.hasFocus()) {
+      settle()
+    } else {
+      window.addEventListener('focus', settle, { once: true })
+      timers.push(setTimeout(settle, 1_500))
+    }
+  }
 
-  body.classList.add(RECEIPT_PRINTING_CLASS)
-  // Let the class land before the browser snapshots the page. window.print()
-  // is synchronous and blocking, so without a frame in between the printout
-  // can be composed from pre-class styles.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => window.print())
-  })
+  window.addEventListener('afterprint', onAfterPrint)
+  // Engines that never fire `afterprint` (older WebKit): the window regaining
+  // focus after the dialog closes is the fallback signal.
+  window.addEventListener('focus', settle, { once: true })
+  // Hard cap if nothing fires at all, so the caller's button never sticks.
+  timers.push(setTimeout(settle, 60_000))
+
+  // Belt and braces: <ReceiptPrintPortal>'s `beforeprint` handler also adds
+  // this, but add it here too in case the print is composed before that
+  // listener's event loop turn.
+  document.body.classList.add(RECEIPT_PRINTING_CLASS)
+  window.print()
 }
 
 /** Never changes, so the hydration snapshot below never needs re-reading. */
@@ -95,6 +115,33 @@ export function ReceiptPrintPortal({
     () => true,
     () => false,
   )
+
+  // Own the isolation class for the whole time this print copy is mounted, so
+  // a native Ctrl/Cmd+P prints the receipt too (nothing else adds the class).
+  // Removal is deferred to the next focus after `afterprint` — Chrome keeps
+  // the preview on screen after `afterprint` and re-composing it without the
+  // class would show the whole POS.
+  useEffect(() => {
+    function onBeforePrint() {
+      document.body.classList.add(RECEIPT_PRINTING_CLASS)
+    }
+    function removeClass() {
+      document.body.classList.remove(RECEIPT_PRINTING_CLASS)
+    }
+    function onAfterPrint() {
+      if (document.hasFocus()) removeClass()
+      else window.addEventListener('focus', removeClass, { once: true })
+    }
+    window.addEventListener('beforeprint', onBeforePrint)
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint)
+      window.removeEventListener('afterprint', onAfterPrint)
+      window.removeEventListener('focus', removeClass)
+      document.body.classList.remove(RECEIPT_PRINTING_CLASS)
+    }
+  }, [])
+
   if (!hydrated) return null
 
   const paperWidthMm = RECEIPT_TEMPLATES[templateId].paperWidthMm

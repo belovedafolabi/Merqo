@@ -122,6 +122,13 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       // manual cleanup — but listeners are attached to the new nodes every
       // time, which buildStepList does.
       onPopoverRender: (popover) => {
+        // driver.js appends the popover to <body>, outside the Admin shell's
+        // `.dark` wrapper, so its `var(--popover)`-based theming resolved
+        // light. Mirror the shell's resolved theme onto the popover itself —
+        // `.dark { --popover: … }` matches the element it is set on.
+        const shellDark =
+          document.querySelector('[data-theme-pref]')?.classList.contains('dark') ?? false
+        popover.wrapper.classList.toggle('dark', shellDark)
         if (steps.length < MIN_REAL_STEPS) return
         popover.wrapper.appendChild(
           buildStepList(stepTitles, d.getActiveIndex() ?? 0, (index) => d.moveTo(index), isMobile),

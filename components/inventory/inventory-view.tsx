@@ -162,7 +162,7 @@ export function InventoryView({
     {
       header: 'Change',
       cell: (row) => (
-        <span className={row.quantityDelta < 0 ? 'text-destructive' : 'text-emerald-600'}>
+        <span className={row.quantityDelta < 0 ? 'text-destructive' : 'text-success'}>
           {row.quantityDelta > 0 ? `+${row.quantityDelta}` : row.quantityDelta}
         </span>
       ),

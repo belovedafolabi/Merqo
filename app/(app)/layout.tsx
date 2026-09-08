@@ -10,6 +10,7 @@ import { getThemePreference, THEME_COOKIE } from '@/lib/theme/preferences'
 import { cn } from '@/lib/utils'
 import { BrandStyle } from '@/components/branding/brand-style'
 import { ThemeSync } from '@/components/theme/theme-sync'
+import { ThemedPortalProvider } from '@/components/ui/portal-container'
 import { AdminSidebar } from '@/components/shell/admin-sidebar'
 import { SidebarCloseOnNavigate } from '@/components/shell/sidebar-close-on-navigate'
 import { SubscriptionExpiryBanner } from '@/components/subscription/expiry-banner'
@@ -75,37 +76,42 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         data-theme-pref={themePreference}
         className={cn('bg-admin-canvas min-h-svh overflow-x-clip p-2 sm:p-3', serverDark && 'dark')}
       >
-        <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
-          {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
+        {/* Hands this themed root to Radix/vaul portals as their `container`
+            so dialogs, drawers, sheets and menus inherit the shell's tokens
+            instead of resolving light from `:root` at <body> level. */}
+        <ThemedPortalProvider>
+          <SidebarProvider className="min-h-[calc(100svh-1.5rem)]">
+            {/* Deliberately a sibling of <AdminSidebar>, not a child of it.
               On mobile <Sidebar> renders its children inside a Radix Sheet,
               which only mounts them while the Sheet is open — so mounting
               this there made its "close on navigate" effect fire the instant
               the menu opened, closing it again in the same commit. Out here
               it stays mounted for the life of the shell and only reacts to a
               real pathname change. */}
-          <SidebarCloseOnNavigate />
-          <AdminSidebar
-            organizationName={branding?.displayName ?? 'Merqo'}
-            userName={userName}
-            userEmail={user.email ?? ''}
-            branchName={onboardingState.branch?.name ?? null}
-            businessUnitName={onboardingState.businessUnit?.name ?? null}
-          />
-          <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">
-            {/* Off the shell's critical path: the expiry banner's
+            <SidebarCloseOnNavigate />
+            <AdminSidebar
+              organizationName={branding?.displayName ?? 'Merqo'}
+              userName={userName}
+              userEmail={user.email ?? ''}
+              branchName={onboardingState.branch?.name ?? null}
+              businessUnitName={onboardingState.businessUnit?.name ?? null}
+            />
+            <SidebarInset className="m-2 rounded-xl shadow-elevated sm:m-3">
+              {/* Off the shell's critical path: the expiry banner's
                 subscription_access_state query streams in rather than
                 blocking first paint — same treatment AdminTopbar gives the
                 notification bell. */}
-            <Suspense fallback={null}>
-              <SubscriptionExpiryBanner />
-            </Suspense>
-            {children}
-          </SidebarInset>
-          {/* Inside SidebarProvider so the tour can open the mobile nav Sheet
+              <Suspense fallback={null}>
+                <SubscriptionExpiryBanner />
+              </Suspense>
+              {children}
+            </SidebarInset>
+            {/* Inside SidebarProvider so the tour can open the mobile nav Sheet
               (whose nav links are otherwise unmounted) before building its
               step list. */}
-          <ProductTour area="admin" autoStart={!tourCompleted} />
-        </SidebarProvider>
+            <ProductTour area="admin" autoStart={!tourCompleted} />
+          </SidebarProvider>
+        </ThemedPortalProvider>
       </div>
     </PermissionsProvider>
   )
