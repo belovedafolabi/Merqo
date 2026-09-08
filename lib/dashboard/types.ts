@@ -19,6 +19,14 @@ export interface DashboardSummary {
   priorAverageSale: number
 }
 
+/**
+ * How a trend series is bucketed. `day` — the `day` field is a calendar date
+ * (`YYYY-MM-DD`). `hour` — the `day` field is the full ISO timestamp of an
+ * hour bucket; the chart formats and labels it as a time of day. The field name
+ * stays `day` so the daily path is untouched.
+ */
+export type SeriesGranularity = 'day' | 'hour'
+
 export interface DashboardSeriesPoint {
   day: string
   saleCount: number
