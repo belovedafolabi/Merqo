@@ -22,9 +22,10 @@ export interface Employee {
   email: string
   fullName: string
   deactivatedAt: string | null
-  /** One employee can hold several role assignments at different scopes —
-   *  the milestone's own wording ("assigned role(s) and scope(s)"). */
-  assignments: EmployeeRoleAssignment[]
+  /** One role per user (migration 20260908090700; DECISIONS_AND_CONFLICTS.md §8). Always set
+   *  for a row this query returns — the directory lists members who hold a
+   *  role, and a member with none has no user_roles row to appear on. */
+  assignment: EmployeeRoleAssignment
 }
 
 interface UserRoleRow {
@@ -39,13 +40,10 @@ interface UserRoleRow {
 }
 
 /**
- * Every employee with at least one role assignment in this organization,
- * each carrying their full assignment list. Built in TypeScript from one
- * flat user_roles query rather than N+1 per-user queries — the same
- * aggregate-in-app choice lib/roles/queries.ts's listRoles() makes for its
- * assignment counts, and for the same reason: the source rows are already
- * one round trip, and a database-side GROUP BY would need to serialize the
- * nested assignment list as JSON anyway.
+ * Every employee holding a role in this organization, with that role and its
+ * scope. One flat user_roles query — and with one role per user (migration
+ * 20260908090700) it is already one row per member, so there is no grouping
+ * left to do.
  */
 export async function listEmployees(organizationId: string): Promise<Employee[]> {
   const supabase = await createServerSupabaseClient()
@@ -67,36 +65,29 @@ export async function listEmployees(organizationId: string): Promise<Employee[]>
 
   if (error) throw error
 
-  const byUser = new Map<string, Employee>()
-
-  for (const row of (data ?? []) as unknown as UserRoleRow[]) {
-    const user = row.users
-    if (!user) continue // FK is SET NULL on delete; a de-linked row has nothing left to show.
-
-    const employee =
-      byUser.get(user.id) ??
-      ({
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        deactivatedAt: user.deactivated_at,
-        assignments: [],
-      } satisfies Employee)
-
-    employee.assignments.push({
-      userRoleId: row.id,
-      roleId: row.role_id,
-      roleName: row.roles?.name ?? 'Unknown role',
-      branchId: row.branch_id,
-      branchName: row.branches?.name ?? null,
-      businessUnitId: row.business_unit_id,
-      businessUnitName: row.business_units?.name ?? null,
+  return ((data ?? []) as unknown as UserRoleRow[])
+    .flatMap((row) => {
+      const user = row.users
+      if (!user) return [] // FK is SET NULL on delete; a de-linked row has nothing left to show.
+      return [
+        {
+          id: user.id,
+          email: user.email,
+          fullName: user.full_name,
+          deactivatedAt: user.deactivated_at,
+          assignment: {
+            userRoleId: row.id,
+            roleId: row.role_id,
+            roleName: row.roles?.name ?? 'Unknown role',
+            branchId: row.branch_id,
+            branchName: row.branches?.name ?? null,
+            businessUnitId: row.business_unit_id,
+            businessUnitName: row.business_units?.name ?? null,
+          },
+        } satisfies Employee,
+      ]
     })
-
-    byUser.set(user.id, employee)
-  }
-
-  return [...byUser.values()].sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
 }
 
 export interface PendingInvitation {

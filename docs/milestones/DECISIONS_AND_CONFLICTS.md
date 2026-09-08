@@ -134,6 +134,52 @@ $0. `pnpm audit` + Dependabot + gitleaks +
 
 ---
 
+## 8. Role cardinality — one role per user (post-launch reversal, Milestone 17 Part E)
+
+**Prior decision (multi-role):** the design corpus is consistent that a user may
+hold **several roles at once**, and the union of their permissions applies:
+`docs/Users_Employees_Roles_and_Granular_RBAC.md` §25.15 ("I recommend
+supporting multiple roles per user", with the worked example
+`John ├── Cashier └── Inventory Supervisor`), `docs/Functional_Specification.md`
+§432, `docs/Auth_Users_Roles_Authorization.md` §20,
+`docs/Database_Archutecture_and_Model.md` ("a user may eventually need multiple
+roles, use a join table"). Milestone 03 (§85) required a unit test for "a user
+with two roles at different scopes". The schema followed suit: `user_roles` is a
+true many-to-many, keyed only by the composite
+`user_roles_scope_unique (user_id, role_id, organization_id, branch_id, business_unit_id)`.
+
+**Reversal:** the product owner, shown the above, has decided that **a user holds
+exactly one role at a time** — the observed problem being that the same person
+could accumulate `Cashier` + `Branch Manager` and no UI ever removed a role
+(`revokeRoleAction` had no call site). "Simpler to reason about; a person has one
+job" was the stated rationale.
+
+**Resolution:**
+
+- **`user_roles` gains a `UNIQUE (user_id)` index** (migration
+  `20260908090700_enforce_one_role_per_user.sql`), replacing the non-unique
+  `user_roles_user_id_idx`. That migration first collapses every existing user to
+  their single **highest-privilege** assignment — ranked by role permission
+  count, then org-wide before scoped, then oldest — and writes a
+  `user_role.removed_one_role_migration` audit row for each assignment it drops,
+  so the change is reversible from the log.
+- **"Assign a role" now means replace.** `assignUserRole()` deletes the user's
+  current `user_roles` row before inserting the new one; the escalation guard
+  (`user_grants_cover_role`) and scope trigger are unchanged.
+- **Consequence accepted:** a user who held one role at *two branch scopes*
+  (a manager covering two branches) must instead hold a single org-wide row,
+  which widens their reach. No such user exists in any current deployment.
+- **Org-continuity guard:** the sole holder of the system `owner` role cannot be
+  reassigned away from it (same family as "cannot archive the last branch").
+- Milestone 03's multi-role unit test keeps testing the *resolver's* multi-scope
+  handling (a pure function over a grant array, still valid); the
+  reject-a-second-assignment case is covered at the integration layer instead.
+
+`resolvePermission` / `requirePermission` / `usePermission` are untouched — they
+consume an array of permission *grants*, which one role still produces many of.
+
+---
+
 ## Confirmed, non-conflicting decisions (stated for completeness — no ambiguity found)
 
 - **Offline capability:** consistently and unambiguously removed across every document that discusses it (`PRD.md` §5/§32, `TAS.md` Invariant 10 and §18, `Hardware_Security_Audit_Observability_and_ AI.md` §31.47–49). No milestone reintroduces it.

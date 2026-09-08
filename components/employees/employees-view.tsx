@@ -60,20 +60,16 @@ export function EmployeesView({
       ),
     },
     {
-      header: 'Role(s) & scope',
+      header: 'Role & scope',
       cell: (row) => (
-        <div className="flex flex-wrap gap-1">
-          {row.assignments.map((assignment) => (
-            <Badge key={assignment.userRoleId} variant="secondary" className="font-normal">
-              {assignment.roleName}
-              {assignment.businessUnitName
-                ? ` · ${assignment.businessUnitName}`
-                : assignment.branchName
-                  ? ` · ${assignment.branchName}`
-                  : ' · Org-wide'}
-            </Badge>
-          ))}
-        </div>
+        <Badge variant="secondary" className="font-normal">
+          {row.assignment.roleName}
+          {row.assignment.businessUnitName
+            ? ` · ${row.assignment.businessUnitName}`
+            : row.assignment.branchName
+              ? ` · ${row.assignment.branchName}`
+              : ' · Org-wide'}
+        </Badge>
       ),
     },
     {
