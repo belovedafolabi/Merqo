@@ -9,13 +9,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { type DataTableColumn } from '@/components/ui/data-table'
 import { PaginatedDataTable } from '@/components/ui/paginated-data-table'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { StatCard } from '@/components/ui/stat-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/states/empty-state'
 import { LowStockThresholdDialog } from '@/components/inventory/low-stock-threshold-dialog'
 import { StockAdjustmentDialog } from '@/components/inventory/stock-adjustment-dialog'
 import { StockTransferDialog } from '@/components/inventory/stock-transfer-dialog'
-import { formatDateTime } from '@/lib/utils'
+import { isLowStock, stockStatus, type StockStatus } from '@/lib/inventory/low-stock'
+import { cn, formatDateTime } from '@/lib/utils'
 import type { Branch } from '@/lib/business-structure/queries'
 import type {
   BranchProductOption,
@@ -60,6 +68,7 @@ export function InventoryView({
   batchTrackingEnabled,
   expiryTrackingEnabled,
   valuation,
+  orgLowStockDefault,
 }: {
   organizationId: string
   branchId: string
@@ -70,30 +79,41 @@ export function InventoryView({
   batchTrackingEnabled: boolean
   expiryTrackingEnabled: boolean
   valuation: number | null
+  /** Org-wide fallback low-stock threshold (migration 20260904090000) — used
+   *  wherever a balance row has no threshold of its own. */
+  orgLowStockDefault: number | null
 }) {
   const [dialog, setDialog] = useState<DialogState>(null)
   const closeDialog = () => setDialog(null)
   const [search, setSearch] = useState('')
+  const [stockFilter, setStockFilter] = useState<'all' | StockStatus>('all')
 
   const filteredBalances = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return balances
-    return balances.filter(
-      (balance) =>
+    return balances.filter((balance) => {
+      if (
+        stockFilter !== 'all' &&
+        stockStatus(balance.availableQuantity, balance.lowStockThreshold, orgLowStockDefault) !==
+          stockFilter
+      ) {
+        return false
+      }
+      if (!term) return true
+      return (
         balance.productName.toLowerCase().includes(term) ||
         balance.sku.toLowerCase().includes(term) ||
-        (balance.variantName?.toLowerCase().includes(term) ?? false),
-    )
-  }, [balances, search])
+        (balance.variantName?.toLowerCase().includes(term) ?? false)
+      )
+    })
+  }, [balances, search, stockFilter, orgLowStockDefault])
 
   // `availableQuantity`, not `quantity` — reserved stock is committed to a
   // layaway or an open order and cannot be sold, so a threshold measured
   // against on-hand quantity would call a shelf healthy that has nothing
-  // sellable on it. Same rule as lib/inventory/queries.ts's
-  // listLowStockBalances() and public.notify_low_stock().
-  const lowStockCount = balances.filter(
-    (balance) =>
-      balance.lowStockThreshold !== null && balance.availableQuantity <= balance.lowStockThreshold,
+  // sellable on it. `isLowStock` also folds in the org-wide default threshold,
+  // so this count matches the dashboard widget and public.notify_low_stock().
+  const lowStockCount = balances.filter((balance) =>
+    isLowStock(balance.availableQuantity, balance.lowStockThreshold, orgLowStockDefault),
   ).length
 
   const balanceColumns: DataTableColumn<InventoryBalance>[] = [
@@ -115,13 +135,13 @@ export function InventoryView({
     {
       header: 'Status',
       cell: (row) => {
-        const isLow =
-          row.lowStockThreshold !== null && row.availableQuantity <= row.lowStockThreshold
-        return isLow ? (
-          <Badge variant="destructive">Low stock</Badge>
-        ) : (
+        if (isLowStock(row.availableQuantity, row.lowStockThreshold, orgLowStockDefault)) {
+          return <Badge variant="destructive">Low stock</Badge>
+        }
+        const hasThreshold = row.lowStockThreshold !== null || orgLowStockDefault !== null
+        return (
           <span className="text-xs text-muted-foreground">
-            {row.lowStockThreshold === null ? 'No threshold set' : 'OK'}
+            {hasThreshold ? 'OK' : 'No threshold set'}
           </span>
         )
       },
@@ -175,23 +195,49 @@ export function InventoryView({
     <div className="flex flex-1 flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Products tracked" value={String(balances.length)} />
-        <StatCard
-          label="Low stock"
-          value={String(lowStockCount)}
-          tone={lowStockCount > 0 ? 'inverted' : undefined}
-        />
+        {/* Clickable: toggles the balances table's stock-status filter to
+            "Low stock" (and back). */}
+        <button
+          type="button"
+          aria-pressed={stockFilter === 'low'}
+          onClick={() => setStockFilter((current) => (current === 'low' ? 'all' : 'low'))}
+          className="rounded-xl text-left transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <StatCard
+            label="Low stock"
+            value={String(lowStockCount)}
+            tone={lowStockCount > 0 ? 'inverted' : undefined}
+            className={cn(stockFilter === 'low' && 'ring-2 ring-ring')}
+          />
+        </button>
         <StatCard label="Inventory value" value={valuation === null ? '—' : currency(valuation)} />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search products…"
-            className="pl-9"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search products…"
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <Select
+            value={stockFilter}
+            onValueChange={(value) => setStockFilter(value as 'all' | StockStatus)}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by stock status">
+              <SelectValue placeholder="All stock" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All stock</SelectItem>
+              <SelectItem value="low">Low stock</SelectItem>
+              <SelectItem value="out">Out of stock</SelectItem>
+              <SelectItem value="in">In stock</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setDialog({ kind: 'transfer' })}>

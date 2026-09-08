@@ -12,6 +12,7 @@ import {
   listInventoryBalances,
   listMovementHistory,
 } from '@/lib/inventory/queries'
+import { getDefaultLowStockThreshold } from '@/lib/organization/queries'
 import { requirePermission } from '@/lib/auth/guard'
 import { AdminTopbar } from '@/components/shell/admin-topbar'
 import { EmptyState } from '@/components/states/empty-state'
@@ -73,15 +74,23 @@ async function InventoryPageContent({
   branchId: string
   businessUnitId: string
 }) {
-  const [balances, movements, productOptions, branches, capabilities, valuation] =
-    await Promise.all([
-      listInventoryBalances(branchId),
-      listMovementHistory(branchId),
-      listBranchProductOptions(branchId),
-      listBranches(organizationId),
-      listBusinessUnitCapabilities(businessUnitId),
-      getInventoryValuation(organizationId, businessUnitId, branchId),
-    ])
+  const [
+    balances,
+    movements,
+    productOptions,
+    branches,
+    capabilities,
+    valuation,
+    orgLowStockDefault,
+  ] = await Promise.all([
+    listInventoryBalances(branchId),
+    listMovementHistory(branchId),
+    listBranchProductOptions(branchId),
+    listBranches(organizationId),
+    listBusinessUnitCapabilities(businessUnitId),
+    getInventoryValuation(organizationId, businessUnitId, branchId),
+    getDefaultLowStockThreshold(organizationId),
+  ])
 
   const destinationBranches = branches.filter(
     (candidate) => candidate.id !== branchId && candidate.archivedAt === null,
@@ -100,6 +109,7 @@ async function InventoryPageContent({
       batchTrackingEnabled={batchTrackingEnabled}
       expiryTrackingEnabled={expiryTrackingEnabled}
       valuation={valuation}
+      orgLowStockDefault={orgLowStockDefault}
     />
   )
 }

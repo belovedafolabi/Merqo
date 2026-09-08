@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Package } from 'lucide-react'
 
@@ -132,6 +133,17 @@ function SalesSummaryWidget({ summary }: { summary: DashboardSummary | null }) {
   )
 }
 
+/**
+ * Widget list body that shows every row but caps its height and scrolls past
+ * roughly five rows, so a long list doesn't tower over its grid row-mates on
+ * any screen size. Replaces an ad-hoc `.slice(0, 5)` that silently hid the rest.
+ */
+function WidgetScrollList({ children }: { children: ReactNode }) {
+  return (
+    <ul className="flex max-h-64 flex-col gap-3 overflow-y-auto scroll-smooth pr-1">{children}</ul>
+  )
+}
+
 function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
   return (
     <Card className="shadow-card">
@@ -146,8 +158,8 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
             description="Every product is above its threshold. Set a default in Settings → Organization if this looks empty."
           />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {balances.slice(0, 5).map((balance) => (
+          <WidgetScrollList>
+            {balances.map((balance) => (
               <li key={balance.id} className="flex items-center justify-between gap-3 text-sm">
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate font-medium">{balance.productName}</span>
@@ -156,7 +168,7 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
                 <Badge variant="destructive">{balance.availableQuantity} left</Badge>
               </li>
             ))}
-          </ul>
+          </WidgetScrollList>
         )}
       </CardContent>
     </Card>
@@ -245,8 +257,8 @@ function TopProductsWidget({ products }: { products: PosProductShortcut[] }) {
             description="Best sellers over the last 30 days will appear here."
           />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {products.slice(0, 5).map((product) => (
+          <WidgetScrollList>
+            {products.map((product) => (
               <li key={product.id} className="flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate font-medium">{product.name}</span>
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -254,7 +266,7 @@ function TopProductsWidget({ products }: { products: PosProductShortcut[] }) {
                 </span>
               </li>
             ))}
-          </ul>
+          </WidgetScrollList>
         )}
       </CardContent>
     </Card>

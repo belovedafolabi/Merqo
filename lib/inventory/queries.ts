@@ -1,5 +1,6 @@
 import { getCurrentUserContext } from '@/lib/auth/context'
 import { resolvePermission } from '@/lib/auth/permissions'
+import { isLowStock } from '@/lib/inventory/low-stock'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 /**
@@ -133,10 +134,13 @@ export async function listLowStockBalances(
 
   if (error) throw error
   return ((data ?? []) as unknown as BalanceRow[])
-    .filter((row) => {
-      const threshold = row.low_stock_threshold ?? orgDefaultThreshold
-      return threshold !== null && Number(row.available_quantity) <= Number(threshold)
-    })
+    .filter((row) =>
+      isLowStock(
+        Number(row.available_quantity),
+        row.low_stock_threshold === null ? null : Number(row.low_stock_threshold),
+        orgDefaultThreshold,
+      ),
+    )
     .map(mapBalanceRow)
 }
 
