@@ -11,8 +11,12 @@ export interface DashboardSummary {
   grossSales: number
   /** Revenue: subtotal − discount. Tax and service charge are excluded. */
   netSales: number
-  /** What actually went in the till (includes tax). */
+  /** What actually went in the till (the overall total): netSales + tax + service charge. */
   collected: number
+  /** Tax collected on behalf of the government — not revenue. */
+  taxCollected: number
+  /** Service charge collected — not revenue. */
+  serviceCharge: number
   averageSale: number
   priorSaleCount: number
   priorNetSales: number

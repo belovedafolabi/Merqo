@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Bell } from 'lucide-react'
 
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -36,6 +37,7 @@ export function AdminTopbar({ title, children }: { title: string; children?: Rea
       </div>
       <div className="flex items-center gap-2">
         {children}
+        <ThemeToggle />
         <Suspense
           fallback={
             <Button variant="outline" size="icon" aria-label="Notifications" disabled>

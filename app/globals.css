@@ -33,6 +33,22 @@
 :root {
   --radius: 1rem;
 
+  /* Tells the browser this subtree is light, so native scrollbars, <select>
+     popups, date pickers, spinners and autofill chrome render light. `.dark`
+     flips it — without it they'd stay light in dark mode. */
+  color-scheme: light;
+
+  /* Styled scrollbars (the block near the print rules). Thumb reuses the
+     --muted-foreground hue at low alpha; track stays invisible. */
+  --scrollbar-thumb: oklch(0.556 0 0 / 0.4);
+  --scrollbar-thumb-hover: oklch(0.556 0 0 / 0.65);
+  --scrollbar-track: transparent;
+
+  /* Raw elevation values behind the `shadow-card` / `shadow-elevated`
+     utilities (mapped in `@theme inline`). `.dark` overrides them. */
+  --shadow-card-value: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03);
+  --shadow-elevated-value: 0 16px 40px oklch(0 0 0 / 0.2), 0 2px 8px oklch(0 0 0 / 0.08);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -88,11 +104,24 @@
 }
 
 .dark {
+  color-scheme: dark;
+
+  /* Pure-black shadows vanish on the dark canvas, so the "floating cards"
+     depth collapses (reads as flat / low-contrast). Deeper black + a faint
+     top hairline restores it. */
+  --shadow-card-value: 0 1px 2px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 0.04);
+  --shadow-elevated-value:
+    0 16px 40px oklch(0 0 0 / 0.62), 0 2px 8px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(1 0 0 / 0.05);
+
+  --scrollbar-thumb: oklch(1 0 0 / 0.22);
+  --scrollbar-thumb-hover: oklch(1 0 0 / 0.42);
+
   --background: oklch(0.13 0 0);
   --foreground: oklch(0.96 0 0);
-  --card: oklch(0.19 0 0);
+  --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.19 0 0);
+  --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.96 0 0);
   --secondary: oklch(0.26 0 0);
   --secondary-foreground: oklch(0.96 0 0);
@@ -108,8 +137,8 @@
   --warning-foreground: oklch(0.145 0 0);
   --info: oklch(0.7 0.14 245);
   --info-foreground: oklch(0.145 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 24%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -136,6 +165,21 @@
   --admin-canvas-from: oklch(0.11 0.015 155);
   --admin-canvas-via: oklch(0.08 0.012 155);
   --admin-canvas-to: oklch(0.05 0.008 155);
+}
+
+/*
+ * Card depth on the dark canvas. The base <Card> hardcodes `shadow-sm`
+ * (0.1-black), which the design-system `shadow-card` doesn't override in the
+ * cascade and which is invisible on a near-black backdrop — cards read as
+ * flat. A scoped rule gives every card a faint hairline ring plus a real
+ * drop shadow so the "floating panels" hierarchy survives dark mode. Higher
+ * specificity than the utility, so it lands whichever shadow class won.
+ */
+.dark [data-slot='card'] {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 0.5),
+    0 8px 24px -12px oklch(0 0 0 / 0.55),
+    0 0 0 1px oklch(1 0 0 / 0.06);
 }
 
 @theme inline {
@@ -211,9 +255,11 @@
   --text-label--line-height: 1.4;
 
   /* Shadows — used sparingly; borders/spacing do most of the work
-     (docs/UXUI_Design_System_Specification.md §9). Two levels only. */
-  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03);
-  --shadow-elevated: 0 16px 40px oklch(0 0 0 / 0.2), 0 2px 8px oklch(0 0 0 / 0.08);
+     (docs/UXUI_Design_System_Specification.md §9). Two levels only.
+     `inline` + `var()` so the theme-scoped raw values (`:root` / `.dark`)
+     can differ: black-alpha shadows are invisible on the dark canvas. */
+  --shadow-card: var(--shadow-card-value);
+  --shadow-elevated: var(--shadow-elevated-value);
 
   /* Bottom inset that clears a phone's home-indicator / gesture bar, falling
      back to ordinary padding everywhere else. A token rather than a repeated
@@ -287,6 +333,91 @@
   body.printing-receipt .receipt-print-portal {
     display: block;
   }
+
+  /* On iOS `vaul` locks scroll with `body { position: fixed; top: -Ny }`
+     while the checkout drawer is open — that offset shifted/clipped the
+     portalled receipt on phones & tablets. Undo it for the print. */
+  body.printing-receipt {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Belt & braces: never rasterise a vaul sheet even if the isolation class
+     is toggled a beat late on engines that don't fire `afterprint`
+     (mobile WebKit / Chrome) — that was the "print shows the drawer" bug. */
+  body.printing-receipt [data-vaul-drawer],
+  body.printing-receipt [vaul-drawer],
+  body.printing-receipt [data-slot='drawer-content'],
+  body.printing-receipt [data-slot='drawer-overlay'] {
+    display: none !important;
+  }
+}
+
+/*
+ * Styled scrollbars, site-wide (docs/UXUI §9 — no raw browser chrome). A slim
+ * rounded thumb on an invisible track, themed from `--scrollbar-*` (set per
+ * theme in `:root` / `.dark`). Firefox uses `scrollbar-width` / `scrollbar-color`;
+ * Chromium/WebKit use the `::-webkit-scrollbar-*` pseudo-elements.
+ *
+ * The page-level scrollbar lives on <html>, which never carries `.dark` (it's
+ * scoped to the `(app)` shell <div>), so `html:has(.dark)` re-themes it and
+ * sets `color-scheme` for the root/overscroll area in Admin dark mode.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html:has(.dark) {
+  color-scheme: dark;
+  scrollbar-color: oklch(1 0 0 / 0.22) transparent;
+}
+html:has(.dark)::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.22);
+  background-clip: content-box;
+}
+html:has(.dark)::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.42);
+  background-clip: content-box;
+}
+
+/* The sidebar is dark chrome in BOTH themes, so in light mode it would
+   otherwise get the light (dark-on-light) thumb. `sidebar-content` is the
+   scroll container (components/ui/sidebar.tsx). */
+[data-slot='sidebar-inner'],
+[data-slot='sidebar-content'] {
+  scrollbar-color: oklch(1 0 0 / 0.2) transparent;
+}
+[data-slot='sidebar-content']::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.2);
+  background-clip: content-box;
+}
+[data-slot='sidebar-content']::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.36);
+  background-clip: content-box;
 }
 
 @layer utilities {
@@ -417,12 +548,13 @@
 
 /*
  * Every toast — success/error/info/warning, not only the loading variant's
- * title text-shimmer — gets one diagonal sheen sweep as it mounts, reusing
- * merqo-sheen-sweep. `inset: 0` + `border-radius: inherit` so it exactly
- * covers the toast and never extends the scroll area (same rationale as
- * `.shimmer-sheen::after`); `pointer-events: none` so it never eats a click
- * on the toast's action/close. Sonner already gives `[data-sonner-toast]`
- * `position: relative`. Suppressed under reduced motion.
+ * title text-shimmer — carries a continuously travelling diagonal shimmer
+ * band for as long as it is on screen. `inset: 0` + `border-radius: inherit`
+ * so it exactly covers the toast and never extends the scroll area (same
+ * rationale as `.shimmer-sheen::after`); `pointer-events: none` so it never
+ * eats a click on the toast's action/close. Sonner already gives
+ * `[data-sonner-toast]` `position: relative`. Fully suppressed under reduced
+ * motion (no `::after` at all).
  */
 @media (prefers-reduced-motion: no-preference) {
   .toaster [data-sonner-toast][data-mounted='true']::after {
@@ -434,14 +566,13 @@
     pointer-events: none;
     background: linear-gradient(
       105deg,
-      transparent 40%,
-      color-mix(in oklch, var(--popover-foreground) 14%, transparent) 50%,
-      transparent 60%
+      transparent 42%,
+      color-mix(in oklch, var(--popover-foreground) 30%, transparent) 50%,
+      transparent 58%
     );
     background-size: 260% 100%;
-    background-position: 180% 0;
-    opacity: 0;
-    animation: merqo-sheen-sweep 0.9s ease-out 0.05s;
+    background-repeat: no-repeat;
+    animation: merqo-toast-shimmer 2.2s linear 0.1s infinite;
   }
 }
 
@@ -658,6 +789,18 @@
   100% {
     background-position: -60% 0;
     opacity: 0;
+  }
+}
+
+/* Continuous toast shimmer — the band travels across and repeats, no opacity
+   pulse (it's always visible while sweeping). Paired with `no-repeat` on the
+   ::after so the gap between sweeps reads as a clean pass, not a second band. */
+@keyframes merqo-toast-shimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -80% 0;
   }
 }
 

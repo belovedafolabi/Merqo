@@ -232,8 +232,11 @@ export function ProductGrid({ categories }: { categories: PosCategory[] }) {
   const showStrips = !searching && !browsing
   const showGrid = searching || browsing
 
+  // `pb-28` below `lg` clears the fixed MobileCartBar (bottom bar + safe-area)
+  // so the last product row is never hidden behind it; reset at `lg` where
+  // CartPanel takes over and the bar is gone.
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth p-4">
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto scroll-smooth p-4 pb-28 lg:pb-4">
       <PosSearch
         value={query}
         onChange={setQuery}

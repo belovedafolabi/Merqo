@@ -25,6 +25,8 @@ interface SummaryRow {
   gross_sales: string | number
   net_sales: string | number
   collected: string | number
+  tax_collected: string | number
+  service_charge_collected: string | number
   average_sale: string | number
   prior_sale_count: number
   prior_net_sales: string | number
@@ -50,6 +52,8 @@ export async function getDashboardSummary(
     grossSales: Number(row?.gross_sales ?? 0),
     netSales: Number(row?.net_sales ?? 0),
     collected: Number(row?.collected ?? 0),
+    taxCollected: Number(row?.tax_collected ?? 0),
+    serviceCharge: Number(row?.service_charge_collected ?? 0),
     averageSale: Number(row?.average_sale ?? 0),
     priorSaleCount: Number(row?.prior_sale_count ?? 0),
     priorNetSales: Number(row?.prior_net_sales ?? 0),

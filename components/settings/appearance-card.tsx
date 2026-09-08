@@ -6,7 +6,8 @@ import { Monitor, Moon, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { setThemePreferenceAction } from '@/app/(app)/settings/account/theme-actions'
-import { THEME_COOKIE, type ThemePreference } from '@/lib/theme/types'
+import { type ThemePreference } from '@/lib/theme/types'
+import { applyThemeLocally } from '@/lib/theme/apply-theme'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -15,20 +16,6 @@ const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Monitor },
 ]
-
-function applyLocally(preference: ThemePreference) {
-  const root = document.querySelector<HTMLElement>('[data-theme-pref]')
-  if (!root) return
-  root.setAttribute('data-theme-pref', preference)
-  const resolved =
-    preference === 'system'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-      : preference
-  root.classList.toggle('dark', resolved === 'dark')
-  document.cookie = `${THEME_COOKIE}=${resolved}; path=/; max-age=31536000; samesite=lax`
-}
 
 /**
  * Light / Dark / System for the Admin shell (the POS and auth screens are
@@ -45,7 +32,7 @@ export function AppearanceCard({ current }: { current: ThemePreference }) {
   function choose(preference: ThemePreference) {
     if (preference === selected) return
     setSelected(preference)
-    applyLocally(preference)
+    applyThemeLocally(preference)
     startTransition(async () => {
       const { error } = await setThemePreferenceAction(preference)
       if (error) {
