@@ -8,7 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/states/empty-state'
 import { SalesOverviewChart } from '@/components/dashboard/sales-overview-chart'
 import { SalesPerformanceCard } from '@/components/dashboard/sales-performance-card'
-import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/types'
+import {
+  deltaLabel,
+  type DashboardSummary,
+  type DashboardSeriesPoint,
+  type SeriesGranularity,
+} from '@/lib/dashboard/types'
 import type { DashboardPeriod } from '@/lib/dashboard/periods'
 import type { ResolvedWidget } from '@/lib/dashboard/layout'
 import type { InventoryBalance } from '@/lib/inventory/queries'
@@ -25,10 +30,14 @@ function money(value: number): string {
   })
 }
 
-export type PerformanceBundle = Record<
-  DashboardPeriod,
-  { summary: DashboardSummary; series: DashboardSeriesPoint[] }
->
+export interface PerformancePeriodData {
+  summary: DashboardSummary
+  series: DashboardSeriesPoint[]
+  /** `hour` for the "Today" tab (hourly buckets), `day` for the rest. */
+  granularity: SeriesGranularity
+}
+
+export type PerformanceBundle = Record<DashboardPeriod, PerformancePeriodData>
 
 export interface DashboardData {
   summary: DashboardSummary | null

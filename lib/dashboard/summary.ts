@@ -83,3 +83,36 @@ export async function getDashboardSeries(
     netSales: Number(row.net_sales),
   }))
 }
+
+interface HourlyRow {
+  bucket: string
+  sale_count: number
+  net_sales: string | number
+}
+
+/**
+ * The same trend, bucketed by the hour instead of the day — for the "Sales
+ * performance" card's "Today" tab (dashboard_sales_series_hourly,
+ * 20260908090600). Each point's `day` field carries the hour bucket's full ISO
+ * timestamp; the chart renders it as a time of day.
+ */
+export async function getDashboardSeriesHourly(
+  branchId: string,
+  from: Date,
+  to: Date,
+): Promise<DashboardSeriesPoint[]> {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase.rpc('dashboard_sales_series_hourly', {
+    p_branch_id: branchId,
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+    p_tz: DASHBOARD_TIME_ZONE,
+  })
+
+  if (error) throw error
+  return ((data as HourlyRow[] | null) ?? []).map((row) => ({
+    day: row.bucket,
+    saleCount: Number(row.sale_count),
+    netSales: Number(row.net_sales),
+  }))
+}

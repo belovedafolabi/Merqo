@@ -9,6 +9,7 @@ import { getPosProductShortcuts } from '@/lib/pos/catalog'
 import { listSales } from '@/lib/sales/queries'
 import {
   getDashboardSeries,
+  getDashboardSeriesHourly,
   getDashboardSummary,
   type DashboardSeriesPoint,
   type DashboardSummary,
@@ -36,10 +37,10 @@ import {
  */
 const OVERVIEW_DAYS = 14
 
-/** Chart range per performance period — the summary numbers use the true
- *  period window; the trend is capped so "all time" isn't ~9000 daily points. */
-const PERFORMANCE_CHART_DAYS: Record<DashboardPeriod, number> = {
-  today: 14,
+/** Daily-trend range per performance period — the summary numbers use the true
+ *  period window; the trend is capped so "all time" isn't ~9000 daily points.
+ *  "today" is not here: it charts hourly buckets of the current day instead. */
+const PERFORMANCE_CHART_DAYS: Record<Exclude<DashboardPeriod, 'today'>, number> = {
   month: 31,
   year: 365,
   all: 365,
@@ -50,12 +51,24 @@ async function loadPerformance(branchId: string): Promise<PerformanceBundle> {
   const entries = await Promise.all(
     periods.map(async (period) => {
       const { from, to } = dashboardWindow(period)
-      const chart = trailingDays(PERFORMANCE_CHART_DAYS[period])
+      // "Today" charts the day by the hour; the rest chart a trailing run of
+      // days. Still one summary + one series RPC per period — the concurrent
+      // count that once tripped the statement timeout is unchanged.
+      const seriesQuery =
+        period === 'today'
+          ? getDashboardSeriesHourly(branchId, from, to)
+          : (() => {
+              const chart = trailingDays(PERFORMANCE_CHART_DAYS[period])
+              return getDashboardSeries(branchId, chart.from, chart.to)
+            })()
       const [summary, series] = await Promise.all([
         getDashboardSummary(branchId, from, to),
-        getDashboardSeries(branchId, chart.from, chart.to),
+        seriesQuery,
       ])
-      return [period, { summary, series }] as const
+      return [
+        period,
+        { summary, series, granularity: period === 'today' ? 'hour' : 'day' },
+      ] as const
     }),
   )
   return Object.fromEntries(entries) as PerformanceBundle
