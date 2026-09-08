@@ -14,6 +14,21 @@ export interface StepListEntry {
   title: string
 }
 
+/**
+ * The driver.js popover lives at `document.body`, i.e. outside the mobile
+ * nav's Radix Sheet. driver.js swallows `pointerdown` for its own
+ * prev/next/close buttons but not for anything we inject here, so a tap on a
+ * jump-list entry reached Radix's `DismissableLayer` as an outside-press and
+ * closed the menu — leaving the user staring at a highlight with no context.
+ * Stopping the pointer events at the list root keeps that from happening; the
+ * entries' own `click` handlers still fire.
+ */
+function keepPointerEventsInside(root: HTMLElement): void {
+  for (const type of ['pointerdown', 'mousedown', 'touchstart'] as const) {
+    root.addEventListener(type, (event) => event.stopPropagation())
+  }
+}
+
 export function buildStepList(
   steps: StepListEntry[],
   activeIndex: number,
@@ -38,7 +53,10 @@ export function buildStepList(
     list.appendChild(entry)
   })
 
-  if (!isMobile) return list
+  if (!isMobile) {
+    keepPointerEventsInside(list)
+    return list
+  }
 
   const disclosure = document.createElement('details')
   disclosure.className = 'merqo-tour-steps__disclosure'
@@ -46,5 +64,6 @@ export function buildStepList(
   summary.textContent = 'Jump to a step'
   disclosure.appendChild(summary)
   disclosure.appendChild(list)
+  keepPointerEventsInside(disclosure)
   return disclosure
 }

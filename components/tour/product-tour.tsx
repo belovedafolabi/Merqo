@@ -19,14 +19,37 @@ const MIN_REAL_STEPS = 2
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Polls for `selector` to appear, up to `timeoutMs`. Returns whether it did. */
+/**
+ * Is this element actually rendered? A `display:none` element (e.g. a
+ * `hidden lg:flex` cart panel on a phone) still answers `querySelector`, but
+ * has no client rects — driver.js would then compute a 0×0 spotlight and drop
+ * the popover in the middle of the screen pointing at nothing.
+ */
+function isRendered(el: Element): boolean {
+  return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
+}
+
+/**
+ * The first *rendered* match for `selector`. Several tour targets exist twice
+ * in the DOM — a desktop copy hidden below `lg`, a mobile copy — and a plain
+ * `querySelector` returns whichever comes first in source order, often the
+ * hidden one.
+ */
+function firstRenderedElement(selector: string): Element | null {
+  for (const el of document.querySelectorAll(selector)) {
+    if (isRendered(el)) return el
+  }
+  return null
+}
+
+/** Polls for `selector` to be present *and rendered*, up to `timeoutMs`. */
 async function waitForSelector(selector: string, timeoutMs = 1500): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    if (document.querySelector(selector)) return true
+    if (firstRenderedElement(selector)) return true
     await sleep(60)
   }
-  return document.querySelector(selector) !== null
+  return firstRenderedElement(selector) !== null
 }
 
 /**
@@ -79,9 +102,12 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
     const source: TourStep[] =
       area === 'pos' ? POS_TOUR_STEPS : [...ADMIN_TOUR_STEPS, ...POS_TOUR_STEPS]
     const steps = source
-      .filter((step) => document.querySelector(step.selector))
-      .map((step) => ({
-        element: step.selector,
+      .map((step) => ({ step, element: firstRenderedElement(step.selector) }))
+      .filter((entry): entry is { step: TourStep; element: Element } => entry.element !== null)
+      .map(({ step, element }) => ({
+        // The resolved element, not the selector — so driver.js highlights the
+        // rendered copy, not a `display:none` twin that shares the selector.
+        element,
         popover: {
           title: step.title,
           description: step.body,
@@ -109,6 +135,9 @@ export function ProductTour({ area, autoStart }: { area: 'admin' | 'pos'; autoSt
       showProgress: true,
       allowClose: true,
       overlayOpacity: 0.6,
+      // Scroll an off-screen target into view before positioning the popover,
+      // and do it visibly rather than jumping.
+      smoothScroll: true,
       nextBtnText: 'Next',
       prevBtnText: 'Back',
       doneBtnText: 'Done',
