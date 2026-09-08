@@ -99,6 +99,9 @@ export function CheckoutDrawer({
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [printing, setPrinting] = useState(false)
+  // The success screen's receipt fetches client-side; "Print receipt" must
+  // wait for it or it prints a blank page.
+  const [receiptReady, setReceiptReady] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState<string | null>(null)
   const [couponPending, startCouponCheck] = useTransition()
@@ -158,6 +161,7 @@ export function CheckoutDrawer({
     handleSelectCustomer(null)
     setPaymentMethod('cash')
     setDetailsOpen(false)
+    setReceiptReady(false)
   }
 
   function applyCoupon() {
@@ -215,13 +219,17 @@ export function CheckoutDrawer({
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto scroll-smooth px-4">
-            <ReceiptView saleId={state.saleId} />
+            <ReceiptView
+              key={state.saleId}
+              saleId={state.saleId}
+              onReady={() => setReceiptReady(true)}
+            />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
             <Button
               variant="outline"
               size="touch"
-              disabled={printing}
+              disabled={printing || !receiptReady}
               onClick={() => {
                 setPrinting(true)
                 // Finishing the print clears the cart and dismisses the receipt
