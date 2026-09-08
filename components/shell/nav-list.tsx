@@ -4,6 +4,7 @@ import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import {
+  BadgeCheck,
   Banknote,
   Boxes,
   Building2,
@@ -54,6 +55,7 @@ const ICONS: Record<NavItem['icon'], LucideIcon> = {
   Settings,
   UserCog,
   ShieldCheck,
+  BadgeCheck,
 }
 
 /**
