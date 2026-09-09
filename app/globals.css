@@ -106,6 +106,16 @@
 .dark {
   color-scheme: dark;
 
+  /* `<body>` sits OUTSIDE this `.dark` div (app/(app)/layout.tsx stamps the
+     class on a wrapper, not on <html>), so `body { text-foreground }` keeps
+     resolving the LIGHT `:root --foreground` for everything that inherits its
+     colour — table cells, raw <p>/<span>/<li>, portalled menu/dialog bodies —
+     which came out near-black on the dark surfaces. Re-assert the dark
+     foreground here so descendants inherit it. `--foreground` below is the
+     dark value; custom-property order within a rule doesn't matter.
+     Completes Milestone 17 Item 2's structural portal-theming fix. */
+  color: var(--foreground);
+
   /* Pure-black shadows vanish on the dark canvas, so the "floating cards"
      depth collapses (reads as flat / low-contrast). Deeper black + a faint
      top hairline restores it. */
@@ -634,6 +644,18 @@ html:has(.dark)::-webkit-scrollbar-thumb:hover {
   .shimmer-sheen:focus-within::after {
     animation: merqo-sheen-sweep 0.9s ease-out;
   }
+}
+
+/*
+ * Recharts <Brush> (the zoom strip on the dashboard "Sales performance"
+ * chart, components/charts/sales-trend-chart.tsx) renders its traveller date
+ * labels as `<text fill="#666">` — hardcoded, no React prop — which is
+ * dark-on-dark against the brush's `fill="var(--muted)"` in dark mode. Retint
+ * to a legible token. Harmless in light mode (still a mid-grey label).
+ */
+.recharts-brush-texts text,
+.recharts-brush text {
+  fill: var(--muted-foreground);
 }
 
 /*
