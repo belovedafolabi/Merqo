@@ -20,6 +20,12 @@ import { useCart, useCartTotals } from '@/lib/pos/cart-context'
  * bottom-sheet Drawer rather than a shrunk desktop panel. Only rendered
  * below `lg` (app/(pos)/pos/page.tsx hides CartPanel there instead).
  *
+ * `fixed inset-x-0 bottom-0` so it stays reachable without scrolling the
+ * product grid to the end on phones/tablets — the POS column isn't a strict
+ * viewport-height flex box, so an in-flow bar scrolled off. `z-40` keeps it
+ * under the drawer overlay/content (`z-50`); ProductGrid adds matching
+ * bottom padding so no tile hides behind it.
+ *
  * `dvh` not `vh` on the drawer body (Milestone 14): on iOS Safari `vh`
  * ignores the URL bar, so `70vh` overshot the visible area and pushed
  * CartSummary's checkout button below the fold — exactly the "obscured
@@ -32,7 +38,7 @@ export function MobileCartBar() {
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0)
 
   return (
-    <div className="border-t bg-card px-3 pt-3 pb-safe-b lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-3 pt-3 pb-safe-b lg:hidden">
       <Drawer>
         <DrawerTrigger asChild>
           <button

@@ -30,46 +30,72 @@ const PORTAL_CLASS = 'receipt-print-portal'
  * screen in the checkout drawer by the time this runs, so there is nothing
  * left to fetch.
  *
- * `onDone` fires only once the print UI is genuinely gone — i.e. after the
- * window regains focus, not on bare `afterprint`. Chromium fires `afterprint`
+ * `onDone` fires only once the print UI is genuinely gone — after the window
+ * regains focus, never straight off `afterprint`. Chromium fires `afterprint`
  * while the print preview is still on screen; tearing down there (removing the
  * isolation class, unmounting the portalled receipt) let Chrome re-compose the
  * preview from the now-unhidden page — the whole POS, checkout drawer on top.
  * That was the "print shows the checkout drawer" bug.
  *
+ * Mobile WebKit / Chrome often never fire `afterprint` at all, so an earlier
+ * version's unconditional `focus`→settle listener ran mid-compose on phones &
+ * tablets and tore the isolation down too — the same bug, one platform over.
+ * The reliable cross-engine signal is the `print` media query flipping back to
+ * non-matching; `afterprint` and a 60s cap are kept as fallbacks. A short
+ * delay after the signal lets the engine finish rasterising the receipt-only
+ * page before the portal unmounts and the POS repaints.
+ *
  * The isolation class is added and removed by <ReceiptPrintPortal>'s own
- * `beforeprint`/`afterprint` handlers, so a native Ctrl+P is covered too; this
- * function only triggers the print and defers `onDone` until it is safe.
+ * handlers, so a native Ctrl/Cmd+P is covered too; this function only triggers
+ * the print and defers `onDone` until it is safe.
  */
 export function printReceiptInPlace(onDone?: () => void): void {
   let settled = false
   const timers: ReturnType<typeof setTimeout>[] = []
+  const printMql = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
+
+  function cleanup() {
+    window.removeEventListener('afterprint', onAfterPrint)
+    window.removeEventListener('focus', onFocusSettle)
+    printMql?.removeEventListener?.('change', onMediaChange)
+    timers.forEach(clearTimeout)
+  }
 
   function settle() {
     if (settled) return
     settled = true
-    window.removeEventListener('afterprint', onAfterPrint)
-    window.removeEventListener('focus', settle)
-    timers.forEach(clearTimeout)
-    onDone?.()
+    cleanup()
+    // Give the engine a beat to finish composing the (receipt-only) page
+    // before onDone closes the drawer and repaints the POS behind it.
+    timers.push(setTimeout(() => onDone?.(), 150))
   }
 
-  function onAfterPrint() {
-    // Chrome/Edge fire this with the preview still visible. Wait for the
-    // window to regain focus (dialog really dismissed); a short backstop
-    // covers engines where the focus event doesn't arrive cleanly.
+  function onFocusSettle() {
+    settle()
+  }
+
+  // The dialog is really gone once the window has focus again. Wait for it,
+  // with a short backstop for engines where `focus` doesn't arrive cleanly.
+  function armSettle() {
+    if (settled) return
     if (document.hasFocus()) {
       settle()
     } else {
-      window.addEventListener('focus', settle, { once: true })
+      window.addEventListener('focus', onFocusSettle, { once: true })
       timers.push(setTimeout(settle, 1_500))
     }
   }
 
+  function onAfterPrint() {
+    armSettle()
+  }
+
+  function onMediaChange(event: MediaQueryListEvent) {
+    if (!event.matches) armSettle()
+  }
+
   window.addEventListener('afterprint', onAfterPrint)
-  // Engines that never fire `afterprint` (older WebKit): the window regaining
-  // focus after the dialog closes is the fallback signal.
-  window.addEventListener('focus', settle, { once: true })
+  printMql?.addEventListener?.('change', onMediaChange)
   // Hard cap if nothing fires at all, so the caller's button never sticks.
   timers.push(setTimeout(settle, 60_000))
 
@@ -118,26 +144,42 @@ export function ReceiptPrintPortal({
 
   // Own the isolation class for the whole time this print copy is mounted, so
   // a native Ctrl/Cmd+P prints the receipt too (nothing else adds the class).
-  // Removal is deferred to the next focus after `afterprint` — Chrome keeps
-  // the preview on screen after `afterprint` and re-composing it without the
-  // class would show the whole POS.
+  // Removal is deferred to the next focus after the dialog closes — Chrome
+  // keeps the preview on screen after `afterprint`, and re-composing it
+  // without the class would show the whole POS. `matchMedia('print')` covers
+  // mobile engines that never fire `afterprint`; `removeClass` refuses to run
+  // while the print surface is still matching.
   useEffect(() => {
-    function onBeforePrint() {
+    const printMql = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
+    function addClass() {
       document.body.classList.add(RECEIPT_PRINTING_CLASS)
     }
     function removeClass() {
+      if (printMql?.matches) return
       document.body.classList.remove(RECEIPT_PRINTING_CLASS)
     }
-    function onAfterPrint() {
+    function settleRemove() {
       if (document.hasFocus()) removeClass()
       else window.addEventListener('focus', removeClass, { once: true })
     }
+    function onBeforePrint() {
+      addClass()
+    }
+    function onAfterPrint() {
+      settleRemove()
+    }
+    function onMediaChange(event: MediaQueryListEvent) {
+      if (event.matches) addClass()
+      else settleRemove()
+    }
     window.addEventListener('beforeprint', onBeforePrint)
     window.addEventListener('afterprint', onAfterPrint)
+    printMql?.addEventListener?.('change', onMediaChange)
     return () => {
       window.removeEventListener('beforeprint', onBeforePrint)
       window.removeEventListener('afterprint', onAfterPrint)
       window.removeEventListener('focus', removeClass)
+      printMql?.removeEventListener?.('change', onMediaChange)
       document.body.classList.remove(RECEIPT_PRINTING_CLASS)
     }
   }, [])

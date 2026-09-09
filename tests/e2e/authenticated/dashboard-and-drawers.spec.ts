@@ -34,11 +34,13 @@ test('the dashboard shows real sales figures, not the milestone placeholder', as
   await expect(page.getByText(/POS Transaction Engine/i)).toHaveCount(0)
   await expect(page.getByText(/starts recording sales/i)).toHaveCount(0)
 
-  // #14: the summary widget (on by default) is wired up — its three cards
+  // #14: the summary widget (on by default) is wired up — a "Total collected"
+  // hero card and a Sales / Tax / Transactions / Average sale breakdown row
   // render where the static "₦0" placeholders used to be. The figures
   // themselves depend on file ordering (this spec may run before any sale is
   // rung up), so this checks the widget is present, not a value.
-  await expect(main.getByText('Sales today')).toBeVisible()
+  await expect(main.getByText('Total collected today')).toBeVisible()
+  await expect(main.getByText('Tax', { exact: true })).toBeVisible()
   await expect(main.getByText('Transactions')).toBeVisible()
   await expect(main.getByText('Average sale')).toBeVisible()
 })

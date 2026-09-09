@@ -119,25 +119,39 @@ function SalesSummaryWidget({ summary }: { summary: DashboardSummary | null }) {
     priorAverageSale: 0,
     grossSales: 0,
     collected: 0,
+    taxCollected: 0,
+    serviceCharge: 0,
   }
+  // "Tax" tile folds in the service charge (both are collected on behalf of
+  // others, never revenue) so Total collected = Sales + Tax tile exactly.
+  const taxAndCharges = s.taxCollected + s.serviceCharge
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-3">
-      <StatCard
-        label="Sales today"
-        value={money(s.netSales)}
-        delta={deltaLabel(s.netSales, s.priorNetSales) ?? undefined}
-        tone="inverted"
-      />
-      <StatCard
-        label="Transactions"
-        value={String(s.saleCount)}
-        delta={deltaLabel(s.saleCount, s.priorSaleCount) ?? undefined}
-      />
-      <StatCard
-        label="Average sale"
-        value={money(s.averageSale)}
-        delta={deltaLabel(s.averageSale, s.priorAverageSale) ?? undefined}
-      />
+    <div className="grid grid-cols-1 gap-4 lg:col-span-3">
+      <StatCard label="Total collected today" value={money(s.collected)} tone="inverted" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Sales"
+          value={money(s.netSales)}
+          delta={deltaLabel(s.netSales, s.priorNetSales) ?? undefined}
+        />
+        <StatCard label="Tax" value={money(taxAndCharges)}>
+          {s.serviceCharge > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              incl. {money(s.serviceCharge)} service charge
+            </span>
+          ) : null}
+        </StatCard>
+        <StatCard
+          label="Transactions"
+          value={String(s.saleCount)}
+          delta={deltaLabel(s.saleCount, s.priorSaleCount) ?? undefined}
+        />
+        <StatCard
+          label="Average sale"
+          value={money(s.averageSale)}
+          delta={deltaLabel(s.averageSale, s.priorAverageSale) ?? undefined}
+        />
+      </div>
     </div>
   )
 }
