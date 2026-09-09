@@ -312,48 +312,12 @@
   }
 }
 
-/* In-place receipt printing (components/receipts/receipt-print-portal.tsx).
-   Printing the receipt from the page it was rung up on, rather than opening
-   /receipts/preview in a popup, means the entire POS is still in the document
-   when the print dialog opens — so the printout has to be narrowed to the
-   portalled receipt copy by hand.
-
-   Portalled to <body> and hidden off-print, so it costs a hidden div and
-   nothing else until someone actually prints. */
-.receipt-print-portal {
-  display: none;
-}
-
-@media print {
-  body.printing-receipt > *:not(.receipt-print-portal) {
-    display: none !important;
-  }
-
-  body.printing-receipt .receipt-print-portal {
-    display: block;
-  }
-
-  /* On iOS `vaul` locks scroll with `body { position: fixed; top: -Ny }`
-     while the checkout drawer is open — that offset shifted/clipped the
-     portalled receipt on phones & tablets. Undo it for the print. */
-  body.printing-receipt {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    overflow: visible !important;
-  }
-
-  /* Belt & braces: never rasterise a vaul sheet even if the isolation class
-     is toggled a beat late on engines that don't fire `afterprint`
-     (mobile WebKit / Chrome) — that was the "print shows the drawer" bug. */
-  body.printing-receipt [data-vaul-drawer],
-  body.printing-receipt [vaul-drawer],
-  body.printing-receipt [data-slot='drawer-content'],
-  body.printing-receipt [data-slot='drawer-overlay'] {
-    display: none !important;
-  }
-}
+/* Receipt printing from the POS is done by loading /print/receipt/[saleId]
+   into a hidden same-origin iframe that prints itself
+   (components/receipts/receipt-print-portal.tsx). The receipt is the entire
+   document in that frame, so no `@media print` isolation of the host page is
+   needed any more — the old `body.printing-receipt` / `.receipt-print-portal`
+   rules (and their vaul workarounds) are gone with it. */
 
 /*
  * Styled scrollbars, site-wide (docs/UXUI §9 — no raw browser chrome). A slim
