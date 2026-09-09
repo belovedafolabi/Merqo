@@ -81,32 +81,33 @@ test('a cashier can search, add to cart and complete a sale at this viewport', a
   // milestone the success state offered only "Done".
   await expect(page.getByRole('button', { name: /print receipt/i })).toBeVisible()
 
-  // The receipt is rendered in the drawer, not fetched by a popup on click.
-  // .and(':visible') because ReceiptView also renders a second, print-only
-  // copy portalled to <body> — the same double-mount idiom CartLines needs.
-  await expect(page.getByText(/Receipt #/).and(page.locator(':visible'))).toBeVisible()
+  // The receipt preview is rendered in the drawer, not fetched by a popup.
+  await expect(page.getByText(/Receipt #/)).toBeVisible()
 
-  // --- printing is isolated to the receipt -----------------------------
+  // --- printing is isolated to the receipt ----------------------------
   //
-  // Asserts the @media print cascade rather than calling window.print(),
-  // which would block on a native dialog. Printing used to open
-  // /receipts/preview in a popup — a whole second document load through the
-  // (app) layout — so the printed page was trivially just the receipt. Now
-  // the entire POS is still in the document when the dialog opens, and
-  // app/globals.css is what narrows the printout. This is the assertion that
-  // catches that CSS regressing into "print the whole till".
-  await page.evaluate(() => document.body.classList.add('printing-receipt'))
+  // "Print receipt" loads /print/receipt/[saleId] — a bare route with no
+  // (app) sidebar/topbar — into a hidden iframe that prints itself, so the
+  // live POS can never reach the paper (that was the Android-tablet bug).
+  await page.getByRole('button', { name: /print receipt/i }).click()
+
+  const printFrame = page.locator('iframe#merqo-receipt-print-frame')
+  await expect(printFrame).toBeAttached()
+  const frameSrc = await printFrame.getAttribute('src')
+  expect(frameSrc).toMatch(/^\/print\/receipt\/[^/?]+/)
+
+  // Finishing the print closes the drawer and clears the till (onDone).
+  await expect(page.getByText('Sale complete')).toBeHidden({ timeout: 15_000 })
+
+  // The bare print route renders ONLY the receipt — no shell chrome.
+  await page.goto(frameSrc!)
+  await expect(page.getByText(/Receipt #/)).toBeVisible()
+  await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0)
+  await expect(page.getByRole('navigation')).toHaveCount(0)
   await page.emulateMedia({ media: 'print' })
-
-  const printedReceipt = page.locator('.receipt-print-portal')
-  await expect(printedReceipt).toBeVisible()
-  await expect(printedReceipt.getByText(/Receipt #/)).toBeVisible()
-  // The cart panel / drawer is chrome, and must not reach the paper.
-  await expect(page.getByRole('button', { name: /^checkout/i })).toBeHidden()
-  await expect(page.getByRole('button', { name: /print receipt/i })).toBeHidden()
-
+  await expect(page.getByText(/Receipt #/)).toBeVisible()
+  await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0)
   await page.emulateMedia({ media: 'screen' })
-  await page.evaluate(() => document.body.classList.remove('printing-receipt'))
 
   // --- the sale is in the record BEFORE Print or Done is touched -------
   //
