@@ -41,7 +41,7 @@ export function ThemeToggle() {
     // Flip the shell immediately; persist + re-sync the server layout in the
     // background. The button stays enabled — the visual change already landed
     // and a rapid re-toggle is harmless.
-    applyThemeLocally(next)
+    applyThemeLocally(next, { animate: true })
     startTransition(async () => {
       const { error } = await setThemePreferenceAction(next)
       if (error) {

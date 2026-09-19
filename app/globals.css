@@ -109,11 +109,11 @@
   /* `<body>` sits OUTSIDE this `.dark` div (app/(app)/layout.tsx stamps the
      class on a wrapper, not on <html>), so `body { text-foreground }` keeps
      resolving the LIGHT `:root --foreground` for everything that inherits its
-     colour — table cells, raw <p>/<span>/<li>, portalled menu/dialog bodies —
-     which came out near-black on the dark surfaces. Re-assert the dark
-     foreground here so descendants inherit it. `--foreground` below is the
-     dark value; custom-property order within a rule doesn't matter.
-     Completes Milestone 17 Item 2's structural portal-theming fix. */
+     colour — table cells, raw <p>/<span>/<li>, `<svg stroke="currentColor">`
+     icons, portalled menu/dialog bodies — which came out near-black on the
+     dark surfaces. Re-assert the dark foreground here so descendants inherit
+     it. `--foreground` below is the dark value; custom-property order within a
+     rule doesn't matter. Completes Milestone 17 Item 2's structural fix. */
   color: var(--foreground);
 
   /* Pure-black shadows vanish on the dark canvas, so the "floating cards"
@@ -322,48 +322,12 @@
   }
 }
 
-/* In-place receipt printing (components/receipts/receipt-print-portal.tsx).
-   Printing the receipt from the page it was rung up on, rather than opening
-   /receipts/preview in a popup, means the entire POS is still in the document
-   when the print dialog opens — so the printout has to be narrowed to the
-   portalled receipt copy by hand.
-
-   Portalled to <body> and hidden off-print, so it costs a hidden div and
-   nothing else until someone actually prints. */
-.receipt-print-portal {
-  display: none;
-}
-
-@media print {
-  body.printing-receipt > *:not(.receipt-print-portal) {
-    display: none !important;
-  }
-
-  body.printing-receipt .receipt-print-portal {
-    display: block;
-  }
-
-  /* On iOS `vaul` locks scroll with `body { position: fixed; top: -Ny }`
-     while the checkout drawer is open — that offset shifted/clipped the
-     portalled receipt on phones & tablets. Undo it for the print. */
-  body.printing-receipt {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    overflow: visible !important;
-  }
-
-  /* Belt & braces: never rasterise a vaul sheet even if the isolation class
-     is toggled a beat late on engines that don't fire `afterprint`
-     (mobile WebKit / Chrome) — that was the "print shows the drawer" bug. */
-  body.printing-receipt [data-vaul-drawer],
-  body.printing-receipt [vaul-drawer],
-  body.printing-receipt [data-slot='drawer-content'],
-  body.printing-receipt [data-slot='drawer-overlay'] {
-    display: none !important;
-  }
-}
+/* Receipt printing from the POS is done by loading /print/receipt/[saleId]
+   into a hidden same-origin iframe that prints itself
+   (components/receipts/receipt-print-portal.tsx). The receipt is the entire
+   document in that frame, so no `@media print` isolation of the host page is
+   needed any more — the old `body.printing-receipt` / `.receipt-print-portal`
+   rules (and their vaul workarounds) are gone with it. */
 
 /*
  * Styled scrollbars, site-wide (docs/UXUI §9 — no raw browser chrome). A slim
@@ -747,6 +711,26 @@ html:has(.dark)::-webkit-scrollbar-thumb:hover {
 
 /* Keyframes for the utilities above. Kept at the top level (not inside a
    layer) so they are always available regardless of layer ordering. */
+
+/* Theme-switch pop — a full-shell overlay painted with the OUTGOING theme's
+   surface colour pops up a touch and fades out, revealing the swapped theme
+   underneath, so the change reads as deliberate rather than an instant jump.
+   Driven imperatively by applyThemeLocally({ animate: true }); never created
+   under `prefers-reduced-motion`. */
+@keyframes merqo-theme-pop {
+  0% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  40% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
 @keyframes merqo-pop-in {
   0% {
     opacity: 0;
