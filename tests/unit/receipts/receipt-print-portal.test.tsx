@@ -1,182 +1,82 @@
-import { render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  RECEIPT_PRINTING_CLASS,
-  ReceiptPrintPortal,
-  printReceiptInPlace,
-} from '@/components/receipts/receipt-print-portal'
-import { SAMPLE_SALE } from '@/lib/receipts/sample'
+import { printReceiptViaIframe } from '@/components/receipts/receipt-print-portal'
 
 /**
- * The "print shows the checkout drawer" regression: cleanup used to run on the
- * bare `afterprint` event (Chrome/Edge fire it while the preview is still on
- * screen) and later on an unconditional `focus` listener that, on mobile
- * WebKit / Chrome — which never fire `afterprint` — settled mid-compose.
- * Either way the isolation class dropped while the page was still being
- * rasterised and the whole POS printed.
- *
- * These assert the fix: the class is added for the print; it survives
- * `afterprint` until the window actually regains focus; the `print` media
- * query flipping back to non-matching is the cross-engine "dialog closed"
- * signal; and `onDone` is deferred a beat past that so the receipt-only page
- * finishes composing.
+ * Receipt printing loads /print/receipt/[saleId] into a hidden iframe that
+ * prints itself — the host document is never part of the print, which is what
+ * fixes the "print shows the whole POS" bug on Android tablets. jsdom won't
+ * navigate the iframe, so these assert on the element it creates and simulate
+ * its `load` event.
  */
 
-const settings = {
-  headerText: null,
-  footerText: null,
-  showLogo: true,
-  showCashier: true,
-  orgAddressLine: null,
-  orgContactPhone: null,
-}
+const FRAME_ID = 'merqo-receipt-print-frame'
+const frame = () => document.getElementById(FRAME_ID) as HTMLIFrameElement | null
 
-// jsdom has no `matchMedia` — install a controllable `print` media query.
-type MediaListener = (event: { matches: boolean }) => void
-let printMediaListeners: MediaListener[] = []
-let printMediaMatches = false
-
-function installMatchMediaMock() {
-  printMediaListeners = []
-  printMediaMatches = false
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    get matches() {
-      return query === 'print' ? printMediaMatches : false
-    },
-    media: query,
-    onchange: null,
-    addEventListener: (_type: string, cb: MediaListener) => {
-      if (query === 'print') printMediaListeners.push(cb)
-    },
-    removeEventListener: (_type: string, cb: MediaListener) => {
-      printMediaListeners = printMediaListeners.filter((l) => l !== cb)
-    },
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => true,
-  }))
-}
-
-/** Simulate the print dialog opening (`true`) or closing (`false`). */
-function setPrintMedia(matches: boolean) {
-  printMediaMatches = matches
-  for (const listener of [...printMediaListeners]) listener({ matches })
-}
-
-function renderPortal() {
-  return render(
-    <ReceiptPrintPortal
-      sale={SAMPLE_SALE}
-      templateId="classic"
-      branding={{ displayName: 'Merqo Test Store', logoUrl: null }}
-      settings={settings}
-    />,
-  )
-}
-
-describe('printReceiptInPlace', () => {
+describe('printReceiptViaIframe', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    installMatchMediaMock()
-    vi.spyOn(window, 'print').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    // Drain any pending one-shot `focus` listeners left by a test that only
-    // dispatched `afterprint`, so invocations don't bleed across tests.
-    window.dispatchEvent(new Event('focus'))
-    vi.runOnlyPendingTimers()
     vi.useRealTimers()
-    document.body.classList.remove(RECEIPT_PRINTING_CLASS)
-    vi.restoreAllMocks()
+    frame()?.remove()
   })
 
-  it('adds the isolation class before printing', () => {
-    renderPortal()
-    printReceiptInPlace()
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(true)
+  it('appends one hidden iframe pointed at the print route', () => {
+    printReceiptViaIframe('sale-123')
+
+    const el = frame()
+    expect(el).not.toBeNull()
+    expect(el!.parentElement).toBe(document.body)
+    expect(el!.getAttribute('src')).toBe('/print/receipt/sale-123')
+    // never display:none — some engines refuse to print such a frame
+    expect(el!.style.display).not.toBe('none')
+    expect(el!.getAttribute('aria-hidden')).toBe('true')
   })
 
-  it('does not tear down on afterprint while the window is still blurred', () => {
-    renderPortal()
+  it('URL-encodes the sale id and appends template / paper overrides', () => {
+    printReceiptViaIframe('a/b 1', { templateId: 'compact', paperMm: 58 })
+    expect(frame()!.getAttribute('src')).toBe(
+      '/print/receipt/a%2Fb%201?templateId=compact&paper=58',
+    )
+  })
+
+  it('reuses one frame across repeat clicks instead of stacking', () => {
+    printReceiptViaIframe('sale-1')
+    printReceiptViaIframe('sale-2')
+
+    expect(document.querySelectorAll(`#${FRAME_ID}`)).toHaveLength(1)
+    expect(frame()!.getAttribute('src')).toBe('/print/receipt/sale-2')
+  })
+
+  it('calls onDone once the frame loads', () => {
     const onDone = vi.fn()
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    printReceiptViaIframe('sale-1', undefined, onDone)
 
-    printReceiptInPlace(onDone)
-    window.dispatchEvent(new Event('afterprint'))
-    vi.advanceTimersByTime(300)
-
-    // Preview is still on screen (no focus yet) — class must stay, onDone must wait.
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(true)
     expect(onDone).not.toHaveBeenCalled()
-  })
+    frame()!.dispatchEvent(new Event('load'))
+    expect(onDone).toHaveBeenCalledTimes(1)
 
-  it('tears down once the window regains focus after printing', () => {
-    renderPortal()
-    const onDone = vi.fn()
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
-
-    printReceiptInPlace(onDone)
-    window.dispatchEvent(new Event('afterprint'))
-    window.dispatchEvent(new Event('focus'))
-    vi.advanceTimersByTime(300)
-
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(false)
+    // the fallback timer must not fire it a second time
+    vi.advanceTimersByTime(15_000)
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
-  it('settles immediately when afterprint arrives with the window already focused', () => {
-    renderPortal()
+  it('calls onDone via the fallback timer if load never fires', () => {
     const onDone = vi.fn()
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    printReceiptViaIframe('sale-1', undefined, onDone)
 
-    printReceiptInPlace(onDone)
-    window.dispatchEvent(new Event('afterprint'))
-    vi.advanceTimersByTime(300)
-
+    vi.advanceTimersByTime(10_000)
     expect(onDone).toHaveBeenCalledTimes(1)
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(false)
   })
 
-  it('settles on the print media query closing when afterprint never fires (mobile)', () => {
-    renderPortal()
-    const onDone = vi.fn()
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+  it('removes the frame ~60s after it loads', () => {
+    printReceiptViaIframe('sale-1')
+    frame()!.dispatchEvent(new Event('load'))
+    expect(frame()).not.toBeNull()
 
-    printReceiptInPlace(onDone)
-    setPrintMedia(true) // dialog opens
-    // No `afterprint`, no `focus` — only the media query flips back.
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(true)
-    expect(onDone).not.toHaveBeenCalled()
-
-    setPrintMedia(false) // dialog closes
-    vi.advanceTimersByTime(300)
-
-    expect(onDone).toHaveBeenCalledTimes(1)
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(false)
-  })
-
-  it('keeps the isolation class while the print media query is still matching', () => {
-    renderPortal()
-    const onDone = vi.fn()
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
-
-    printReceiptInPlace(onDone)
-    setPrintMedia(true)
-    // A stray focus while the preview is genuinely still up must not tear down.
-    window.dispatchEvent(new Event('focus'))
-    vi.advanceTimersByTime(300)
-
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(true)
-    expect(onDone).not.toHaveBeenCalled()
-  })
-
-  it('a native beforeprint (Ctrl+P) applies the isolation class too', () => {
-    renderPortal()
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(false)
-
-    window.dispatchEvent(new Event('beforeprint'))
-    expect(document.body.classList.contains(RECEIPT_PRINTING_CLASS)).toBe(true)
+    vi.advanceTimersByTime(60_000)
+    expect(frame()).toBeNull()
   })
 })

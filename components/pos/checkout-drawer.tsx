@@ -40,7 +40,7 @@ import { usePermission } from '@/lib/auth/permissions-context'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { usePendingToast } from '@/hooks/use-pending-toast'
 import { ReceiptView } from '@/components/pos/receipt-view'
-import { printReceiptInPlace } from '@/components/receipts/receipt-print-portal'
+import { printReceiptViaIframe } from '@/components/receipts/receipt-print-portal'
 import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
 import { CustomerPicker } from '@/components/customers/customer-picker'
 import { canCoverAmount } from '@/lib/customers/ledger'
@@ -202,6 +202,10 @@ export function CheckoutDrawer({
   const direction = isMobile ? 'bottom' : 'right'
 
   if (state.saleId) {
+    // Narrowed to a const so it stays a string inside the Print button's
+    // onClick closure (TS widens `state.saleId` back to `string | undefined`
+    // in a deferred callback otherwise).
+    const saleId = state.saleId
     return (
       <Drawer
         open={open}
@@ -219,11 +223,7 @@ export function CheckoutDrawer({
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto scroll-smooth px-4">
-            <ReceiptView
-              key={state.saleId}
-              saleId={state.saleId}
-              onReady={() => setReceiptReady(true)}
-            />
+            <ReceiptView key={saleId} saleId={saleId} onReady={() => setReceiptReady(true)} />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
             <Button
@@ -234,8 +234,10 @@ export function CheckoutDrawer({
                 setPrinting(true)
                 // Finishing the print clears the cart and dismisses the receipt
                 // in one step — the cashier is back at an empty till ready for
-                // the next customer without touching Done.
-                printReceiptInPlace(() => {
+                // the next customer without touching Done. The receipt prints
+                // from its own isolated document (a hidden iframe), so closing
+                // the drawer here can't disturb it.
+                printReceiptViaIframe(saleId, undefined, () => {
                   setPrinting(false)
                   finish()
                 })
