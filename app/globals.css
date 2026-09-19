@@ -649,9 +649,9 @@ html:has(.dark)::-webkit-scrollbar-thumb:hover {
 /*
  * Recharts <Brush> (the zoom strip on the dashboard "Sales performance"
  * chart, components/charts/sales-trend-chart.tsx) renders its traveller date
- * labels as `<text fill="#666">` — hardcoded, no React prop — dark-on-dark
- * against the brush's `fill="var(--muted)"` in dark mode. Retint to a legible
- * token. Harmless in light mode (still a mid-grey label).
+ * labels as `<text fill="#666">` — hardcoded, no React prop — which is
+ * dark-on-dark against the brush's `fill="var(--muted)"` in dark mode. Retint
+ * to a legible token. Harmless in light mode (still a mid-grey label).
  */
 .recharts-brush-texts text,
 .recharts-brush text {
