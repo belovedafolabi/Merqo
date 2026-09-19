@@ -32,7 +32,7 @@ export function AppearanceCard({ current }: { current: ThemePreference }) {
   function choose(preference: ThemePreference) {
     if (preference === selected) return
     setSelected(preference)
-    applyThemeLocally(preference)
+    applyThemeLocally(preference, { animate: true })
     startTransition(async () => {
       const { error } = await setThemePreferenceAction(preference)
       if (error) {
