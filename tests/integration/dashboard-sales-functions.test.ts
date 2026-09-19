@@ -13,6 +13,9 @@ import { bootstrapOrganization, createTestUser, type TestUser } from './helpers/
  * /dashboard RSC render. This guards both halves: they stay DEFINER, and the
  * guard still returns an empty result (not an error, not another branch's
  * numbers) for a branch the caller can't reach.
+ *
+ * dashboard_sales_series_hourly() (20260908090600) is the hourly sibling for
+ * the "Today" tab and carries the same guard — covered below.
  */
 
 let owner: TestUser
@@ -24,12 +27,13 @@ afterAll(async () => {
 })
 
 describe('dashboard_sales_* — SECURITY DEFINER + branch-access guard', () => {
-  it('both functions are SECURITY DEFINER', async () => {
+  it('all three functions are SECURITY DEFINER', async () => {
     const { rows } = await pool.query<{ proname: string; prosecdef: boolean }>(
       `select proname, prosecdef from pg_proc
-       where proname in ('dashboard_sales_summary', 'dashboard_sales_series')`,
+       where proname in ('dashboard_sales_summary', 'dashboard_sales_series',
+                         'dashboard_sales_series_hourly')`,
     )
-    expect(rows).toHaveLength(2)
+    expect(rows).toHaveLength(3)
     for (const row of rows) expect(row.prosecdef).toBe(true)
   })
 
@@ -65,6 +69,28 @@ describe('dashboard_sales_* — SECURITY DEFINER + branch-access guard', () => {
     expect(series.error).toBeNull()
     // 15 day buckets, every count 0.
     expect(series.data!.every((d: { sale_count: number }) => Number(d.sale_count) === 0)).toBe(true)
+
+    // Hourly sibling: a single day's window, every bucket zero, ordered.
+    const dayStart = new Date()
+    dayStart.setUTCHours(0, 0, 0, 0)
+    const hourly = await owner.client.rpc('dashboard_sales_series_hourly', {
+      p_branch_id: branchId,
+      p_from: dayStart.toISOString(),
+      p_to: new Date().toISOString(),
+      p_tz: 'Africa/Lagos',
+    })
+    expect(hourly.error).toBeNull()
+    expect(hourly.data!.length).toBeGreaterThan(0)
+    expect(hourly.data!.every((d: { sale_count: number }) => Number(d.sale_count) === 0)).toBe(true)
+
+    const blockedHourly = await owner.client.rpc('dashboard_sales_series_hourly', {
+      p_branch_id: randomUUID(),
+      p_from: dayStart.toISOString(),
+      p_to: new Date().toISOString(),
+      p_tz: 'Africa/Lagos',
+    })
+    expect(blockedHourly.error).toBeNull()
+    expect(blockedHourly.data).toEqual([])
 
     // A branch id the caller has no user_roles row for.
     const blocked = await owner.client.rpc('dashboard_sales_summary', {

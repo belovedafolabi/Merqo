@@ -11,13 +11,25 @@ export interface DashboardSummary {
   grossSales: number
   /** Revenue: subtotal − discount. Tax and service charge are excluded. */
   netSales: number
-  /** What actually went in the till (includes tax). */
+  /** What actually went in the till (the overall total): netSales + tax + service charge. */
   collected: number
+  /** Tax collected on behalf of the government — not revenue. */
+  taxCollected: number
+  /** Service charge collected — not revenue. */
+  serviceCharge: number
   averageSale: number
   priorSaleCount: number
   priorNetSales: number
   priorAverageSale: number
 }
+
+/**
+ * How a trend series is bucketed. `day` — the `day` field is a calendar date
+ * (`YYYY-MM-DD`). `hour` — the `day` field is the full ISO timestamp of an
+ * hour bucket; the chart formats and labels it as a time of day. The field name
+ * stays `day` so the daily path is untouched.
+ */
+export type SeriesGranularity = 'day' | 'hour'
 
 export interface DashboardSeriesPoint {
   day: string

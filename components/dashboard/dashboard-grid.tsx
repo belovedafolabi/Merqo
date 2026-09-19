@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Package } from 'lucide-react'
 
@@ -7,7 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/states/empty-state'
 import { SalesOverviewChart } from '@/components/dashboard/sales-overview-chart'
 import { SalesPerformanceCard } from '@/components/dashboard/sales-performance-card'
-import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/types'
+import {
+  deltaLabel,
+  type DashboardSummary,
+  type DashboardSeriesPoint,
+  type SeriesGranularity,
+} from '@/lib/dashboard/types'
 import type { DashboardPeriod } from '@/lib/dashboard/periods'
 import type { ResolvedWidget } from '@/lib/dashboard/layout'
 import type { InventoryBalance } from '@/lib/inventory/queries'
@@ -24,10 +30,14 @@ function money(value: number): string {
   })
 }
 
-export type PerformanceBundle = Record<
-  DashboardPeriod,
-  { summary: DashboardSummary; series: DashboardSeriesPoint[] }
->
+export interface PerformancePeriodData {
+  summary: DashboardSummary
+  series: DashboardSeriesPoint[]
+  /** `hour` for the "Today" tab (hourly buckets), `day` for the rest. */
+  granularity: SeriesGranularity
+}
+
+export type PerformanceBundle = Record<DashboardPeriod, PerformancePeriodData>
 
 export interface DashboardData {
   summary: DashboardSummary | null
@@ -109,26 +119,51 @@ function SalesSummaryWidget({ summary }: { summary: DashboardSummary | null }) {
     priorAverageSale: 0,
     grossSales: 0,
     collected: 0,
+    taxCollected: 0,
+    serviceCharge: 0,
   }
+  // "Tax" tile folds in the service charge (both are collected on behalf of
+  // others, never revenue) so Total collected = Sales + Tax tile exactly.
+  const taxAndCharges = s.taxCollected + s.serviceCharge
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-3">
-      <StatCard
-        label="Sales today"
-        value={money(s.netSales)}
-        delta={deltaLabel(s.netSales, s.priorNetSales) ?? undefined}
-        tone="inverted"
-      />
-      <StatCard
-        label="Transactions"
-        value={String(s.saleCount)}
-        delta={deltaLabel(s.saleCount, s.priorSaleCount) ?? undefined}
-      />
-      <StatCard
-        label="Average sale"
-        value={money(s.averageSale)}
-        delta={deltaLabel(s.averageSale, s.priorAverageSale) ?? undefined}
-      />
+    <div className="grid grid-cols-1 gap-4 lg:col-span-3">
+      <StatCard label="Total collected today" value={money(s.collected)} tone="inverted" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Sales"
+          value={money(s.netSales)}
+          delta={deltaLabel(s.netSales, s.priorNetSales) ?? undefined}
+        />
+        <StatCard label="Tax" value={money(taxAndCharges)}>
+          {s.serviceCharge > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              incl. {money(s.serviceCharge)} service charge
+            </span>
+          ) : null}
+        </StatCard>
+        <StatCard
+          label="Transactions"
+          value={String(s.saleCount)}
+          delta={deltaLabel(s.saleCount, s.priorSaleCount) ?? undefined}
+        />
+        <StatCard
+          label="Average sale"
+          value={money(s.averageSale)}
+          delta={deltaLabel(s.averageSale, s.priorAverageSale) ?? undefined}
+        />
+      </div>
     </div>
+  )
+}
+
+/**
+ * Widget list body that shows every row but caps its height and scrolls past
+ * roughly five rows, so a long list doesn't tower over its grid row-mates on
+ * any screen size. Replaces an ad-hoc `.slice(0, 5)` that silently hid the rest.
+ */
+function WidgetScrollList({ children }: { children: ReactNode }) {
+  return (
+    <ul className="flex max-h-64 flex-col gap-3 overflow-y-auto scroll-smooth pr-1">{children}</ul>
   )
 }
 
@@ -146,8 +181,8 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
             description="Every product is above its threshold. Set a default in Settings → Organization if this looks empty."
           />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {balances.slice(0, 5).map((balance) => (
+          <WidgetScrollList>
+            {balances.map((balance) => (
               <li key={balance.id} className="flex items-center justify-between gap-3 text-sm">
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate font-medium">{balance.productName}</span>
@@ -156,7 +191,7 @@ function LowStockWidget({ balances }: { balances: InventoryBalance[] }) {
                 <Badge variant="destructive">{balance.availableQuantity} left</Badge>
               </li>
             ))}
-          </ul>
+          </WidgetScrollList>
         )}
       </CardContent>
     </Card>
@@ -245,8 +280,8 @@ function TopProductsWidget({ products }: { products: PosProductShortcut[] }) {
             description="Best sellers over the last 30 days will appear here."
           />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {products.slice(0, 5).map((product) => (
+          <WidgetScrollList>
+            {products.map((product) => (
               <li key={product.id} className="flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate font-medium">{product.name}</span>
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -254,7 +289,7 @@ function TopProductsWidget({ products }: { products: PosProductShortcut[] }) {
                 </span>
               </li>
             ))}
-          </ul>
+          </WidgetScrollList>
         )}
       </CardContent>
     </Card>

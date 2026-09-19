@@ -96,8 +96,12 @@ describe('resolvePermission', () => {
     ).toBe(false)
   })
 
-  it('a user with two roles at two different scopes is allowed at either scope, denied outside both', () => {
-    // e.g. Branch Manager @ Wuse + Cashier @ Garki's Pharmacy business unit.
+  it('grants at two different scopes each stay confined to their own scope', () => {
+    // resolvePermission works on a flat grant array and does not care how many
+    // role assignments produced it. Users now hold one role (one scope) each
+    // — DECISIONS_AND_CONFLICTS.md §8 — but the resolver must still keep a
+    // branch-scoped grant and a business-unit-scoped grant from bleeding into
+    // each other, whatever their source.
     const grants: ScopeGrant[] = [
       grant({
         permissionKey: 'business_units.update',

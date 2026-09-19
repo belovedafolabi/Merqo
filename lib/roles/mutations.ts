@@ -177,6 +177,49 @@ export async function assignUserRole(rawInput: AssignRoleInput): Promise<string>
   const actor = await requirePermission('roles.assign', { organizationId: input.organizationId })
 
   const supabase = await createServerSupabaseClient()
+
+  // One role per user (migration 20260908090700; DECISIONS_AND_CONFLICTS.md §8). "Assign"
+  // means REPLACE: drop whatever role the user holds in this org, then insert
+  // the new one. Delete first so the insert doesn't collide with the
+  // user_roles(user_id) unique index. This is two round trips, not a
+  // transaction — Supabase's JS client has no transaction primitive and
+  // createRole() already sets the precedent that role writes here are not
+  // all-or-nothing; a failure between the two leaves the user with no role
+  // (fail-safe: they can't act until it's retried), never with two. The
+  // insert still passes the escalation guard (user_grants_cover_role, on the
+  // user_roles_insert policy) and the delete still needs roles.assign (the
+  // user_roles_delete policy), so nothing is bypassed.
+  const { data: existing, error: existingError } = await supabase
+    .from('user_roles')
+    .select('id, role_id, roles(slug)')
+    .eq('user_id', input.userId)
+    .eq('organization_id', input.organizationId)
+    .maybeSingle<{ id: string; role_id: string; roles: { slug: string } | null }>()
+  if (existingError) throw existingError
+
+  // Org-continuity invariant (same family as "you cannot archive your last
+  // branch", NOT a role-name authorization decision): an organization must
+  // keep at least one member holding its system `owner` role. Reassigning the
+  // sole owner to anything else would orphan the org's ownership.
+  if (existing?.roles?.slug === 'owner') {
+    const { count, error: ownerCountError } = await supabase
+      .from('user_roles')
+      .select('id, roles!inner(slug)', { count: 'exact', head: true })
+      .eq('organization_id', input.organizationId)
+      .eq('roles.slug', 'owner')
+    if (ownerCountError) throw ownerCountError
+    if ((count ?? 0) <= 1) {
+      throw new Error(
+        'This is the organization’s only owner. Assign another member the Owner role first.',
+      )
+    }
+  }
+
+  if (existing) {
+    const { error: deleteError } = await supabase.from('user_roles').delete().eq('id', existing.id)
+    if (deleteError) throw deleteError
+  }
+
   const { data, error } = await supabase
     .from('user_roles')
     .insert({
@@ -195,10 +238,14 @@ export async function assignUserRole(rawInput: AssignRoleInput): Promise<string>
     {
       organizationId: input.organizationId,
       userId: actor.id,
-      action: 'user_role.assigned',
+      action: existing ? 'user_role.replaced' : 'user_role.assigned',
       resourceType: 'user_role',
       resourceId: data.id,
-      metadata: { roleId: input.roleId, targetUserId: input.userId },
+      metadata: {
+        roleId: input.roleId,
+        targetUserId: input.userId,
+        ...(existing ? { replacedRoleId: existing.role_id } : {}),
+      },
     },
     supabase,
   )

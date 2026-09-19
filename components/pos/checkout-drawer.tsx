@@ -40,7 +40,7 @@ import { usePermission } from '@/lib/auth/permissions-context'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { usePendingToast } from '@/hooks/use-pending-toast'
 import { ReceiptView } from '@/components/pos/receipt-view'
-import { printReceiptInPlace } from '@/components/receipts/receipt-print-portal'
+import { printReceiptViaIframe } from '@/components/receipts/receipt-print-portal'
 import { CustomerFormDialog } from '@/components/customers/customer-form-dialog'
 import { CustomerPicker } from '@/components/customers/customer-picker'
 import { canCoverAmount } from '@/lib/customers/ledger'
@@ -99,6 +99,9 @@ export function CheckoutDrawer({
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [printing, setPrinting] = useState(false)
+  // The success screen's receipt fetches client-side; "Print receipt" must
+  // wait for it or it prints a blank page.
+  const [receiptReady, setReceiptReady] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState<string | null>(null)
   const [couponPending, startCouponCheck] = useTransition()
@@ -158,6 +161,7 @@ export function CheckoutDrawer({
     handleSelectCustomer(null)
     setPaymentMethod('cash')
     setDetailsOpen(false)
+    setReceiptReady(false)
   }
 
   function applyCoupon() {
@@ -198,6 +202,10 @@ export function CheckoutDrawer({
   const direction = isMobile ? 'bottom' : 'right'
 
   if (state.saleId) {
+    // Narrowed to a const so it stays a string inside the Print button's
+    // onClick closure (TS widens `state.saleId` back to `string | undefined`
+    // in a deferred callback otherwise).
+    const saleId = state.saleId
     return (
       <Drawer
         open={open}
@@ -215,19 +223,21 @@ export function CheckoutDrawer({
             <DrawerDescription>{currency(state.total ?? 0)} received.</DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto scroll-smooth px-4">
-            <ReceiptView saleId={state.saleId} />
+            <ReceiptView key={saleId} saleId={saleId} onReady={() => setReceiptReady(true)} />
           </div>
           <DrawerFooter className="flex-col gap-2 pb-safe-b sm:flex-row">
             <Button
               variant="outline"
               size="touch"
-              disabled={printing}
+              disabled={printing || !receiptReady}
               onClick={() => {
                 setPrinting(true)
                 // Finishing the print clears the cart and dismisses the receipt
                 // in one step — the cashier is back at an empty till ready for
-                // the next customer without touching Done.
-                printReceiptInPlace(() => {
+                // the next customer without touching Done. The receipt prints
+                // from its own isolated document (a hidden iframe), so closing
+                // the drawer here can't disturb it.
+                printReceiptViaIframe(saleId, undefined, () => {
                   setPrinting(false)
                   finish()
                 })

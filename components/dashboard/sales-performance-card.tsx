@@ -5,7 +5,8 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
-import { deltaLabel, type DashboardSummary, type DashboardSeriesPoint } from '@/lib/dashboard/types'
+import { deltaLabel } from '@/lib/dashboard/types'
+import type { PerformanceBundle } from '@/components/dashboard/dashboard-grid'
 import type { DashboardPeriod } from '@/lib/dashboard/periods'
 
 /**
@@ -31,8 +32,6 @@ function money(value: number): string {
   })
 }
 
-type Bundle = Record<DashboardPeriod, { summary: DashboardSummary; series: DashboardSeriesPoint[] }>
-
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-lg border bg-muted/30 p-3">
@@ -43,9 +42,9 @@ function Tile({ label, value, hint }: { label: string; value: string; hint?: str
   )
 }
 
-export function SalesPerformanceCard({ bundle }: { bundle: Bundle }) {
+export function SalesPerformanceCard({ bundle }: { bundle: PerformanceBundle }) {
   const [period, setPeriod] = useState<DashboardPeriod>('today')
-  const { summary, series } = bundle[period]
+  const { summary, series, granularity } = bundle[period]
   const showDelta = period !== 'all'
   const netDelta = showDelta ? deltaLabel(summary.netSales, summary.priorNetSales) : null
 
@@ -75,6 +74,8 @@ export function SalesPerformanceCard({ bundle }: { bundle: Bundle }) {
         </div>
         <SalesTrendChart
           series={series}
+          granularity={granularity}
+          zoomable
           height={200}
           ariaLabel={`Net sales trend, ${PERIODS.find((p) => p.value === period)?.label}`}
         />

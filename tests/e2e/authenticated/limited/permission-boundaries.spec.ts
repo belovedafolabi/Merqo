@@ -51,6 +51,9 @@ const REFUSED_ROUTES = [
   { path: '/products', absentControl: 'New product' },
   { path: '/inventory', absentControl: 'Adjust stock' },
   { path: '/business-structure', absentControl: 'New branch' },
+  // MS17 Part E item 4: the seeded Cashier holds refund.initiate but not
+  // refund.approve, so the Admin approvals queue is refused by URL too.
+  { path: '/approvals', absentControl: 'Review expenses' },
 ]
 
 for (const { path, absentControl } of REFUSED_ROUTES) {

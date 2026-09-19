@@ -2,16 +2,20 @@
 
 ## Status
 
-In progress, one PR per part, in the order **C → D → A → B**. Part C is sequenced first because
-it is the only actual security defect, it is the most isolated, and it changes the shared
-Playwright auth fixture — doing that once up front gives the other three a stable auth baseline.
+**Complete.** Parts A–D were built one PR per part in the order **C → D → A → B** (Part C
+first because it is the only actual security defect, the most isolated, and it changes the
+shared Playwright auth fixture — doing that once up front gave the others a stable auth
+baseline). Part E, a later product-owner batch that is not in the original spec below, shipped
+as five sequenced PRs (#71–#75). All parts are merged to `main`, deployed to production, and
+the two Part E migrations have been applied to the hosted Supabase project.
 
 | Part | Status |
 |------|--------|
-| A — Sales Insights | **Shipped** — see "Part A as built" below |
-| B — Business-Type Refinements | Planned |
+| A — Sales Insights | **Shipped** (#57) — see "Part A as built" below |
+| B — Business-Type Refinements | **Shipped** (#58) — see "Part B as built" below |
 | C — Session Lifecycle & Security | **Shipped** (#54) — see "Part C as built" below |
 | D — UX Fixes & Tour Navigation | **Shipped** (#55) — see "Part D as built" below |
+| E — Post-Launch UX & RBAC Batch | **Shipped** (#71–#75) — see "Part E" below |
 
 ### Part C as built — deviations from the spec below
 
@@ -132,6 +136,27 @@ Four independent items, one PR. No migration, no new dependency.
   filter) are unrelated — both fail identically on a stashed baseline; `journey-sale-to-report`
   is an `/inventory` page error-boundary, not anything Part D touched.
 
+### Part B as built — deviations from the spec below
+
+Shipped in #58; the terminology half was then reverted in #59.
+
+- **The terminology resolver was reverted entirely (#59), the reference data kept.** #59
+  removed every `lib/terminology/` module, its context providers, and its unit test, and
+  reverted the nav / POS / receipt call sites to literal strings — routing "Sale" / "Customer"
+  / etc. through `t()` on some surfaces while the rest of the admin app still said "Sale" read
+  worse, not better. **`business_type_terminology`** (migration `20260906090100`) and its seed
+  rows stay in place, so a future single-pass sweep has the data ready.
+- **`business_type_presets`** (migration `20260906090200`) shipped and is consumed at
+  onboarding only, as specified — it seeds a new business unit's `dashboard_widgets` and is
+  never read again for that unit.
+- **Three new capabilities shipped:** `services`, `quick_sale`, `weighed_items` — catalogue
+  rows plus their `business_type_capabilities` default-matrix rows, read through
+  `business_unit_capabilities` exactly like the existing seven. `services` also carries
+  `products.track_inventory` (migration `20260906090300`) so a non-stock line item is "a
+  product that doesn't deduct inventory".
+- **The no-`business_type ===` guard-rail is a code-review checklist item**, not an automated
+  CI grep — verified by hand at review.
+
 ## How This Document Differs From Milestones 01–16
 
 Milestones 01–16 are the reconciled greenfield roadmap (see [`README.md`](README.md) and
@@ -148,6 +173,7 @@ are feature-sized; Part D is a batch of four small UX fixes that can share one P
 | [B](#part-b--business-type-refinements-lighter-touch) | Business-Type Refinements | Make each of the 13 business types feel purpose-built through **configuration only** — per-type terminology presets, dashboard/report presets, richer onboarding defaults, and a handful of new à-la-carte capability flags. |
 | [C](#part-c--session-lifecycle--security) | Session Lifecycle & Security | Replace the never-expiring session with a 24-hour rolling inactivity timeout, a 30-day absolute cap, a "remember me" choice at sign-in, force-logout of other sessions on password change, and a "sign out everywhere" control. |
 | [D](#part-d--ux-fixes--tour-navigation) | UX Fixes & Tour Navigation | Four small items: (D1) loading/settle toasts on every async action; (D2) wire up the dead POS menu button as a slide-out sheet; (D3) make customer-activity rows clickable through to the receipt / layaway; (D4) add a clickable step list to the product-tour popover. |
+| [E](#part-e--post-launch-ux--rbac-batch) | Post-Launch UX & RBAC Batch | Eleven product-owner items raised after A–D, shipped as five PRs (#71–#75): receipt-print isolation, dark-mode portal scoping, low-stock filters + scrollable widgets, product-tour targeting fixes, hourly chart axis + zoom, one-role-per-user, and reachable manager approvals. |
 
 ### Shared constraints (apply to all parts)
 
@@ -1080,3 +1106,185 @@ linearly from that point. First-run auto-start is unchanged — the list is simp
 - **Testing:** extends the existing Vitest + Playwright suites; no new CI infrastructure.
 - **Definition of done for Part D:** all four items' acceptance criteria pass, `pnpm build` is
   clean, and `lib/toast.ts`'s doc comment matches the shipped D1 policy.
+
+---
+
+## Part E — Post-Launch UX & RBAC Batch
+
+Eleven items the product owner raised after Parts A–D, delivered as **five sequenced PRs**.
+Not in the design corpus below — this section is the record. All merged to `main` and live in
+production; both new migrations applied to the hosted Supabase project.
+
+| PR | Items | Summary |
+|----|-------|---------|
+| [#71](https://github.com/belovedafolabi/Merqo/pull/71) | 1, 2 | Receipt-print isolation; dark-mode portal scoping |
+| [#72](https://github.com/belovedafolabi/Merqo/pull/72) | 7–11 | Low-stock filters + scrollable widgets; product-tour targeting |
+| [#73](https://github.com/belovedafolabi/Merqo/pull/73) | 3, 6 | Hourly chart axis on the "Today" view; brush zoom |
+| [#74](https://github.com/belovedafolabi/Merqo/pull/74) | 5 | One role per user |
+| [#75](https://github.com/belovedafolabi/Merqo/pull/75) | 4 | Reachable manager approvals |
+
+### Item 1 — receipt print showed the checkout drawer (Chrome/Edge, every time)
+
+The `@media print` isolation in `app/globals.css` was correct — the vaul checkout drawer
+portals to `document.body`, so `body.printing-receipt > *:not(.receipt-print-portal)` already
+hid it. The bug was **teardown timing**: `printReceiptInPlace()`
+(`components/receipts/receipt-print-portal.tsx`) removed the `printing-receipt` class and the
+caller unmounted the portalled receipt on the bare `afterprint` event. Chromium fires
+`afterprint` while the print preview is still on screen, so Chrome re-composed the preview
+from the now-unhidden page.
+
+- Cleanup now defers to the first `window` **focus** after printing (dialog genuinely gone),
+  with `afterprint` + a 60s backstop as fallbacks.
+- `<ReceiptPrintPortal>` owns the class via its own `beforeprint`/`afterprint` handlers, so a
+  native Ctrl/Cmd+P prints the receipt too.
+- "Print receipt" is disabled until the receipt's sale fetch resolves (`ReceiptView` gained an
+  `onReady` callback).
+
+### Item 2 — dark mode: portalled surfaces rendered light
+
+A sweep of `app/**` for hardcoded light-only colours came back empty. The cause was
+structural: `.dark` is stamped on a `<div>` inside the `(app)` layout, and every Radix / vaul
+portal mounts to `document.body`, outside it, so it resolved `--popover` / `--background` /
+`--border` from `:root`.
+
+- New `components/ui/portal-container.tsx` + `<ThemedPortalProvider>` in `app/(app)/layout.tsx`;
+  a `container` prop wired into the dialog, drawer, dropdown-menu, popover, select, sheet and
+  tooltip portals. No-op outside the admin shell (POS / auth / onboarding stay light).
+- New `components/ui/themed-toaster.tsx` replaces the root `<Toaster>` — Sonner renders inline,
+  not portalled, so its DOM position decides token inheritance. `sonner.tsx` dropped its dead
+  `next-themes` `useTheme()` call (there is no `ThemeProvider`, so it always resolved
+  `'system'`).
+- `components/tour/product-tour.tsx` mirrors the shell's `.dark` onto the driver.js popover so
+  its `var(--popover)` theming resolves dark.
+- `components/inventory/inventory-view.tsx`: `text-emerald-600` → `text-success`.
+
+### Item 3 — the "Today" chart view showed 14 days, not the day by the hour
+
+`SalesPerformanceCard`'s **Today** tab narrowed the three stat tiles to the true today window
+but `PERFORMANCE_CHART_DAYS.today = 14` kept the chart on a trailing 14-day series.
+`dashboard_sales_series` returns `day date`, so an hourly series can't reuse it.
+
+- **Migration `20260908090600_create_dashboard_sales_series_hourly`** — the daily function's
+  shape with an hourly `generate_series` LEFT JOIN (empty hours still emit zero rows) and the
+  same `SECURITY DEFINER` + inlined branch-membership guard `20260908090200` added.
+- `loadPerformance()` calls `getDashboardSeriesHourly()` for the `today` slot **instead of**
+  the daily series — the per-page concurrent-RPC count is unchanged (8), which is what once
+  tripped the statement timeout.
+- `SeriesGranularity` threads `bundle → SalesPerformanceCard → SalesTrendChart`;
+  `formatSeriesLabel` is pinned to Africa/Lagos and renders hours as 24-hour `HH:00`. The
+  x-axis, tooltip and the `sr-only` table all follow it.
+
+### Item 6 — charts responsive / zoom
+
+`SalesTrendChart` gained a Recharts `<Brush>` behind a `zoomable` prop — the performance card
+passes it; the 160px Overview tile does not — once `series.length > 8`. Drag the handles to
+zoom, drag the body to pan. Drag-to-select zoom and a brush on the reports `BarChart` are
+follow-ups.
+
+### Items 9 & 10 — low-stock filter on the Inventory page
+
+There is no dedicated low-stock route; the Inventory page is the management surface.
+
+- **New pure `lib/inventory/low-stock.ts`** is the single definition of "low stock"
+  (`isLowStock` / `effectiveLowStockThreshold` / `stockStatus`). The Inventory page's badge,
+  stat tile and count previously ignored the org-wide default threshold (migration
+  `20260904090000`) while the dashboard widget and `notify_low_stock()` applied it — they
+  agree now.
+- A stock-status `<Select>` (All / Low / Out / In) beside the search box, folded into the
+  existing `useMemo`; the "Low stock" stat tile is a toggle button that sets that filter.
+- `report_inventory_stock`'s SQL was left alone (a filter there needs an RPC parameter =
+  a migration) — see Follow-ups.
+
+### Item 11 — scrollable low-stock widget
+
+`LowStockWidget` (inline in `dashboard-grid.tsx`) capped its list with `.slice(0, 5)`. New
+`WidgetScrollList` (`max-h-64 overflow-y-auto`, **no breakpoint gate**) shows the whole list
+and scrolls; applied to `LowStockWidget` and `TopProductsWidget`.
+
+### Item 7 — the product tour pointed at things that weren't visible
+
+The step filter was a presence check (`document.querySelector`), so a `hidden lg:flex` element
+(e.g. the POS cart panel on a phone) passed and driver.js drew a 0×0 spotlight with the
+popover marooned mid-screen.
+
+- `firstRenderedElement()` checks `getClientRects()` + visibility; steps pass the resolved
+  **Element** to driver.js, not the selector, so a `display:none` twin sharing the selector
+  can't be highlighted; `waitForSelector` waits for render; `smoothScroll: true`.
+
+### Item 8 — the tour jump-list closed the mobile nav menu
+
+driver.js swallows `pointerdown` for its own prev/next/close buttons but not for anything
+injected, so a tap on a `.merqo-tour-steps__item` reached Radix's `DismissableLayer` as an
+outside-press and closed the nav Sheet — hiding the very nav item the tour was pointing at.
+
+- `keepPointerEventsInside()` in `components/tour/tour-step-list.tsx` stops the pointer events
+  at the injected list root; the admin mobile nav `SheetContent` also now ignores
+  `onPointerDownOutside` / `onInteractOutside` originating inside `.driver-popover`. A new
+  `phone-auth` E2E asserts the Sheet stays open after a jump.
+
+### Item 5 — one role per user
+
+**Reverses a documented decision.** The design corpus
+(`docs/Users_Employees_Roles_and_Granular_RBAC.md` §25.15,
+`docs/Functional_Specification.md` §432, Milestone 03) has multi-role-per-user as intent;
+`user_roles` was built as a true many-to-many. The product owner, shown this, chose exactly
+one role per user. Recorded as **`DECISIONS_AND_CONFLICTS.md` §8**.
+
+- **Migration `20260908090700_enforce_one_role_per_user`** — collapses every user to their
+  single highest-privilege assignment (ranked by role permission count, then org-wide before
+  scoped, then oldest), writing a `user_role.removed_one_role_migration` audit row per dropped
+  assignment so it is reversible from the log; then replaces the non-unique
+  `user_roles_user_id_idx` with a `UNIQUE (user_id)` index. The scope trigger and the
+  `user_grants_cover_role` escalation guard are untouched.
+- `assignUserRole()` now means **replace**: it deletes the user's current `user_roles` row
+  before inserting the new one (delete-first so it can't hit the unique index). Audits
+  `user_role.replaced` when it displaced a role. An org-continuity guard refuses to reassign
+  the sole holder of the system `owner` role.
+- `lib/employees/queries.ts`: `Employee.assignments[]` → `Employee.assignment`;
+  `employees-view.tsx` shows one badge under a "Role & scope" header; `assign-role-dialog.tsx`
+  says it replaces the current role. `resolvePermission` / `requirePermission` / `usePermission`
+  are unchanged — they consume a grant array, which one role still produces many of.
+- **On production**, this collapsed one real user (`branch_manager` + `cashier` ×2 →
+  `branch_manager` org-wide); the sole owner was untouched. `user_roles` went 7 → 5 rows,
+  0 multi-role users, 2 recovery-audit rows written.
+
+### Item 4 — make approvals reachable in the Admin shell
+
+Not a permissions change — `branch_manager` already holds `refund.approve`, `expense.approve`,
+`coupons.manage`, etc. The gap was that pending-refund approval only existed on `/pos/returns`,
+a POS screen, with no admin page or nav entry.
+
+- New `app/(app)/approvals/page.tsx`, gated on `refund.approve` (expense content gated on
+  `expense.approve` via `<Can>`), reusing `listPendingRefunds()`. Nav entry in
+  `lib/shell/nav-items.ts` beside Expenses, keyed on `refund.approve`.
+- `app/(app)/approvals/actions.ts` calls `approveRefund()` directly, following the
+  `decideExpenseAction` shape (`useActionState` + `<form action>`, `recordAuditEvent`), not the
+  POS returns actions (positional args, `startTransition`).
+- Verified end to end: a Branch Manager reached `/approvals` and approved a refund
+  (`status=approved`, `authorized_by=manager`, audit `sales.refund_approved`); a Cashier has no
+  Approvals nav entry.
+
+### Part E — shared notes
+
+- **Two migrations** (`20260908090600`, `20260908090700`), applied to the hosted Supabase
+  project via `supabase db push --linked` (production migrations are manual — see roadmap).
+  No `config.toml` / auth / seed change.
+- **Verification:** CI green on every PR (each rebased onto current `main` and fully re-run,
+  incl. the DB job applying both migrations against real Postgres and the E2E suite) before
+  squash-merge. Then the whole stack was recovered locally, all migrations re-applied clean,
+  and every one of the 11 items walked in the browser against a seeded org. Production smoke
+  test (`node scripts/smoke-test.mjs https://merqo-pos.vercel.app`) passes 4/4;
+  `/api/health` reports the deployed commit and `supabase: ok` / `postgrest: ok`.
+
+### Follow-ups (non-blocking, deferred)
+
+- `report_inventory_stock` still ignores the org-default low-stock threshold — needs a
+  migration to add an RPC parameter (Item 9/10 deliberately left the SQL alone).
+- `next-themes` is now unused in `package.json` (Item 2 removed the last reference) — prune.
+- Gated admin pages (`/approvals`, `/roles`, `/employees`, …) show a generic error boundary on
+  direct URL access without permission rather than a friendly 403 — pre-existing
+  `requirePermission`-throws pattern, not introduced by Item 4.
+- Chart zoom is `<Brush>` only; drag-to-select zoom and a brush on the reports `BarChart` were
+  scoped out of Item 6.
+- Terminology (Part B) remains dormant — the `business_type_terminology` data exists but no
+  call site routes through it after the #59 revert.

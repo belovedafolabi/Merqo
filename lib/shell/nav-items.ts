@@ -55,6 +55,7 @@ export interface NavItem {
     | 'Settings'
     | 'UserCog'
     | 'ShieldCheck'
+    | 'BadgeCheck'
   permission: { key: string } | null
   badge?: string
 }
@@ -82,6 +83,16 @@ export const primaryNavItems: NavItem[] = [
     permission: { key: 'insights.view' },
   },
   { label: 'Expenses', href: '/expenses', icon: 'Banknote', permission: { key: 'expense.view' } },
+  // Milestone 17 Part E item 4. Branch Manager already holds refund.approve /
+  // expense.approve, but the only place to act on a pending refund was the POS
+  // returns screen — invisible from the Admin shell. Gated on refund.approve
+  // (Owner + Branch Manager), same audience the page's guard enforces.
+  {
+    label: 'Approvals',
+    href: '/approvals',
+    icon: 'BadgeCheck',
+    permission: { key: 'refund.approve' },
+  },
   {
     label: 'Business Structure',
     href: '/business-structure',

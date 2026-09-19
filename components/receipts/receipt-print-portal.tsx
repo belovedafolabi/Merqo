@@ -1,122 +1,78 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
-import { createPortal } from 'react-dom'
+/**
+ * Prints a receipt without touching the live document.
+ *
+ * A hidden, same-origin <iframe> is pointed at /print/receipt/[saleId] — a
+ * bare route (app/(print)/) that renders ONLY the receipt and auto-calls
+ * `window.print()` on itself. Because the print originates inside the iframe's
+ * own document, the browser prints that document; the POS page hosting the
+ * iframe is never part of the print.
+ *
+ * This replaces an in-place approach (a portalled receipt copy + a
+ * `body.printing-receipt` class that a `@media print` rule used to hide the
+ * rest of the page). That could not be made reliable on Android Chrome, which
+ * fires neither `beforeprint`/`afterprint` nor `matchMedia('print')` change
+ * events dependably and re-lays-out the live page asynchronously when a
+ * printer is chosen — by which point the isolation class had been torn down,
+ * so the whole POS printed (at receipt width, from the copy's `@page` rule).
+ */
 
-import { ReceiptDocument } from '@/components/receipts/receipt-document'
-import type { OrganizationBranding } from '@/lib/branding/queries'
-import type { ReceiptSettings } from '@/lib/receipts/settings'
-import { RECEIPT_TEMPLATES, type ReceiptTemplateId } from '@/lib/receipts/templates'
-import type { Sale } from '@/lib/sales/queries'
+const FRAME_ID = 'merqo-receipt-print-frame'
+
+export interface PrintReceiptOptions {
+  /** Override the org's saved template (whitelist-validated by the route). */
+  templateId?: string
+  /** Override the physical paper width the print stylesheet targets. */
+  paperMm?: 58 | 80
+}
 
 /**
- * Marks the document as printing a receipt. app/globals.css hides every
- * other top-level node while it is set, so the printout is the receipt alone
- * even though the whole POS is still mounted behind it.
+ * @param saleId  the completed sale to print.
+ * @param opts    optional template / paper-width overrides.
+ * @param onDone  fires once the print frame has loaded (or a 10s fallback) —
+ *                the caller uses this to close the checkout drawer / reset the
+ *                till. The iframe prints itself independently of this.
  */
-export const RECEIPT_PRINTING_CLASS = 'printing-receipt'
+export function printReceiptViaIframe(
+  saleId: string,
+  opts?: PrintReceiptOptions,
+  onDone?: () => void,
+): void {
+  // Repeat clicks reuse one frame rather than stacking hidden iframes.
+  document.getElementById(FRAME_ID)?.remove()
 
-/** The portal's own root class — globals.css keys its print rules off this. */
-const PORTAL_CLASS = 'receipt-print-portal'
+  const params = new URLSearchParams()
+  if (opts?.templateId) params.set('templateId', opts.templateId)
+  if (opts?.paperMm) params.set('paper', String(opts.paperMm))
+  const query = params.toString()
 
-/**
- * Prints the receipt already rendered by <ReceiptPrintPortal> without leaving
- * the page.
- *
- * Replaces a `window.open('/receipts/preview?print=1')` popup, which paid for
- * a full document load — through the (app) layout, its auth guard, its
- * sidebar and its branding query — before the print dialog could even open,
- * and which a popup blocker could swallow silently. The receipt is already on
- * screen in the checkout drawer by the time this runs, so there is nothing
- * left to fetch.
- *
- * `onDone` fires after the dialog closes. `afterprint` is the real signal,
- * but Safari has historically not fired it reliably, so a timeout backstop
- * guarantees the caller's cleanup (clearing the cart, closing the drawer)
- * still happens.
- */
-export function printReceiptInPlace(onDone?: () => void): void {
-  const body = document.body
-  let settled = false
+  const iframe = document.createElement('iframe')
+  iframe.id = FRAME_ID
+  // Off-screen and inert, but NOT `display:none` (some engines won't print a
+  // display:none frame) and non-zero size (0×0 frames are skipped too).
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.tabIndex = -1
+  iframe.style.cssText =
+    'position:fixed;left:-9999px;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;'
+  iframe.src = `/print/receipt/${encodeURIComponent(saleId)}${query ? `?${query}` : ''}`
 
-  function finish() {
-    if (settled) return
-    settled = true
-    window.removeEventListener('afterprint', finish)
-    clearTimeout(backstop)
-    body.classList.remove(RECEIPT_PRINTING_CLASS)
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
     onDone?.()
   }
 
-  const backstop = setTimeout(finish, 60_000)
-  window.addEventListener('afterprint', finish)
-
-  body.classList.add(RECEIPT_PRINTING_CLASS)
-  // Let the class land before the browser snapshots the page. window.print()
-  // is synchronous and blocking, so without a frame in between the printout
-  // can be composed from pre-class styles.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => window.print())
+  iframe.addEventListener('load', () => {
+    finish()
+    // The route self-prints ~300ms after load; keep the frame around well
+    // past that so a slow Bluetooth spool still has its source, then bin it.
+    window.setTimeout(() => iframe.remove(), 60_000)
   })
-}
+  // Belt and braces: never leave the caller's button spinning if `load`
+  // somehow never fires.
+  window.setTimeout(finish, 10_000)
 
-/** Never changes, so the hydration snapshot below never needs re-reading. */
-const subscribeToNothing = () => () => {}
-
-/**
- * A print-only copy of the receipt, portalled to <body>.
- *
- * A copy rather than printing the on-screen one because the on-screen receipt
- * lives inside a vaul Drawer — a fixed, transformed, portalled subtree, which
- * browsers paginate unpredictably. Rendering a second, statically-positioned
- * copy at the document root sidesteps that entirely, and it costs nothing:
- * it is `display: none` until a print actually starts.
- */
-export function ReceiptPrintPortal({
-  sale,
-  templateId,
-  branding,
-  settings,
-}: {
-  sale: Sale
-  templateId: ReceiptTemplateId
-  branding: Pick<OrganizationBranding, 'displayName' | 'logoUrl'> | null
-  settings: Pick<
-    ReceiptSettings,
-    'headerText' | 'footerText' | 'showLogo' | 'showCashier' | 'orgAddressLine' | 'orgContactPhone'
-  >
-}) {
-  // Portals need a DOM node, which does not exist during the server render.
-  // useSyncExternalStore rather than a useState/useEffect mount flag: the
-  // snapshot pair below IS "has this hydrated", and it satisfies the
-  // project's react-hooks/set-state-in-effect rule by construction.
-  const hydrated = useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
-  )
-  if (!hydrated) return null
-
-  const paperWidthMm = RECEIPT_TEMPLATES[templateId].paperWidthMm
-
-  return createPortal(
-    <div className={PORTAL_CLASS}>
-      {/* Same rule as components/receipts/receipt-print-frame.tsx: a receipt
-          roll is continuous, so the width is fixed and the length is
-          whatever the content needs. */}
-      <style>{`
-        @media print {
-          @page { size: ${paperWidthMm}mm auto; margin: 3mm; }
-          html, body { background: white; margin: 0; }
-        }
-      `}</style>
-      <ReceiptDocument
-        sale={sale}
-        templateId={templateId}
-        branding={branding}
-        settings={settings}
-      />
-    </div>,
-    document.body,
-  )
+  document.body.appendChild(iframe)
 }

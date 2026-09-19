@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Toaster } from '@/components/ui/sonner'
+import { ThemedToaster } from '@/components/ui/themed-toaster'
 
 // Inter — docs/UXUI_Design_System_Specification.md §6 ("A strong default
 // would be Inter, with system fallbacks"). Mapped to Tailwind's `font-sans`
@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-        <Toaster />
+        <ThemedToaster />
       </body>
     </html>
   )

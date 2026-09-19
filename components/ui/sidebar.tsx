@@ -195,6 +195,17 @@ function Sidebar({
             } as React.CSSProperties
           }
           side={side}
+          // The product tour opens this menu, then portals its popover to
+          // <body> to point at a nav item. A tap inside that popover must not
+          // register as an outside-press and close the menu.
+          onPointerDownOutside={(event) => {
+            const target = (event.detail.originalEvent.target as Element | null) ?? null
+            if (target?.closest('.driver-popover')) event.preventDefault()
+          }}
+          onInteractOutside={(event) => {
+            const target = (event.detail.originalEvent.target as Element | null) ?? null
+            if (target?.closest('.driver-popover')) event.preventDefault()
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
